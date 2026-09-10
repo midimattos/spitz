@@ -572,8 +572,8 @@ export default async function FichaCaoPage({
             { id: "genetica", label: "Genética", conteudo: abaGenetica },
             { id: "financeiro", label: "Financeiro", conteudo: abaFinanceiro },
             { id: "dossie", label: "Dossiê", conteudo: abaDossie },
-            { id: "precificacao", label: "Precif.", conteudo: abaPrecificacao },
-            { id: "gaveta", label: "Gav. Digi.", conteudo: abaGavetaDigital },
+            { id: "precificacao", label: "Precificação", conteudo: abaPrecificacao },
+            { id: "gaveta", label: "Gaveta Digital", conteudo: abaGavetaDigital },
           ]}
         />
       </div>
