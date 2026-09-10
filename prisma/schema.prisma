@@ -1,0 +1,548 @@
+// Fase 0 — Fundação
+// Este schema cobre: autenticação multi-perfil (NextAuth) e a estrutura
+// mínima de Usuário/Canil que as próximas fases vão expandir.
+// Novos modelos (Cao, Ninhada, DossieGenetico, Anuncio, etc.) entram
+// nas fases seguintes, sem quebrar o que já existe aqui.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Autenticação (NextAuth / Auth.js) ----------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Papéis do sistema ----------
+
+enum Role {
+  ADMIN     // Equipe da plataforma
+  CRIADOR   // Assinante do SaaS, dono de um ou mais canis
+  COMPRADOR // Usuário do marketplace público
+}
+
+// ---------- Usuário ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String? // null quando o login é só via provedor OAuth
+  image         String?
+  role          Role      @default(COMPRADOR)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  // Um usuário CRIADOR pode ser dono de um canil.
+  canil Canil?
+
+  // Um usuário COMPRADOR pode ter um desejo ativo no Radar de Demanda.
+  desejoComprador DesejoComprador?
+
+  @@index([role])
+}
+
+// ---------- Canil (stub — expandido na Fase 1) ----------
+
+model Canil {
+  id          String   @id @default(cuid())
+  nome        String
+  slug        String   @unique
+  cidade      String?
+  estado      String?
+  descricao   String?
+  verificado  Boolean  @default(false) // selo de canil aprovado (fase invite-only)
+  assinaturaPro Boolean @default(false) // camada PRO (Fase 8) — ativado manualmente pelo admin até a Fase 9 (cobrança) existir
+  telefoneContato String?
+  instagram   String?
+  solicitacaoVerificacaoEm DateTime? // quando o criador pediu revisão (fila de aprovação)
+  criadoEm    DateTime @default(now())
+
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  caes Cao[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
+  faixasPreco FaixaPrecoBase[]
+  anuncios Anuncio[]
+  avaliacoes Avaliacao[]
+  pagamentos Pagamento[]
+  convitesCriados Convite[] @relation("ConvitesCriados")
+  conviteUsado    Convite?  @relation("ConviteUsado")
+
+  @@index([verificado])
+}
+
+// ---------- Fase 1: Plantel (cães do canil) ----------
+
+enum Sexo {
+  MACHO
+  FEMEA
+}
+
+enum PapelCao {
+  MATRIZ     // fêmea reprodutora ativa
+  PADREADOR  // macho reprodutor ativo
+  FILHOTE    // ainda não definiu papel reprodutivo
+  APOSENTADO // não reproduz mais, mas fica no histórico
+}
+
+enum TipoDocumento {
+  PEDIGREE
+  RECIBO_VETERINARIO
+  MICROCHIP
+  CONTRATO_COPROPRIEDADE
+  LAUDO_MEDICO
+  LAUDO_GENETICO
+  OUTRO
+}
+
+model Cao {
+  id              String    @id @default(cuid())
+  nome            String
+  sexo            Sexo
+  papel           PapelCao  @default(FILHOTE)
+  fotoUrl         String?
+  corPelagem      String? // descrição livre (compatibilidade com cadastros antigos)
+  porte           String? // ex: Anão, Pequeno, Médio
+  microchip       String?
+  dataNascimento  DateTime?
+  dataFalecimento DateTime?
+  observacoes     String?
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+
+  // ---- Fenótipo estruturado (cor), usado pelo motor de genética de cor ----
+  corBase             String? // Preto, Chocolate, Lilás, Beaver, Laranja/Sable, Wolf Sable, Creme/Branco, Azul/Cinza, Merle, Tricolor
+  marcacaoCor         String? // Sólido, Sable, Wolf Sable, Tan Points, Tricolor, Particolor, Merle, Branco Extremo, Máscara
+  corTrufa            String? // Preta, Marrom, Lilás, Azul/Acinzentada, Carne
+  diluicaoCor         String? // Densa, Diluída
+  merleCor            String? // Não Merle, Merle, Harlequin
+  intensidadeCor      String? // Alta (Vívida), Média, Baixa (Pálida)
+  coresJaProduzidas   String[] // cores observadas em filhotes deste cão — evidência p/ inferência de portador oculto
+
+  // ---- Genótipo de cor confirmado por exame de DNA (opcional) ----
+  // Preenchido manualmente pelo criador a partir de um painel de cor (ex:
+  // Embark). Quando presente, o motor de genética usa isso em vez de
+  // inferir do fenótipo. Formato "X/x", ex: "B/b".
+  temExameCorDNA Boolean @default(false)
+  dnaLocusB      String?
+  dnaLocusE      String?
+  dnaLocusK      String?
+  dnaLocusA      String?
+  dnaLocusD      String?
+  dnaLocusS      String?
+  dnaLocusM      String?
+  dnaLocusI      String?
+
+  canilId String
+  canil   Canil  @relation(fields: [canilId], references: [id], onDelete: Cascade)
+
+  // Árvore genealógica: um cão pode referenciar pai e mãe já cadastrados
+  // no sistema (do mesmo canil ou de outro, para permitir linhagens externas).
+  paiId         String?
+  pai           Cao?  @relation("Paternidade", fields: [paiId], references: [id])
+  filhosComoPai Cao[] @relation("Paternidade")
+
+  maeId         String?
+  mae           Cao?  @relation("Maternidade", fields: [maeId], references: [id])
+  filhosComoMae Cao[] @relation("Maternidade")
+
+  documentos Documento[]
+  laudosGeneticos LaudoGenetico[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
+  ciclosCio CicloCio[]
+  ninhadasComoMae Ninhada[] @relation("NinhadaMae")
+  ninhadasComoPai Ninhada[] @relation("NinhadaPai")
+  dossieGenetico DossieGenetico?
+  anuncios Anuncio[]
+
+  @@index([canilId])
+  @@index([papel])
+}
+
+// "Gaveta Digital": documentos anexados à ficha do cão.
+model Documento {
+  id       String        @id @default(cuid())
+  caoId    String
+  cao      Cao           @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  tipo     TipoDocumento
+  nome     String
+  url      String
+  criadoEm DateTime      @default(now())
+
+  laudoGenetico LaudoGenetico?
+
+  @@index([caoId])
+}
+
+// ---------- Fase 2: Inteligência Genética e Saúde ----------
+
+enum StatusGenetico {
+  LIVRE     // não carrega o gene (clear)
+  PORTADOR  // carrega uma cópia do gene, mas não é afetado (carrier)
+  AFETADO   // carrega duas cópias / manifesta a condição (affected)
+}
+
+// Um laudo de laboratório (ex: Embark, Wisdom Panel, laboratório local),
+// anexado como Documento e com um ou mais resultados padronizados.
+model LaudoGenetico {
+  id          String    @id @default(cuid())
+  caoId       String
+  cao         Cao       @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  laboratorio String
+  dataLaudo   DateTime?
+  criadoEm    DateTime  @default(now())
+
+  documentoId String?    @unique
+  documento   Documento? @relation(fields: [documentoId], references: [id])
+
+  resultados ResultadoGenetico[]
+
+  @@index([caoId])
+}
+
+// Cada condição testada dentro de um laudo (ex: "PRA" -> LIVRE).
+// O nome da condição é livre (texto), para acomodar laudos de labs
+// diferentes sem depender de uma tabela fechada de doenças.
+model ResultadoGenetico {
+  id         String         @id @default(cuid())
+  laudoId    String
+  laudo      LaudoGenetico  @relation(fields: [laudoId], references: [id], onDelete: Cascade)
+  condicao   String
+  status     StatusGenetico
+  observacao String?
+
+  @@index([laudoId])
+  @@index([condicao])
+}
+
+// ---------- Fase 3: Ciclo de Vida (financeiro e reprodutivo) ----------
+
+enum TipoLancamento {
+  RECEITA
+  DESPESA
+}
+
+// Lançamento financeiro, opcionalmente vinculado a um cão específico
+// (ex: veterinário do padreador X) ou geral do canil (ex: ração para todos).
+model LancamentoFinanceiro {
+  id        String         @id @default(cuid())
+  canilId   String
+  canil     Canil          @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  caoId     String?
+  cao       Cao?           @relation(fields: [caoId], references: [id], onDelete: SetNull)
+  tipo      TipoLancamento
+  categoria String // ex: Ração, Veterinário, Venda de filhote, Taxa de registro
+  valor     Decimal        @db.Decimal(10, 2)
+  data      DateTime
+  descricao String?
+  criadoEm  DateTime       @default(now())
+
+  @@index([canilId])
+  @@index([caoId])
+  @@index([tipo])
+}
+
+// Registro de início de cio de uma matriz, para prever o próximo ciclo.
+model CicloCio {
+  id          String   @id @default(cuid())
+  caoId       String
+  cao         Cao      @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  dataInicio  DateTime
+  observacoes String?
+  criadoEm    DateTime @default(now())
+
+  @@index([caoId])
+}
+
+// Uma ninhada: da cobertura à previsão/registro do parto.
+// O padreador pode ser um cão já cadastrado no sistema (caoPaiId) ou um
+// nome livre, quando o macho pertence a outro canil (padreadorExterno).
+model Ninhada {
+  id                  String    @id @default(cuid())
+  caoMaeId            String
+  caoMae              Cao       @relation("NinhadaMae", fields: [caoMaeId], references: [id], onDelete: Cascade)
+  caoPaiId            String?
+  caoPai              Cao?      @relation("NinhadaPai", fields: [caoPaiId], references: [id])
+  padreadorExterno    String?
+  dataCobertura       DateTime
+  dataPrevistaParto   DateTime // calculada: dataCobertura + 63 dias
+  dataParto           DateTime?
+  quantidadeFilhotes  Int?
+  observacoes         String?
+  criadoEm            DateTime  @default(now())
+
+  @@index([caoMaeId])
+}
+
+// ---------- Fase 4: Dossiê Genético (Passaporte Digital) ----------
+
+// Um dossiê por cão, com link público opcional. Os dados de saúde e
+// genealogia são calculados a partir do restante do schema (LaudoGenetico,
+// árvore de Cao); aqui só guardamos o COI calculado na última geração,
+// o slug do link compartilhável e se ele está publicado.
+model DossieGenetico {
+  id           String   @id @default(cuid())
+  caoId        String   @unique
+  cao          Cao      @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  slugPublico  String   @unique
+  publicado    Boolean  @default(false)
+  coi          Float? // coeficiente de endogamia estimado, 0 a 1 (multiplicar por 100 para %)
+  geradoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([slugPublico])
+}
+
+// ---------- Fase 5: Motor de Precificação Dinâmica ----------
+
+// Faixa de preço de referência que o próprio criador configura por porte
+// (ex: Anão, Pequeno, Médio). O motor de precificação usa essa faixa como
+// base e ajusta o preço sugerido dentro dela conforme a qualidade genética
+// de cada cão — ele não inventa um preço de mercado do zero.
+model FaixaPrecoBase {
+  id           String   @id @default(cuid())
+  canilId      String
+  canil        Canil    @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  porte        String
+  precoMinimo  Decimal  @db.Decimal(10, 2)
+  precoMedio   Decimal  @db.Decimal(10, 2)
+  precoMaximo  Decimal  @db.Decimal(10, 2)
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([canilId, porte])
+}
+
+// ---------- Fase 6: Marketplace público ----------
+
+enum TipoAnuncio {
+  GRATUITO
+  PREMIUM // selo/destaque — cobrança ainda não implementada (ver Fase 9)
+}
+
+enum StatusAnuncio {
+  RASCUNHO
+  PUBLICADO
+  PAUSADO
+  VENDIDO
+}
+
+// Um anúncio de venda, criado a partir de um cão do plantel. Só aparece
+// publicamente no marketplace se o canil for verificado E o anúncio
+// estiver com status PUBLICADO — é o que implementa o modo "invite-only"
+// da primeira fase do marketplace.
+model Anuncio {
+  id           String        @id @default(cuid())
+  caoId        String
+  cao          Cao           @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  canilId      String
+  canil        Canil         @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  titulo       String
+  descricao    String?
+  preco        Decimal       @db.Decimal(10, 2)
+  tipo         TipoAnuncio   @default(GRATUITO)
+  status       StatusAnuncio @default(RASCUNHO)
+  fotos        String[]
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+
+  mensagens MensagemContato[]
+  matches   Match[]
+  pagamentos Pagamento[]
+
+  @@index([canilId])
+  @@index([status])
+}
+
+// Mensagem de um comprador interessado, enviada a partir da página
+// pública do anúncio. Ainda não é um chat em tempo real (isso é a
+// Fase 7 — Radar de Demanda / matchmaking); por ora é uma caixa de
+// entrada simples para o criador.
+model MensagemContato {
+  id        String   @id @default(cuid())
+  anuncioId String
+  anuncio   Anuncio  @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  nome      String
+  email     String
+  telefone  String?
+  mensagem  String
+  lida      Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+
+  denuncia DenunciaLead?
+
+  @@index([anuncioId])
+}
+
+// Avaliação pública de um canil, deixada por um usuário COMPRADOR logado.
+model Avaliacao {
+  id          String   @id @default(cuid())
+  canilId     String
+  canil       Canil    @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  autorUserId String?
+  autorNome   String
+  nota        Int
+  comentario  String?
+  oculta      Boolean  @default(false) // moderação: avaliação escondida pelo admin (spam/fraude)
+  criadoEm    DateTime @default(now())
+
+  @@index([canilId])
+}
+
+// ---------- Fase 7: Radar de Demanda / Fila de Espera Reversa ----------
+
+enum StatusOptIn {
+  PENDENTE
+  ACEITO
+  RECUSADO
+}
+
+// O "desejo" de um comprador: o que ele está procurando. Um por
+// comprador, para manter o radar simples nesta fase. O telefone é
+// obrigatório como uma validação anti-fraude leve — não há verificação
+// real de WhatsApp/SMS aqui (isso depende de um serviço pago tipo
+// Twilio/Zenvia), só a exigência de informar um contato válido no
+// formato antes de participar do radar.
+model DesejoComprador {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  porte      String?
+  sexo       Sexo?
+  precoMax   Decimal? @db.Decimal(10, 2)
+  corPelagem String?
+  estado     String?
+  telefone   String
+  cpf        String? // valida só o formato (dígito verificador), não consulta a Receita Federal
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+
+  matches Match[]
+}
+
+// Um cruzamento entre um desejo de comprador e um anúncio publicado.
+// Segue o fluxo de "concierge" com double opt-in: o contato só é
+// revelado para os dois lados quando AMBOS aceitam.
+model Match {
+  id              String      @id @default(cuid())
+  desejoId        String
+  desejo          DesejoComprador @relation(fields: [desejoId], references: [id], onDelete: Cascade)
+  anuncioId       String
+  anuncio         Anuncio     @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  statusComprador StatusOptIn @default(PENDENTE)
+  statusCriador   StatusOptIn @default(PENDENTE)
+  criadoEm        DateTime    @default(now())
+
+  denuncia DenunciaLead?
+
+  @@unique([desejoId, anuncioId])
+  @@index([anuncioId])
+}
+
+// Denúncia de um lead suspeito/spam, feita pelo criador — vale tanto
+// para uma mensagem de contato (Fase 6) quanto para um match do radar.
+model DenunciaLead {
+  id                String           @id @default(cuid())
+  mensagemContatoId String?          @unique
+  mensagemContato   MensagemContato? @relation(fields: [mensagemContatoId], references: [id], onDelete: Cascade)
+  matchId           String?          @unique
+  match             Match?           @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  motivo            String
+  criadoEm          DateTime         @default(now())
+}
+
+// ---------- Fase 9: Transações, Comissões e Assinaturas ----------
+
+enum TipoPagamento {
+  ASSINATURA_PRO
+  ANUNCIO_PREMIUM
+  COMISSAO_VENDA
+}
+
+enum StatusPagamento {
+  PENDENTE
+  APROVADO
+  REJEITADO
+  CANCELADO
+}
+
+// Um cobrança processada via Mercado Pago (Checkout Pro). O status real
+// só muda quando o webhook de pagamento confirma — nunca no clique do
+// usuário, para não liberar nenhum benefício antes do pagamento cair.
+model Pagamento {
+  id                      String          @id @default(cuid())
+  canilId                 String
+  canil                   Canil           @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  anuncioId               String?
+  anuncio                 Anuncio?        @relation(fields: [anuncioId], references: [id], onDelete: SetNull)
+  tipo                    TipoPagamento
+  valor                   Decimal         @db.Decimal(10, 2)
+  status                  StatusPagamento @default(PENDENTE)
+  mercadoPagoPreferenceId String?
+  mercadoPagoPaymentId    String?         @unique
+  criadoEm                DateTime        @default(now())
+  atualizadoEm            DateTime        @updatedAt
+
+  @@index([canilId])
+  @@index([anuncioId])
+  @@index([status])
+}
+
+// ---------- Fase 10: Growth e Operação ----------
+
+// Convite gerado por um canil já verificado (ou pelo admin, quando
+// criadoPorCanilId é nulo). Um canil que se cadastra usando um código
+// válido já nasce verificado, pulando a fila de aprovação manual.
+model Convite {
+  id               String    @id @default(cuid())
+  codigo           String    @unique
+  criadoPorCanilId String?
+  criadoPorCanil   Canil?    @relation("ConvitesCriados", fields: [criadoPorCanilId], references: [id], onDelete: SetNull)
+  usadoPorCanilId  String?   @unique
+  usadoPorCanil    Canil?    @relation("ConviteUsado", fields: [usadoPorCanilId], references: [id], onDelete: SetNull)
+  criadoEm         DateTime  @default(now())
+  usadoEm          DateTime?
+}

@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+:root {
+  /* Paleta: pergaminho + verde-caca + latao - identidade de "certificado de
+     pedigree", evitando o combo cliche de creme + serifada + terracota. */
+  --parchment: #f2ede1;
+  --parchment-card: #faf7ef;
+  --pine: #1e3a2f;
+  --pine-dark: #12241d;
+  --brass: #a06a2e;
+  --brass-light: #c98f4e;
+  --ink: #22261f;
+  --ink-muted: #5c6157;
+  --border-hairline: #d9d0ba;
+
+  --font-display: "Fraunces", serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+}
+
+html,
+body {
+  background: var(--parchment);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+.seal {
+  border-radius: 9999px;
+  border: 1.5px solid var(--brass);
+  position: relative;
+}
+
+.seal::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 9999px;
+  border: 1px solid var(--brass);
+}
+
+.card {
+  background: var(--parchment-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: 4px;
+}
