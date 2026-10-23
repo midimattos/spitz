@@ -85,6 +85,10 @@ export async function salvarArquivo(
   const extensao = path.extname(arquivo.name) || "";
   const nomeArmazenado = `${randomUUID()}${extensao}`;
 
+  if (!r2Configurado && process.env.VERCEL) {
+    throw new Error("ARMAZENAMENTO_NAO_CONFIGURADO");
+  }
+
   const url = r2Configurado
     ? await salvarNoR2(
         bytes,

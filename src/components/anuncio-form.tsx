@@ -119,8 +119,8 @@ export function AnuncioForm({ caesDisponiveis }: { caesDisponiveis: CaoOpcao[] }
         ) : null}
       </div>
       <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
-        O anúncio é criado como Gratuito. Dá para destacar como Premium
-        (pago) depois, na página do anúncio.
+        O anúncio é criado como rascunho. Depois de adicionar fotos e o
+        pedigree, publique-o na página do anúncio.
       </p>
 
       <div>

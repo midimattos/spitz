@@ -42,14 +42,6 @@ export function formatarMoeda(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export const CATEGORIAS_SUGERIDAS = [
-  "Ração",
-  "Veterinário",
-  "Vacinas e vermífugos",
-  "Exames e laudos genéticos",
-  "Taxa de registro (CBKC/FCI)",
-  "Venda de filhote",
-  "Taxa de monta (padreador)",
-  "Banho e tosa",
-  "Outro",
-];
+import { CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, CATEGORIAS_INVESTIMENTO } from "@/lib/relatorio-financeiro";
+
+export const CATEGORIAS_SUGERIDAS = [...CATEGORIAS_RECEITA, ...CATEGORIAS_DESPESA, ...CATEGORIAS_INVESTIMENTO];

@@ -576,3 +576,57 @@ export function topCidadesProcuradas(ctx: ContextoMercado, limite = 8): { cidade
   ctx.ativos.forEach((a) => { const l = linha(a.cidade); if (l) l.anuncios++; });
   return [...mapa.values()].filter((l) => l.procuras > 0).sort((a, b) => b.procuras - a.procuras).slice(0, limite);
 }
+
+// ---------- Resumo em linguagem simples ----------
+
+export function gerarInsights(args: {
+  porCor: LinhaRadarCor[];
+  caracteristicas: RadarCaracteristica[];
+  faixasValor: LinhaFaixaValor[];
+  cidades: { cidade: string; procuras: number; anuncios: number }[];
+  estados: LinhaRadarEstado[];
+  funil: { visualizacoes30d: number; contatos30d: number; taxaContato: number | null };
+}): { tipo: "oportunidade" | "atencao" | "info"; texto: string }[] {
+  const r: { tipo: "oportunidade" | "atencao" | "info"; texto: string }[] = [];
+  const { porCor, caracteristicas, faixasValor, cidades, estados, funil } = args;
+
+  const falta = porCor.filter((l) => l.situacao === "FALTA_OFERTA").sort((a, b) => b.pressao - a.pressao)[0];
+  if (falta) {
+    r.push({
+      tipo: "oportunidade",
+      texto: `${falta.cor} está em falta: ${falta.desejosAtivos + falta.buscas30d} procura(s) para ${falta.anunciosAtivos} anúncio(s). Quem tiver filhotes dessa cor tende a vender mais rápido.`,
+    });
+  }
+  const sobra = porCor.filter((l) => l.situacao === "EXCESSO_OFERTA").sort((a, b) => a.pressao - b.pressao)[0];
+  if (sobra) {
+    r.push({
+      tipo: "atencao",
+      texto: `${sobra.cor} tem oferta sobrando (${sobra.anunciosAtivos} anúncios para ${sobra.desejosAtivos + sobra.buscas30d} procura(s)). Se tiver filhotes assim, capriche nas fotos e no preço.`,
+    });
+  }
+  for (const c of caracteristicas) {
+    const top = c.linhas.find((l) => l.desejos + l.buscas30d >= 2);
+    if (top && c.campo !== "diluicao") {
+      r.push({ tipo: "info", texto: `${c.titulo} mais procurada: ${top.valor} (${top.desejos + top.buscas30d} procuras, ${top.anuncios} anúncio(s)).` });
+      break;
+    }
+  }
+  const faixa = [...faixasValor].sort((a, b) => b.procuras - a.procuras)[0];
+  if (faixa && faixa.procuras > 0) {
+    r.push({
+      tipo: faixa.procuras > faixa.anuncios ? "oportunidade" : "info",
+      texto: `Faixa de valor mais buscada: ${faixa.rotulo} (${faixa.procuras} procuras, ${faixa.anuncios} anúncio(s)).`,
+    });
+  }
+  if (cidades[0]) r.push({ tipo: "info", texto: `Cidade com mais procura: ${cidades[0].cidade} (${cidades[0].procuras}).` });
+  else if (estados[0] && estados[0].desejosAtivos + estados[0].buscas30d > 0) {
+    r.push({ tipo: "info", texto: `Estado com mais procura: ${estados[0].estado}.` });
+  }
+  if (funil.taxaContato !== null && funil.visualizacoes30d >= 30) {
+    r.push({
+      tipo: funil.taxaContato < 0.02 ? "atencao" : "info",
+      texto: `De cada 100 visualizações no marketplace, ${(funil.taxaContato * 100).toFixed(1)} viram contato.`,
+    });
+  }
+  return r;
+}

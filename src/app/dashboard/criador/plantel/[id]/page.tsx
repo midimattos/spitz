@@ -25,6 +25,7 @@ import { carregarContextoMercado, carregarFaixasDoCanil, sugerirPreco } from "@/
 import { PainelPreco } from "@/components/painel-preco";
 import { DossieGeneticoPanel } from "@/components/dossie-genetico-panel";
 import { FotoCaoUpload } from "@/components/foto-cao-upload";
+import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
 
 export default async function FichaCaoPage({
@@ -130,6 +131,14 @@ export default async function FichaCaoPage({
           )}
         </div>
       </div>
+
+      <PedigreeUpload
+        caoId={cao.id}
+        atual={(() => {
+          const d = cao.documentos.find((x) => x.tipo === "PEDIGREE");
+          return d ? { nome: d.nome, url: d.url } : null;
+        })()}
+      />
 
       {cao.sexo === "FEMEA" && (
         <div>
@@ -480,8 +489,8 @@ export default async function FichaCaoPage({
             { id: "genetica", label: "Genética", conteudo: abaGenetica },
             { id: "financeiro", label: "Financeiro", conteudo: abaFinanceiro },
             { id: "dossie", label: "Dossiê", conteudo: abaDossie },
-            { id: "precificacao", label: "Precif.", conteudo: abaPrecificacao },
-            { id: "gaveta", label: "Gav. Digi.", conteudo: abaGavetaDigital },
+            { id: "precificacao", label: "Precificação", conteudo: abaPrecificacao },
+            { id: "gaveta", label: "Gaveta Digital", conteudo: abaGavetaDigital },
           ]}
         />
       </div>

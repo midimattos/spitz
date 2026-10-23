@@ -4,10 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { formatarData } from "@/lib/labels";
 import { formatarMoeda } from "@/lib/financeiro";
-import { LABEL_TIPO_ANUNCIO } from "@/lib/marketplace";
-import { PRECO_ANUNCIO_PREMIUM } from "@/lib/precos-plataforma";
 import { AnuncioStatusForm } from "@/components/anuncio-status-form";
 import { AnuncioFotosForm } from "@/components/anuncio-fotos-form";
+import { PedigreeUpload } from "@/components/pedigree-upload";
 import { DenunciarLeadButton } from "@/components/denunciar-lead-button";
 import { MatchResponderForm } from "@/components/match-responder-form";
 import { PagamentoButton } from "@/components/pagamento-button";
@@ -42,6 +41,10 @@ export default async function AnuncioDetalhePage({
     },
   });
   if (!anuncio) notFound();
+  const pedigreeDoCao = await prisma.documento.findFirst({
+    where: { caoId: anuncio.caoId, tipo: "PEDIGREE" },
+    orderBy: { criadoEm: "desc" },
+  });
 
   // ---- desempenho e leitura do mercado para este anúncio ----
   const [totais, ctx, faixas] = await Promise.all([
@@ -182,26 +185,14 @@ export default async function AnuncioDetalhePage({
           Pagamentos
         </h2>
         <div className="card mt-3 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm">
-                Tipo do anúncio: <strong>{LABEL_TIPO_ANUNCIO[anuncio.tipo]}</strong>
-              </p>
-              {anuncio.tipo === "GRATUITO" && (
-                <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
-                  Destaque Premium: {formatarMoeda(PRECO_ANUNCIO_PREMIUM)} (pagamento único)
-                </p>
+          <div>
+            <p className="text-sm">
+              {canil.assinaturaPro || canil.verificado ? (
+                <>Seu anúncio exibe o selo <strong>Canil verificado pela plataforma</strong>, sem custo extra.</>
+              ) : (
+                <>Anúncio gratuito.</>
               )}
-            </div>
-            {anuncio.tipo === "GRATUITO" && (
-              <PagamentoButton
-                endpoint="/api/pagamentos/anuncio-premium"
-                body={{ anuncioId: anuncio.id }}
-                label="Destacar como Premium"
-                className="px-4 py-2 rounded text-white text-sm"
-                style={{ background: "var(--brass)" }}
-              />
-            )}
+            </p>
           </div>
 
           {comissaoPendente && (
@@ -244,6 +235,21 @@ export default async function AnuncioDetalhePage({
             </div>
           )}
           <AnuncioFotosForm anuncioId={anuncio.id} />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+          Pedigree
+        </h2>
+        <div className="mt-3">
+          <PedigreeUpload
+            caoId={anuncio.caoId}
+            atual={(() => {
+              const d = pedigreeDoCao;
+              return d ? { nome: d.nome, url: d.url } : null;
+            })()}
+          />
         </div>
       </section>
 

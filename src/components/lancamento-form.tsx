@@ -78,6 +78,9 @@ export function LancamentoForm({
             className={campoClasse}
             style={campoEstilo}
           />
+          <p className="text-[11px] mt-1" style={{ color: "var(--ink-muted)" }}>
+            Compra de animal e estrutura: use uma categoria &quot;Investimento - ...&quot;. Elas não entram no custo mensal e mostram o retorno.
+          </p>
           <datalist id="categorias-sugeridas">
             {CATEGORIAS_SUGERIDAS.map((c) => (
               <option key={c} value={c} />

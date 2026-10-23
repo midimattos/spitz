@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { LABEL_STATUS_ANUNCIO, LABEL_TIPO_ANUNCIO } from "@/lib/marketplace";
+import { LABEL_STATUS_ANUNCIO } from "@/lib/marketplace";
 import { formatarMoeda } from "@/lib/financeiro";
 
 export default async function AnunciosPage() {
@@ -55,7 +55,7 @@ export default async function AnunciosPage() {
                   {a.titulo}
                 </p>
                 <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
-                  {a.cao.nome} · {LABEL_TIPO_ANUNCIO[a.tipo]} · {formatarMoeda(Number(a.preco))}
+                  {a.cao.nome} · {formatarMoeda(Number(a.preco))}
                 </p>
               </div>
               <span

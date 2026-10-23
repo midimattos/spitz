@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { prepararImagem, mensagemDeErro } from "@/lib/imagem-cliente";
 
 export function FotoCaoUpload({ caoId, fotoAtual }: { caoId: string; fotoAtual: string | null }) {
   const router = useRouter();
@@ -17,15 +18,19 @@ export function FotoCaoUpload({ caoId, fotoAtual }: { caoId: string; fotoAtual: 
     setEnviando(true);
 
     const formData = new FormData();
-    formData.append("arquivo", arquivo);
+    formData.append("arquivo", await prepararImagem(arquivo));
 
-    const res = await fetch(`/api/caes/${caoId}/foto`, { method: "POST", body: formData });
+    const res = await fetch(`/api/caes/${caoId}/foto`, { method: "POST", body: formData }).catch(() => null);
+    if (!res) {
+      setEnviando(false);
+      setErro("Sem conexão. Tente novamente.");
+      return;
+    }
 
     setEnviando(false);
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErro(data.error ?? "Não foi possível enviar a foto");
+      setErro(await mensagemDeErro(res, "Não foi possível enviar a foto"));
       return;
     }
 

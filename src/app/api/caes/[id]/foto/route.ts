@@ -21,7 +21,20 @@ export async function POST(
     return NextResponse.json({ error: "Selecione uma imagem" }, { status: 400 });
   }
 
-  const { url } = await salvarArquivo(arquivo, `caes/${caoId}`);
+  if (!arquivo.type.startsWith("image/")) {
+    return NextResponse.json({ error: "O arquivo precisa ser uma imagem" }, { status: 400 });
+  }
+
+  let url: string;
+  try {
+    ({ url } = await salvarArquivo(arquivo, `caes/${caoId}`));
+  } catch (e) {
+    const naoConfigurado = e instanceof Error && (e.message === "ARMAZENAMENTO_NAO_CONFIGURADO" || e.message.includes("R2_PUBLIC_URL"));
+    return NextResponse.json(
+      { error: naoConfigurado ? "O armazenamento de fotos ainda não foi configurado no servidor." : "Falha ao salvar a imagem. Tente novamente." },
+      { status: 500 }
+    );
+  }
 
   const atualizado = await prisma.cao.update({
     where: { id: caoId },

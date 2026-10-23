@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { prepararImagem, mensagemDeErro } from "@/lib/imagem-cliente";
 
 export function AnuncioFotosForm({ anuncioId }: { anuncioId: string }) {
   const router = useRouter();
@@ -13,37 +14,31 @@ export function AnuncioFotosForm({ anuncioId }: { anuncioId: string }) {
     e.preventDefault();
     setErro(null);
 
-    const arquivo = inputRef.current?.files?.[0];
-    if (!arquivo) return;
+    const arquivos = Array.from(inputRef.current?.files ?? []);
+    if (arquivos.length === 0) return;
 
     setEnviando(true);
-    const formData = new FormData();
-    formData.append("arquivo", arquivo);
-
-    const res = await fetch(`/api/anuncios/${anuncioId}/fotos`, {
-      method: "POST",
-      body: formData,
-    });
-
-    setEnviando(false);
-
-    if (!res.ok) {
-      const data = await res.json();
-      setErro(data.error ?? "Não foi possível enviar a foto");
-      return;
+    for (const original of arquivos) {
+      const formData = new FormData();
+      formData.append("arquivo", await prepararImagem(original));
+      const res = await fetch(`/api/anuncios/${anuncioId}/fotos`, { method: "POST", body: formData }).catch(() => null);
+      if (!res || !res.ok) {
+        setErro(res ? await mensagemDeErro(res, "Não foi possível enviar a foto") : "Sem conexão. Tente novamente.");
+        break;
+      }
     }
-
-    e.currentTarget.reset();
+    setEnviando(false);
+    if (inputRef.current) inputRef.current.value = "";
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div>
         <label className="text-xs block" style={{ color: "var(--ink-muted)" }}>
-          Adicionar foto
+          Adicionar fotos (pode escolher várias)
         </label>
-        <input ref={inputRef} type="file" accept="image/*" className="text-sm" />
+        <input ref={inputRef} type="file" accept="image/*" multiple className="text-sm" />
       </div>
       <button
         type="submit"

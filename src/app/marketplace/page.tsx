@@ -2,6 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatarMoeda } from "@/lib/financeiro";
 import { LABEL_SEXO } from "@/lib/labels";
+import { calcularSelos, fotosDoAnuncio } from "@/lib/marketplace";
+import { Selos } from "@/components/selos";
 import { corDoCao } from "@/lib/cores";
 import { calcularReputacaoEmLote } from "@/lib/reputacao";
 import { RastreadorEvento } from "@/components/rastreador-evento";
@@ -44,8 +46,17 @@ export default async function MarketplacePage({
 
   const todos = await prisma.anuncio.findMany({
     where: { status: "PUBLICADO", canil: { verificado: true } },
-    include: { cao: true, canil: true },
-    orderBy: [{ tipo: "desc" }, { criadoEm: "desc" }],
+    include: {
+      canil: true,
+      cao: {
+        include: {
+          documentos: { select: { tipo: true } },
+          laudosGeneticos: { select: { id: true } },
+          cuidados: { select: { tipo: true, proximaData: true } },
+        },
+      },
+    },
+    orderBy: { criadoEm: "desc" },
   });
 
   const reputacoes = await calcularReputacaoEmLote([...new Set(todos.map((a) => a.canilId))]);
@@ -61,7 +72,7 @@ export default async function MarketplacePage({
     const ry = y.c.total ? y.c.casados.length / y.c.total : 0;
     if (ry !== rx) return ry - rx;
     if (y.c.casados.length !== x.c.casados.length) return y.c.casados.length - x.c.casados.length;
-    if (x.a.tipo !== y.a.tipo) return x.a.tipo === "PREMIUM" ? -1 : 1;
+    if (x.a.canil.assinaturaPro !== y.a.canil.assinaturaPro) return x.a.canil.assinaturaPro ? -1 : 1;
     const d = (reputacoes.get(y.a.canilId)?.score ?? 0) - (reputacoes.get(x.a.canilId)?.score ?? 0);
     return d !== 0 ? d : y.a.criadoEm.getTime() - x.a.criadoEm.getTime();
   };
@@ -71,6 +82,14 @@ export default async function MarketplacePage({
 
   const card = ({ a, c }: (typeof avaliados)[number]) => {
     const cor = corDoCao(a.cao);
+    const fotos = fotosDoAnuncio(a, a.cao);
+    const selos = calcularSelos({
+      canil: a.canil,
+      cao: a.cao,
+      documentos: a.cao.documentos,
+      laudos: a.cao.laudosGeneticos.length,
+      cuidados: a.cao.cuidados,
+    });
     const selo = resumoCompatibilidade(c);
     const detalhes = [a.cao.corBase, a.cao.marcacaoCor, a.cao.diluicaoCor, a.cao.merleCor && a.cao.merleCor !== "Não Merle" ? a.cao.merleCor : null]
       .filter(Boolean)
@@ -78,15 +97,15 @@ export default async function MarketplacePage({
     return (
       <Link key={a.id} href={`/marketplace/${a.id}`} className="card overflow-hidden hover:opacity-90 flex flex-col">
         <div className="aspect-square flex items-center justify-center" style={{ background: "var(--parchment)" }}>
-          {a.fotos[0] ? (
+          {fotos[0] ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={a.fotos[0]} alt={a.titulo} className="w-full h-full object-cover" />
+            <img src={fotos[0]} alt={a.titulo} className="w-full h-full object-cover" />
           ) : (
             <span className="text-xs" style={{ color: "var(--ink-muted)" }}>Sem foto</span>
           )}
         </div>
         <div className="p-4">
-          {a.tipo === "PREMIUM" && <span className="text-xs" style={{ color: "var(--brass)" }}>★ Destaque</span>}
+          <Selos selos={selos} compacto />
           {selo && (
             <p className="text-xs" style={{ color: c.naoCasam.length === 0 ? "var(--pine)" : "var(--ink-muted)" }}>
               {selo}
