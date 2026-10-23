@@ -309,7 +309,24 @@ function homozigoto(g: Genotipo, alelo: string): boolean {
  * genótipos por lócus (um "cenário" dentro da distribuição de possíveis
  * filhotes). Segue as regras do documento de referência do Spitz Alemão.
  */
-export function determinarFenotipo(genotipos: Record<Locus, Genotipo>): FenotipoResultante {
+export type PadraoVisivel = "Sólido" | "Sable" | "Wolf Sable" | "Tan Points";
+
+/** Fenótipo "aberto" em atributos separados, usado pelo resumo da ninhada. */
+export type DetalheFenotipo = FenotipoResultante & {
+  padrao: PadraoVisivel;
+  merleVisivel: boolean; // gene Merle expresso (só acontece se E/_)
+  merleFantasma: boolean; // tem 1 cópia de M mas é e/e, então não aparece
+  doubleMerle: boolean; // M/M — risco de saúde (surdez/cegueira)
+  particolor: boolean;
+  diluido: boolean; // d/d
+};
+
+/**
+ * Versão estruturada de `determinarFenotipo`: mesma regra genética, mas
+ * devolvendo cada característica separada (cor, padrão, merle, particolor,
+ * diluição) em vez de uma string de marcação já combinada.
+ */
+export function detalharFenotipo(genotipos: Record<Locus, Genotipo>): DetalheFenotipo {
   const eE = genotipos.E;
   const eB = genotipos.B;
   const eD = genotipos.D;
@@ -328,16 +345,17 @@ export function determinarFenotipo(genotipos: Record<Locus, Genotipo>): Fenotipo
   else corTrufa = "Preta";
 
   let corBase: string;
-  let marcacao: string;
+  let padrao: PadraoVisivel = "Sólido";
   let observacao: string | undefined;
+  const eumelaninaBloqueada = homozigoto(eE, "e");
+  const temMerle = temAlelo(eM, "M");
 
-  if (homozigoto(eE, "e")) {
+  if (eumelaninaBloqueada) {
     // Eumelanina bloqueada: corpo laranja/creme/branco, independente de B/K/A/D.
     corBase = homozigoto(eI, "i") ? "Creme/Branco" : "Laranja/Sable";
-    marcacao = "Sólido";
 
     // Merle fantasma: o gene existe mas não se manifesta visualmente.
-    if (temAlelo(eM, "M")) {
+    if (temMerle) {
       observacao =
         "Merle fantasma: o filhote carrega o gene Merle mas não mostra manchas (Merle só atua sobre pigmento preto/marrom). Risco de Double Merle não intencional em gerações futuras.";
     }
@@ -350,23 +368,37 @@ export function determinarFenotipo(genotipos: Record<Locus, Genotipo>): Fenotipo
 
     if (homozigoto(eK, "k")) {
       // Locus A visível
-      if (temAlelo(eA, "ay")) marcacao = "Sable";
-      else if (!homozigoto(eA, "ay") && temAlelo(eA, "aw")) marcacao = "Wolf Sable";
-      else if (homozigoto(eA, "at") || (temAlelo(eA, "at") && !temAlelo(eA, "ay") && !temAlelo(eA, "aw"))) marcacao = "Tan Points";
-      else marcacao = "Sólido";
-    } else {
-      marcacao = "Sólido";
-    }
-
-    if (temAlelo(eM, "M")) {
-      marcacao = marcacao === "Sólido" ? "Merle" : `${marcacao} + Merle`;
+      if (temAlelo(eA, "ay")) padrao = "Sable";
+      else if (!homozigoto(eA, "ay") && temAlelo(eA, "aw")) padrao = "Wolf Sable";
+      else if (homozigoto(eA, "at") || (temAlelo(eA, "at") && !temAlelo(eA, "ay") && !temAlelo(eA, "aw"))) padrao = "Tan Points";
+      else padrao = "Sólido";
     }
   }
 
-  if (homozigoto(eS, "sp")) {
-    marcacao = marcacao === "Sólido" ? "Particolor" : `${marcacao} + Particolor`;
-  }
+  const merleVisivel = !eumelaninaBloqueada && temMerle;
+  const particolor = homozigoto(eS, "sp");
 
+  // Marcação como texto combinado (mantém o formato antigo, ex: "Sable + Merle").
+  let marcacao: string = padrao;
+  if (merleVisivel) marcacao = marcacao === "Sólido" ? "Merle" : `${marcacao} + Merle`;
+  if (particolor) marcacao = marcacao === "Sólido" ? "Particolor" : `${marcacao} + Particolor`;
+
+  return {
+    corBase,
+    marcacao,
+    corTrufa,
+    observacao,
+    padrao,
+    merleVisivel,
+    merleFantasma: eumelaninaBloqueada && temMerle && !homozigoto(eM, "M"),
+    doubleMerle: homozigoto(eM, "M"),
+    particolor,
+    diluido: homozigoto(eD, "d"),
+  };
+}
+
+export function determinarFenotipo(genotipos: Record<Locus, Genotipo>): FenotipoResultante {
+  const { corBase, marcacao, corTrufa, observacao } = detalharFenotipo(genotipos);
   return { corBase, marcacao, corTrufa, observacao };
 }
 
@@ -439,19 +471,19 @@ export type ResultadoSimulacaoCor = {
  * independentes entre si (simplificação padrão — na prática a maioria
  * está em cromossomos diferentes de qualquer forma).
  */
-export function simularCruzamentoCor(
-  pai: GenotipoCompleto,
-  mae: GenotipoCompleto
-): ResultadoSimulacaoCor[] {
+type CombinacaoFilhote = { genotipos: Record<Locus, Genotipo>; probabilidade: number };
+
+/** Produto cartesiano dos 8 lócus: todos os genótipos completos possíveis de um filhote. */
+function gerarCombinacoes(pai: GenotipoCompleto, mae: GenotipoCompleto): CombinacaoFilhote[] {
   const distribuicoes = cruzarGenotiposCompletos(pai, mae);
   const locusList: Locus[] = ["B", "E", "K", "A", "D", "S", "M", "I"];
 
-  let combinacoes: { genotipos: Record<Locus, Genotipo>; probabilidade: number }[] = [
+  let combinacoes: CombinacaoFilhote[] = [
     { genotipos: {} as Record<Locus, Genotipo>, probabilidade: 1 },
   ];
 
   for (const locus of locusList) {
-    const novasCombinacoes: typeof combinacoes = [];
+    const novasCombinacoes: CombinacaoFilhote[] = [];
     for (const combinacaoAtual of combinacoes) {
       for (const opcao of distribuicoes[locus]) {
         novasCombinacoes.push({
@@ -462,6 +494,15 @@ export function simularCruzamentoCor(
     }
     combinacoes = novasCombinacoes;
   }
+
+  return combinacoes;
+}
+
+export function simularCruzamentoCor(
+  pai: GenotipoCompleto,
+  mae: GenotipoCompleto
+): ResultadoSimulacaoCor[] {
+  const combinacoes = gerarCombinacoes(pai, mae);
 
   const agregado = new Map<string, ResultadoSimulacaoCor>();
   for (const combinacao of combinacoes) {
@@ -486,4 +527,137 @@ export const LABEL_LOCUS: Record<string, string> = {
   K: "Locus K",
   M: "Locus M",
   S: "Locus S",
+  I: "Locus I",
 };
+
+// ---------- Resumo da ninhada, característica por característica ----------
+
+export type ItemResumo = {
+  rotulo: string;
+  probabilidade: number; // 0 a 1, por filhote
+  nivel?: "ALERTA" | "ATENCAO"; // destaca itens com risco de saúde/atenção
+};
+
+export type CategoriaResumo = {
+  id: string;
+  titulo: string;
+  itens: ItemResumo[]; // somam 100% dentro da categoria
+};
+
+export type ResumoNinhada = {
+  categorias: CategoriaResumo[];
+  // Genes ocultos que o filhote pode carregar sem mostrar (não somam 100%).
+  portadores: ItemResumo[];
+};
+
+const ROTULO_SEM_MERLE = "Sem Merle";
+const ROTULO_MERLE = "Merle";
+const ROTULO_MERLE_FANTASMA = "Merle fantasma (carrega o gene, não aparece)";
+const ROTULO_DOUBLE_MERLE = "Double Merle (M/M) — risco de saúde";
+
+function somar(mapa: Map<string, number>, chave: string, valor: number) {
+  mapa.set(chave, (mapa.get(chave) ?? 0) + valor);
+}
+
+function paraItens(mapa: Map<string, number>, niveis?: Record<string, ItemResumo["nivel"]>): ItemResumo[] {
+  return [...mapa.entries()]
+    .filter(([, p]) => p > 1e-9)
+    .map(([rotulo, probabilidade]) => ({ rotulo, probabilidade, nivel: niveis?.[rotulo] }))
+    .sort((a, b) => b.probabilidade - a.probabilidade);
+}
+
+/**
+ * Abre a simulação em chances por característica: cor da pelagem,
+ * marcação/padrão, merle, particolor, trufa, diluição — cada uma somando
+ * 100% por filhote — mais a chance de o filhote ser portador de genes
+ * ocultos (chocolate, diluição, cor clara, Sable/Tan, particolor).
+ *
+ * Usa as mesmas combinações e regras de `simularCruzamentoCor`, só muda a
+ * forma de somar as probabilidades.
+ */
+export function resumirNinhada(pai: GenotipoCompleto, mae: GenotipoCompleto): ResumoNinhada {
+  const combinacoes = gerarCombinacoes(pai, mae);
+
+  const cor = new Map<string, number>();
+  const padrao = new Map<string, number>();
+  const merle = new Map<string, number>();
+  const particolor = new Map<string, number>();
+  const trufa = new Map<string, number>();
+  const diluicao = new Map<string, number>();
+  const portadores = new Map<string, number>();
+
+  for (const c of combinacoes) {
+    const d = detalharFenotipo(c.genotipos);
+    const p = c.probabilidade;
+    const g = c.genotipos;
+
+    somar(cor, d.corBase, p);
+    somar(padrao, d.padrao, p);
+    somar(
+      merle,
+      d.doubleMerle
+        ? ROTULO_DOUBLE_MERLE
+        : d.merleFantasma
+          ? ROTULO_MERLE_FANTASMA
+          : d.merleVisivel
+            ? ROTULO_MERLE
+            : ROTULO_SEM_MERLE,
+      p
+    );
+    somar(particolor, d.particolor ? "Particolor" : "Sem particolor", p);
+    somar(trufa, d.corTrufa, p);
+    somar(diluicao, d.diluido ? "Diluída (azul/lilás)" : "Densa", p);
+
+    // Portador = heterozigoto: carrega o gene recessivo mas não o mostra.
+    if (temAlelo(g.B, "B") && temAlelo(g.B, "b")) somar(portadores, "Portador de chocolate (B/b)", p);
+    if (temAlelo(g.D, "D") && temAlelo(g.D, "d")) somar(portadores, "Portador de diluição azul/lilás (D/d)", p);
+    if (temAlelo(g.E, "E") && temAlelo(g.E, "e")) somar(portadores, "Portador de cor clara laranja/creme (E/e)", p);
+    if (temAlelo(g.K, "K") && temAlelo(g.K, "k")) somar(portadores, "Portador de Sable/Tan (K/k)", p);
+    if (temAlelo(g.S, "S") && temAlelo(g.S, "sp")) somar(portadores, "Portador de particolor (S/sp)", p);
+  }
+
+  const categorias: { id: string; titulo: string; itens: ItemResumo[]; sempre: boolean }[] = [
+    { id: "cor", titulo: "Cor da pelagem", itens: paraItens(cor), sempre: true },
+    { id: "padrao", titulo: "Marcação / padrão", itens: paraItens(padrao), sempre: true },
+    {
+      id: "merle",
+      titulo: "Merle",
+      itens: paraItens(merle, {
+        [ROTULO_DOUBLE_MERLE]: "ALERTA",
+        [ROTULO_MERLE_FANTASMA]: "ATENCAO",
+      }),
+      sempre: false,
+    },
+    { id: "particolor", titulo: "Particolor (manchas brancas)", itens: paraItens(particolor), sempre: false },
+    { id: "trufa", titulo: "Cor da trufa (nariz)", itens: paraItens(trufa), sempre: false },
+    { id: "diluicao", titulo: "Diluição", itens: paraItens(diluicao), sempre: false },
+  ];
+
+  return {
+    // Categorias com um único desfecho possível (100%) só entram se forem
+    // as duas principais — o resto seria ruído na tela.
+    categorias: categorias
+      .filter((c) => c.sempre || c.itens.length > 1)
+      .map(({ id, titulo, itens }) => ({ id, titulo, itens })),
+    portadores: paraItens(portadores),
+  };
+}
+
+/**
+ * Quantos dos 8 lócus de um cão têm base real (DNA, aparência ou histórico
+ * de filhotes) em vez de serem apenas presumidos. Serve para mostrar ao
+ * criador o quanto confiar na estimativa.
+ */
+export function contarLocusInformados(genotipo: GenotipoCompleto): { informados: number; total: number } {
+  const locusList: Locus[] = ["B", "E", "K", "A", "D", "S", "M", "I"];
+  const informados = locusList.filter((l) => {
+    const origem = genotipo[l].origem;
+    return origem !== "PRESUMIDO" && origem !== "DESCONHECIDO";
+  }).length;
+  return { informados, total: locusList.length };
+}
+
+/** Chance de aparecer pelo menos um filhote com a característica numa ninhada de `n`. */
+export function chanceAoMenosUm(probabilidade: number, n: number): number {
+  return 1 - Math.pow(1 - probabilidade, n);
+}

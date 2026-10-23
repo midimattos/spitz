@@ -2,13 +2,13 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import Link from "next/link";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams.get("callbackUrl");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -25,14 +25,33 @@ function LoginForm() {
       redirect: false,
     });
 
-    setCarregando(false);
-
     if (res?.error) {
       setErro("E-mail ou senha incorretos");
+      setCarregando(false);
       return;
     }
 
-    router.push(callbackUrl);
+    // Se veio de uma página protegida (middleware), respeita o callbackUrl
+    if (callbackUrl) {
+      router.push(callbackUrl);
+      router.refresh();
+      return;
+    }
+
+    // Caso contrário, redireciona conforme o perfil do usuário
+    const session = await getSession();
+    const role = session?.user?.role;
+
+    if (role === "CRIADOR") {
+      router.push("/dashboard/criador");
+    } else if (role === "COMPRADOR") {
+      router.push("/dashboard/comprador");
+    } else if (role === "ADMIN") {
+      router.push("/admin");
+    } else {
+      router.push("/");
+    }
+
     router.refresh();
   }
 

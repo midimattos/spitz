@@ -6,8 +6,14 @@ import {
   inferirGenotipo,
   simularCruzamentoCor,
   avaliarAlertasGeneticos,
+  resumirNinhada,
+  contarLocusInformados,
   type FenotipoCao,
 } from "@/lib/genetica-cor";
+import { ResumoNinhadaView } from "@/components/resumo-ninhada";
+
+const TAMANHO_NINHADA_PADRAO = 4;
+const TAMANHO_NINHADA_MAXIMO = 12;
 
 const CORES_ALERTA: Record<string, string> = {
   CRITICO: "#a32d2d",
@@ -26,10 +32,15 @@ const CORES_RISCO: Record<NivelRisco, string> = {
 export default async function SimuladorCruzamentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{ a?: string; b?: string; n?: string }>;
 }) {
-  const { a, b } = await searchParams;
+  const { a, b, n } = await searchParams;
   const canil = await getCanilDoCriadorLogado();
+
+  const nInformado = Number.parseInt(n ?? "", 10);
+  const tamanhoNinhada = Number.isFinite(nInformado)
+    ? Math.min(TAMANHO_NINHADA_MAXIMO, Math.max(1, nInformado))
+    : TAMANHO_NINHADA_PADRAO;
 
   const caes = canil
     ? await prisma.cao.findMany({
@@ -41,6 +52,7 @@ export default async function SimuladorCruzamentoPage({
 
   let resultado: ReturnType<typeof avaliarRiscoCruzamento> | null = null;
   let resultadoCor: ReturnType<typeof simularCruzamentoCor> | null = null;
+  let resumoCor: ReturnType<typeof resumirNinhada> | null = null;
   let alertasCor: ReturnType<typeof avaliarAlertasGeneticos> | null = null;
   let genotipoA: ReturnType<typeof inferirGenotipo> | null = null;
   let genotipoB: ReturnType<typeof inferirGenotipo> | null = null;
@@ -111,6 +123,7 @@ export default async function SimuladorCruzamentoPage({
       genotipoB = inferirGenotipo(paraFenotipo(caoB));
       alertasCor = avaliarAlertasGeneticos(genotipoA, genotipoB);
       resultadoCor = simularCruzamentoCor(genotipoA, genotipoB);
+      resumoCor = resumirNinhada(genotipoA, genotipoB);
     }
   }
 
@@ -166,6 +179,20 @@ export default async function SimuladorCruzamentoPage({
               </option>
             ))}
           </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Tamanho esperado da ninhada (filhotes)
+          </label>
+          <input
+            name="n"
+            type="number"
+            min={1}
+            max={TAMANHO_NINHADA_MAXIMO}
+            defaultValue={tamanhoNinhada}
+            className="mt-1 w-28 px-3 py-2 rounded border bg-transparent"
+            style={{ borderColor: "var(--border-hairline)" }}
+          />
         </div>
         <button
           type="submit"
@@ -249,11 +276,30 @@ export default async function SimuladorCruzamentoPage({
             </div>
           )}
 
-          <div className="card mt-4 p-6">
-            <p className="text-sm mb-3" style={{ color: "var(--ink-muted)" }}>
-              Genótipo de cada cão (confirmado por DNA quando informado, senão inferido do fenótipo)
-            </p>
-            <table className="w-full text-sm">
+          {resumoCor && (
+            <ResumoNinhadaView
+              resumo={resumoCor}
+              tamanhoNinhada={tamanhoNinhada}
+              maisProvavel={
+                resultadoCor[0]
+                  ? {
+                      descricao: `${resultadoCor[0].fenotipo.corBase} · ${resultadoCor[0].fenotipo.marcacao} · trufa ${resultadoCor[0].fenotipo.corTrufa}`,
+                      probabilidade: resultadoCor[0].probabilidade,
+                    }
+                  : null
+              }
+              nomeA={nomeA}
+              nomeB={nomeB}
+              baseA={contarLocusInformados(genotipoA)}
+              baseB={contarLocusInformados(genotipoB)}
+            />
+          )}
+
+          <details className="card mt-4 p-6">
+            <summary className="text-sm cursor-pointer" style={{ color: "var(--ink-muted)" }}>
+              Ver genótipo de cada cão (confirmado por DNA quando informado, senão inferido do fenótipo)
+            </summary>
+            <table className="w-full text-sm mt-3">
               <thead>
                 <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
                   <th className="font-normal pb-2">Lócus</th>
@@ -281,13 +327,13 @@ export default async function SimuladorCruzamentoPage({
                 ))}
               </tbody>
             </table>
-          </div>
+          </details>
 
-          <div className="card mt-4 p-6">
-            <p className="text-sm mb-3" style={{ color: "var(--ink-muted)" }}>
-              Distribuição de cores possíveis na ninhada
-            </p>
-            <ul className="divide-y" style={{ borderColor: "var(--border-hairline)" }}>
+          <details className="card mt-4 p-6">
+            <summary className="text-sm cursor-pointer" style={{ color: "var(--ink-muted)" }}>
+              Ver todas as combinações possíveis (cor · marcação · trufa)
+            </summary>
+            <ul className="divide-y mt-3" style={{ borderColor: "var(--border-hairline)" }}>
               {resultadoCor.map((r, i) => (
                 <li key={i} className="py-3 text-sm">
                   <div className="flex items-center justify-between">
@@ -306,7 +352,7 @@ export default async function SimuladorCruzamentoPage({
                 </li>
               ))}
             </ul>
-          </div>
+          </details>
 
           <p className="mt-4 text-xs" style={{ color: "var(--ink-muted)" }}>
             Estimativa baseada no genótipo inferido de cada cão — não substitui um exame de
