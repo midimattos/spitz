@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { BarraNavegacao } from "@/components/barra-navegacao";
 
 export const metadata: Metadata = {
   title: "Plataforma Spitz Alemão | Marketplace e gestão de canil",
@@ -14,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <BarraNavegacao />
+        {children}
+      </body>
     </html>
   );
 }

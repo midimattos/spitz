@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { consolidarStatusGenetico, avaliarRiscoCruzamento, type NivelRisco } from "@/lib/genetica";
-import { LABEL_STATUS_GENETICO, LABEL_NIVEL_RISCO, LABEL_LOCUS, LABEL_ORIGEM_GENOTIPO } from "@/lib/labels";
+import { LABEL_LOCUS, LABEL_ORIGEM_GENOTIPO } from "@/lib/labels";
 import {
   inferirGenotipo,
   simularCruzamentoCor,
   avaliarAlertasGeneticos,
   resumirNinhada,
   contarLocusInformados,
+  filhotesMaisProvaveis,
   type FenotipoCao,
 } from "@/lib/genetica-cor";
 import { ResumoNinhadaView } from "@/components/resumo-ninhada";
@@ -19,14 +19,6 @@ const CORES_ALERTA: Record<string, string> = {
   CRITICO: "#a32d2d",
   ATENCAO: "var(--brass)",
   INFO: "var(--ink-muted)",
-};
-
-const CORES_RISCO: Record<NivelRisco, string> = {
-  SEM_DADOS: "var(--ink-muted)",
-  NENHUM: "var(--pine)",
-  BAIXO: "var(--brass)",
-  MODERADO: "#a6741f",
-  ALTO: "#a32d2d",
 };
 
 export default async function SimuladorCruzamentoPage({
@@ -50,7 +42,6 @@ export default async function SimuladorCruzamentoPage({
       })
     : [];
 
-  let resultado: ReturnType<typeof avaliarRiscoCruzamento> | null = null;
   let resultadoCor: ReturnType<typeof simularCruzamentoCor> | null = null;
   let resumoCor: ReturnType<typeof resumirNinhada> | null = null;
   let alertasCor: ReturnType<typeof avaliarAlertasGeneticos> | null = null;
@@ -102,22 +93,13 @@ export default async function SimuladorCruzamentoPage({
 
   if (a && b && a !== b) {
     const [caoA, caoB] = await Promise.all([
-      prisma.cao.findFirst({
-        where: { id: a, canilId: canil?.id },
-        include: { laudosGeneticos: { include: { resultados: true } } },
-      }),
-      prisma.cao.findFirst({
-        where: { id: b, canilId: canil?.id },
-        include: { laudosGeneticos: { include: { resultados: true } } },
-      }),
+      prisma.cao.findFirst({ where: { id: a, canilId: canil?.id } }),
+      prisma.cao.findFirst({ where: { id: b, canilId: canil?.id } }),
     ]);
 
     if (caoA && caoB) {
       nomeA = caoA.nome;
       nomeB = caoB.nome;
-      const statusA = consolidarStatusGenetico(caoA.laudosGeneticos);
-      const statusB = consolidarStatusGenetico(caoB.laudosGeneticos);
-      resultado = avaliarRiscoCruzamento(statusA, statusB);
 
       genotipoA = inferirGenotipo(paraFenotipo(caoA));
       genotipoB = inferirGenotipo(paraFenotipo(caoB));
@@ -133,8 +115,8 @@ export default async function SimuladorCruzamentoPage({
         Simulador de cruzamento
       </h1>
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-        Compare dois cães do seu plantel: risco genético de saúde e
-        distribuição de cores possíveis na ninhada, condição a condição.
+        Compare dois cães do seu plantel e veja a chance de cada cor, marcação
+        e gene oculto na ninhada.
       </p>
 
       <form method="GET" className="card mt-8 p-6 grid sm:grid-cols-2 gap-4">
@@ -209,53 +191,14 @@ export default async function SimuladorCruzamentoPage({
         </p>
       )}
 
-      {resultado && (
-        <div className="card mt-8 p-6">
-          <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>
-            {nomeA} × {nomeB}
-          </h2>
-
-          {resultado.length === 0 ? (
-            <p className="mt-4 text-sm" style={{ color: "var(--ink-muted)" }}>
-              Nenhum dos dois tem laudos genéticos cadastrados ainda.
-            </p>
-          ) : (
-            <table className="w-full text-sm mt-4">
-              <thead>
-                <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
-                  <th className="font-normal pb-2">Condição</th>
-                  <th className="font-normal pb-2">{nomeA}</th>
-                  <th className="font-normal pb-2">{nomeB}</th>
-                  <th className="font-normal pb-2">Risco</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resultado.map((linha) => (
-                  <tr key={linha.condicao} className="border-t align-top" style={{ borderColor: "var(--border-hairline)" }}>
-                    <td className="py-2">{linha.condicao}</td>
-                    <td className="py-2">{LABEL_STATUS_GENETICO[linha.statusA]}</td>
-                    <td className="py-2">{LABEL_STATUS_GENETICO[linha.statusB]}</td>
-                    <td className="py-2">
-                      <span style={{ color: CORES_RISCO[linha.nivel] }}>
-                        {LABEL_NIVEL_RISCO[linha.nivel]}
-                      </span>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--ink-muted)" }}>
-                        {linha.explicacao}
-                      </p>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
       {resultadoCor && genotipoA && genotipoB && (
         <div className="mt-8">
-          <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>
-            Genética de cor
+          <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+            {nomeA} × {nomeB}
           </h2>
+          <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Genética de cor da ninhada
+          </p>
 
           {alertasCor && alertasCor.length > 0 && (
             <div className="mt-3 space-y-2">
@@ -280,14 +223,7 @@ export default async function SimuladorCruzamentoPage({
             <ResumoNinhadaView
               resumo={resumoCor}
               tamanhoNinhada={tamanhoNinhada}
-              maisProvavel={
-                resultadoCor[0]
-                  ? {
-                      descricao: `${resultadoCor[0].fenotipo.corBase} · ${resultadoCor[0].fenotipo.marcacao} · trufa ${resultadoCor[0].fenotipo.corTrufa}`,
-                      probabilidade: resultadoCor[0].probabilidade,
-                    }
-                  : null
-              }
+              maisProvavel={filhotesMaisProvaveis(resultadoCor)}
               nomeA={nomeA}
               nomeB={nomeB}
               baseA={contarLocusInformados(genotipoA)}

@@ -1,5 +1,7 @@
 import { chanceAoMenosUm, type ItemResumo, type ResumoNinhada } from "@/lib/genetica-cor";
 
+const LIMITE_EMPATE_EXIBIDO = 4;
+
 const COR_NIVEL: Record<NonNullable<ItemResumo["nivel"]>, string> = {
   ALERTA: "#a32d2d",
   ATENCAO: "var(--brass)",
@@ -62,7 +64,8 @@ export function ResumoNinhadaView({
 }: {
   resumo: ResumoNinhada;
   tamanhoNinhada: number;
-  maisProvavel: { descricao: string; probabilidade: number } | null;
+  // Mais de uma descrição = empate entre filhotes igualmente prováveis.
+  maisProvavel: { descricoes: string[]; probabilidade: number } | null;
   nomeA: string;
   nomeB: string;
   baseA: { informados: number; total: number };
@@ -75,17 +78,34 @@ export function ResumoNinhadaView({
         consideram {tamanhoNinhada} {tamanhoNinhada === 1 ? "filhote" : "filhotes"}.
       </p>
 
-      {maisProvavel && (
+      {maisProvavel && maisProvavel.descricoes.length > 0 && (
         <div className="card mt-3 p-5">
           <p className="text-xs uppercase tracking-wide" style={{ color: "var(--ink-muted)" }}>
-            Filhote mais provável
+            {maisProvavel.descricoes.length > 1
+              ? "Filhotes mais prováveis (empate)"
+              : "Filhote mais provável"}
           </p>
-          <div className="mt-1 flex items-baseline justify-between gap-3">
-            <p className="font-display text-xl" style={{ color: "var(--pine)" }}>
-              {maisProvavel.descricao}
-            </p>
+          <div className="mt-1 flex items-start justify-between gap-3">
+            <div>
+              {maisProvavel.descricoes.slice(0, LIMITE_EMPATE_EXIBIDO).map((descricao) => (
+                <p key={descricao} className="font-display text-xl" style={{ color: "var(--pine)" }}>
+                  {descricao}
+                </p>
+              ))}
+              {maisProvavel.descricoes.length > LIMITE_EMPATE_EXIBIDO && (
+                <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>
+                  + {maisProvavel.descricoes.length - LIMITE_EMPATE_EXIBIDO} com a mesma chance
+                </p>
+              )}
+            </div>
             <span className="font-display text-xl shrink-0" style={{ color: "var(--pine)" }}>
               {formatarPct(maisProvavel.probabilidade)}
+              {maisProvavel.descricoes.length > 1 && (
+                <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                  {" "}
+                  cada
+                </span>
+              )}
             </span>
           </div>
         </div>

@@ -657,6 +657,31 @@ export function contarLocusInformados(genotipo: GenotipoCompleto): { informados:
   return { informados, total: locusList.length };
 }
 
+/**
+ * Filhote(s) mais provável(is) da ninhada, agrupando pelo que o criador vê
+ * (cor · marcação · trufa). Se vários empatam na primeira posição, devolve
+ * todos — mostrar só o primeiro da lista daria a falsa impressão de que
+ * ele é mais provável que os demais.
+ */
+export function filhotesMaisProvaveis(
+  resultados: ResultadoSimulacaoCor[]
+): { descricoes: string[]; probabilidade: number } | null {
+  if (resultados.length === 0) return null;
+
+  const porDescricao = new Map<string, number>();
+  for (const r of resultados) {
+    const descricao = `${r.fenotipo.corBase} · ${r.fenotipo.marcacao} · trufa ${r.fenotipo.corTrufa}`;
+    porDescricao.set(descricao, (porDescricao.get(descricao) ?? 0) + r.probabilidade);
+  }
+
+  const topo = Math.max(...porDescricao.values());
+  const descricoes = [...porDescricao.entries()]
+    .filter(([, p]) => Math.abs(p - topo) < 1e-9)
+    .map(([descricao]) => descricao);
+
+  return { descricoes, probabilidade: topo };
+}
+
 /** Chance de aparecer pelo menos um filhote com a característica numa ninhada de `n`. */
 export function chanceAoMenosUm(probabilidade: number, n: number): number {
   return 1 - Math.pow(1 - probabilidade, n);
