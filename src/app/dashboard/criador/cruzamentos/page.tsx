@@ -11,9 +11,19 @@ import {
   type FenotipoCao,
 } from "@/lib/genetica-cor";
 import { ResumoNinhadaView } from "@/components/resumo-ninhada";
+import { carregarContextoMercado, montarRadarPorCor, type LinhaRadarCor } from "@/lib/mercado";
+import { calcularValorNinhada } from "@/lib/valor-ninhada";
+import { formatarMoeda } from "@/lib/financeiro";
 
 const TAMANHO_NINHADA_PADRAO = 4;
 const TAMANHO_NINHADA_MAXIMO = 12;
+
+const ROTULO_SITUACAO_COR: Record<string, string> = {
+  FALTA_OFERTA: "procura maior que a oferta",
+  EQUILIBRADO: "mercado equilibrado",
+  EXCESSO_OFERTA: "oferta sobrando",
+  POUCOS_DADOS: "poucos dados",
+};
 
 const CORES_ALERTA: Record<string, string> = {
   CRITICO: "#a32d2d",
@@ -47,6 +57,7 @@ export default async function SimuladorCruzamentoPage({
   let alertasCor: ReturnType<typeof avaliarAlertasGeneticos> | null = null;
   let genotipoA: ReturnType<typeof inferirGenotipo> | null = null;
   let genotipoB: ReturnType<typeof inferirGenotipo> | null = null;
+  let valorMercado: ReturnType<typeof calcularValorNinhada> | null = null;
   let nomeA = "";
   let nomeB = "";
 
@@ -106,6 +117,11 @@ export default async function SimuladorCruzamentoPage({
       alertasCor = avaliarAlertasGeneticos(genotipoA, genotipoB);
       resultadoCor = simularCruzamentoCor(genotipoA, genotipoB);
       resumoCor = resumirNinhada(genotipoA, genotipoB);
+
+      // Quanto o mercado paga e procura por cada cor que essa ninhada pode ter
+      const ctx = await carregarContextoMercado();
+      const radar = new Map<string, LinhaRadarCor>(montarRadarPorCor(ctx).map((l) => [l.cor, l]));
+      valorMercado = calcularValorNinhada(resultadoCor, tamanhoNinhada, radar);
     }
   }
 
@@ -229,6 +245,58 @@ export default async function SimuladorCruzamentoPage({
               baseA={contarLocusInformados(genotipoA)}
               baseB={contarLocusInformados(genotipoB)}
             />
+          )}
+
+          {valorMercado && (
+            <div className="card mt-4 p-6">
+              <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+                O que o mercado diz sobre essa ninhada
+              </h3>
+              <table className="w-full text-sm mt-3">
+                <thead>
+                  <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
+                    <th className="font-normal pb-2">Cor</th>
+                    <th className="font-normal pb-2">Chance</th>
+                    <th className="font-normal pb-2">Esperados</th>
+                    <th className="font-normal pb-2">Preço de venda</th>
+                    <th className="font-normal pb-2">Procura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valorMercado.linhas.map((l) => (
+                    <tr key={l.cor} className="border-t" style={{ borderColor: "var(--border-hairline)" }}>
+                      <td className="py-2">{l.cor}</td>
+                      <td className="py-2">{(l.probabilidade * 100).toFixed(0)}%</td>
+                      <td className="py-2">{l.filhotesEsperados.toFixed(1)}</td>
+                      <td className="py-2">
+                        {l.precoMediano !== null ? formatarMoeda(l.precoMediano) : "sem vendas ainda"}
+                      </td>
+                      <td className="py-2 text-xs" style={{ color: "var(--ink-muted)" }}>
+                        {l.situacao ? ROTULO_SITUACAO_COR[l.situacao] : "sem dados"}
+                        {l.desejosAtivos > 0 ? ` · ${l.desejosAtivos} desejo${l.desejosAtivos > 1 ? "s" : ""}` : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {valorMercado.valorEsperado !== null && (
+                <p className="mt-4 text-sm">
+                  Valor de mercado esperado da ninhada de {tamanhoNinhada}:{" "}
+                  <strong style={{ color: "var(--pine)" }}>{formatarMoeda(valorMercado.valorEsperado)}</strong>
+                  {valorMercado.coberturaPreco < 0.95 && (
+                    <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                      {" "}
+                      (considera só as cores com venda registrada — {(valorMercado.coberturaPreco * 100).toFixed(0)}% das
+                      chances)
+                    </span>
+                  )}
+                </p>
+              )}
+              <p className="mt-2 text-xs" style={{ color: "var(--ink-muted)" }}>
+                Preços são a mediana das vendas reais registradas na plataforma por cor. Estimativa — não é promessa de
+                venda.
+              </p>
+            </div>
           )}
 
           <details className="card mt-4 p-6">

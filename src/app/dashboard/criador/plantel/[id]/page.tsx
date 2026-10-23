@@ -21,15 +21,8 @@ import { LancamentoForm } from "@/components/lancamento-form";
 import { CicloCioForm } from "@/components/ciclo-cio-form";
 import { NinhadaForm } from "@/components/ninhada-form";
 import { RegistrarPartoForm } from "@/components/registrar-parto-form";
-import { calcularCOI } from "@/lib/pedigree";
-import {
-  calcularIndiceQualidade,
-  sugerirFaixaPreco,
-  ajustarFaixaPorMercado,
-  FAIXA_PADRAO_POR_PORTE,
-  type FaixaPreco,
-} from "@/lib/precificacao";
-import { obterFatorMercadoPorPorte } from "@/lib/mercado";
+import { carregarContextoMercado, carregarFaixasDoCanil, sugerirPreco } from "@/lib/mercado";
+import { PainelPreco } from "@/components/painel-preco";
 import { DossieGeneticoPanel } from "@/components/dossie-genetico-panel";
 import { FotoCaoUpload } from "@/components/foto-cao-upload";
 import { Tabs } from "@/components/tabs";
@@ -93,54 +86,13 @@ export default async function FichaCaoPage({
   // no próprio cão (o teste direto sempre tem prioridade sobre a estimativa).
   const herancaSemTesteDireto = [...heranca].filter(([condicao]) => !statusProprio.has(condicao));
 
-  const painelSaudeCompleto = [
-    ...[...statusProprio].map(([condicao, { status }]) => ({
-      condicao,
-      status,
-      origem: "TESTE_DIRETO" as const,
-    })),
-    ...herancaSemTesteDireto.map(([condicao, status]) => ({
-      condicao,
-      status,
-      origem: "HERANCA_PREDITIVA" as const,
-    })),
-  ];
-
-  const coiAtual = await calcularCOI(cao.id);
-  const temDocumentoPedigree = cao.documentos.some((d) => d.tipo === "PEDIGREE");
-  const dossiePublicado = cao.dossieGenetico?.publicado ?? false;
-
-  const faixaConfigurada = cao.porte
-    ? await prisma.faixaPrecoBase.findUnique({
-        where: { canilId_porte: { canilId: canil.id, porte: cao.porte } },
-      })
-    : null;
-
-  const faixaBase: FaixaPreco | null = faixaConfigurada
-    ? {
-        min: Number(faixaConfigurada.precoMinimo),
-        medio: Number(faixaConfigurada.precoMedio),
-        max: Number(faixaConfigurada.precoMaximo),
-      }
-    : cao.porte && FAIXA_PADRAO_POR_PORTE[cao.porte]
-      ? FAIXA_PADRAO_POR_PORTE[cao.porte]
-      : null;
-
-  const indiceQualidade = calcularIndiceQualidade(
-    painelSaudeCompleto,
-    coiAtual,
-    temDocumentoPedigree,
-    dossiePublicado
-  );
-  const faixaSugeridaBase = faixaBase ? sugerirFaixaPreco(faixaBase, indiceQualidade.indice) : null;
-
-  const fatorMercado =
-    faixaBase && canil.assinaturaPro && cao.porte ? await obterFatorMercadoPorPorte(cao.porte) : null;
-
-  const faixaSugerida =
-    faixaBase && faixaSugeridaBase && fatorMercado !== null
-      ? ajustarFaixaPorMercado(faixaBase, faixaSugeridaBase, fatorMercado)
-      : faixaSugeridaBase;
+  // Preço sugerido: guiado pelo que o marketplace registra (vendas reais,
+  // anúncios ativos, desejos, buscas e favoritos para cães como este).
+  const [contextoMercado, faixasDoCanil] = await Promise.all([
+    carregarContextoMercado(),
+    carregarFaixasDoCanil(canil.id),
+  ]);
+  const precoMercado = sugerirPreco(cao, canil.estado, contextoMercado, faixasDoCanil);
 
   const idade = calcularIdade(cao.dataNascimento);
 
@@ -428,68 +380,24 @@ export default async function FichaCaoPage({
     </div>
   );
 
-  const abaPrecificacao = !faixaBase ? (
+  const abaPrecificacao = !precoMercado ? (
     <div className="card p-6 text-sm" style={{ color: "var(--ink-muted)" }}>
-      Configure uma{" "}
+      Ainda não há dados de mercado para este perfil. Configure uma{" "}
       <Link href="/dashboard/criador/precificacao" className="underline" style={{ color: "var(--brass)" }}>
         faixa de preço base
       </Link>{" "}
-      para o porte &quot;{cao.porte ?? "não informado"}&quot; para ver a sugestão
-      deste cão.
+      para o porte &quot;{cao.porte ?? "não informado"}&quot; (e informe o porte no cadastro do cão) para ver a
+      sugestão. Conforme o marketplace registrar vendas, ela passa a ser guiada pelo mercado.
     </div>
   ) : (
     <div className="card p-6">
-      <div className="grid sm:grid-cols-3 gap-4 text-center">
-        <div>
-          <p className="text-xs" style={{ color: "var(--ink-muted)" }}>Mínimo</p>
-          <p className="font-display text-xl mt-1">{formatarMoeda(faixaSugerida!.minimo)}</p>
-        </div>
-        <div>
-          <p className="text-xs" style={{ color: "var(--brass)" }}>Ideal</p>
-          <p className="font-display text-2xl mt-1" style={{ color: "var(--pine)" }}>
-            {formatarMoeda(faixaSugerida!.ideal)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs" style={{ color: "var(--ink-muted)" }}>Teto</p>
-          <p className="font-display text-xl mt-1">{formatarMoeda(faixaSugerida!.teto)}</p>
-        </div>
-      </div>
-
-      <div className="mt-6 pt-6 border-t text-sm space-y-1" style={{ borderColor: "var(--border-hairline)" }}>
-        <p style={{ color: "var(--ink-muted)" }}>
-          Índice de qualidade: <strong>{(indiceQualidade.indice * 100).toFixed(0)}%</strong>
-        </p>
-        <p style={{ color: "var(--ink-muted)" }}>
-          · Saúde genética: {(indiceQualidade.detalhes.saudeScore * 100).toFixed(0)}%
-        </p>
-        <p style={{ color: "var(--ink-muted)" }}>
-          · Endogamia (COI): {(indiceQualidade.detalhes.endogamiaScore * 100).toFixed(0)}%
-        </p>
-        <p style={{ color: "var(--ink-muted)" }}>
-          · Documentação: {(indiceQualidade.detalhes.documentacaoScore * 100).toFixed(0)}%
-        </p>
-      </div>
-
+      <PainelPreco resultado={precoMercado} />
       <p className="mt-4 text-xs" style={{ color: "var(--ink-muted)" }}>
-        {fatorMercado !== null ? (
-          <>
-            Sugestão ajustada por dados reais de mercado (PRO): demanda vs. oferta
-            publicada para o porte &quot;{cao.porte}&quot; neste momento
-            ({fatorMercado > 0 ? "mercado aquecido" : fatorMercado < 0 ? "mercado parado" : "equilibrado"}).
-            Veja o detalhe em{" "}
-            <Link href="/dashboard/criador/mercado" className="underline" style={{ color: "var(--brass)" }}>
-              Inteligência de Mercado
-            </Link>
-            .
-          </>
-        ) : (
-          <>
-            Sugestão calculada a partir da faixa base do porte &quot;{cao.porte}&quot; e da
-            qualidade genética deste cão. Ative o PRO para ajustar com dados
-            reais de oferta e demanda do marketplace.
-          </>
-        )}
+        Veja a demanda por cor e região em{" "}
+        <Link href="/dashboard/criador/mercado" className="underline" style={{ color: "var(--brass)" }}>
+          Inteligência de Mercado
+        </Link>
+        .
       </p>
     </div>
   );
@@ -572,8 +480,8 @@ export default async function FichaCaoPage({
             { id: "genetica", label: "Genética", conteudo: abaGenetica },
             { id: "financeiro", label: "Financeiro", conteudo: abaFinanceiro },
             { id: "dossie", label: "Dossiê", conteudo: abaDossie },
-            { id: "precificacao", label: "Precificação", conteudo: abaPrecificacao },
-            { id: "gaveta", label: "Gaveta Digital", conteudo: abaGavetaDigital },
+            { id: "precificacao", label: "Precif.", conteudo: abaPrecificacao },
+            { id: "gaveta", label: "Gav. Digi.", conteudo: abaGavetaDigital },
           ]}
         />
       </div>

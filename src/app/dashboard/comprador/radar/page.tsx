@@ -54,6 +54,18 @@ export default async function RadarDemandaPage() {
         forem publicados.
       </p>
 
+      {desejo?.validacao === "PENDENTE" && (
+        <p className="mt-4 text-sm card p-4" style={{ color: "var(--brass)" }}>
+          Cadastro em validação pela equipe. Você já pode registrar interesse; o criador só vê o seu contato depois
+          da aprovação.
+        </p>
+      )}
+      {desejo?.validacao === "REJEITADO" && (
+        <p className="mt-4 text-sm card p-4" style={{ color: "#a32d2d" }}>
+          Seu cadastro não foi aprovado{desejo.validacaoNota ? `: ${desejo.validacaoNota}` : "."}
+        </p>
+      )}
+
       <div className="card mt-6 p-6">
         <DesejoForm
           desejoInicial={
@@ -79,7 +91,9 @@ export default async function RadarDemandaPage() {
               {anunciosCompativeis.map((a) => {
                 const match = statusPorAnuncio.get(a.id);
                 const contatoRevelado =
-                  match?.statusComprador === "ACEITO" && match.statusCriador === "ACEITO";
+                  match?.statusComprador === "ACEITO" &&
+                  match.statusCriador === "ACEITO" &&
+                  desejo?.validacao === "APROVADO";
 
                 return (
                   <div key={a.id} className="card p-5 flex items-center justify-between">

@@ -3,6 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { calcularComissaoVenda } from "@/lib/precos-plataforma";
+import { registrarVenda } from "@/lib/vendas";
+
+const vendaSchema = z.object({
+  precoFinal: z.number().positive("Informe o preço final da venda"),
+  canal: z.enum(["PLATAFORMA_MATCH", "PLATAFORMA_CONTATO", "FORA"]),
+  dataVenda: z.string().optional(),
+});
 
 const anuncioUpdateSchema = z.object({
   titulo: z.string().min(1).optional(),
@@ -13,6 +20,10 @@ const anuncioUpdateSchema = z.object({
   // GRATUITO, nunca virar PREMIUM sem pagar.
   tipo: z.enum(["GRATUITO"]).optional(),
   status: z.enum(["RASCUNHO", "PUBLICADO", "PAUSADO", "VENDIDO"]).optional(),
+  // Obrigatório ao marcar como VENDIDO: é o dado que alimenta a precificação.
+  venda: vendaSchema.optional(),
+  // Opcional ao pausar: por que o criador tirou o anúncio do ar.
+  motivo: z.enum(["DESISTI", "PRECO_ALTO", "OUTRO"]).optional(),
 });
 
 export async function PATCH(
@@ -35,26 +46,71 @@ export async function PATCH(
     );
   }
 
-  const anuncio = await prisma.anuncio.update({ where: { id }, data: parsed.data });
+  const { venda, motivo, ...camposSimples } = parsed.data;
+  const passouAVendido = camposSimples.status === "VENDIDO" && existente.status !== "VENDIDO";
 
-  // Ao marcar como vendido pela primeira vez, gera a cobrança da comissão
-  // da plataforma sobre o preço do anúncio (ainda pendente de pagamento).
-  const passouAVendido = parsed.data.status === "VENDIDO" && existente.status !== "VENDIDO";
-  if (passouAVendido) {
-    const jaTemComissao = await prisma.pagamento.findFirst({
-      where: { anuncioId: id, tipo: "COMISSAO_VENDA" },
-    });
-    if (!jaTemComissao) {
-      await prisma.pagamento.create({
-        data: {
-          canilId: canil.id,
-          anuncioId: id,
-          tipo: "COMISSAO_VENDA",
-          valor: calcularComissaoVenda(Number(anuncio.preco)),
-        },
-      });
-    }
+  if (passouAVendido && !venda) {
+    return NextResponse.json(
+      { error: "Para marcar como vendido, informe o preço final e como a venda foi fechada" },
+      { status: 400 }
+    );
   }
+
+  const dados: Record<string, unknown> = { ...camposSimples };
+
+  // ---- datas e motivos do ciclo de vida ----
+  if (camposSimples.status === "PUBLICADO") {
+    if (!existente.publicadoEm) dados.publicadoEm = new Date();
+    dados.encerradoEm = null;
+    dados.motivoEncerramento = null;
+  }
+  if (passouAVendido && venda) {
+    dados.encerradoEm = new Date();
+    dados.motivoEncerramento = venda.canal === "FORA" ? "VENDIDO_FORA" : "VENDIDO_PLATAFORMA";
+  }
+  if (camposSimples.status === "PAUSADO" && motivo) {
+    dados.encerradoEm = new Date();
+    dados.motivoEncerramento = motivo;
+  }
+
+  const mudouPreco =
+    camposSimples.preco !== undefined && camposSimples.preco !== Number(existente.preco);
+
+  const anuncio = await prisma.$transaction(async (tx) => {
+    const atualizado = await tx.anuncio.update({ where: { id }, data: dados });
+
+    if (mudouPreco) {
+      await tx.historicoPreco.create({ data: { anuncioId: id, preco: atualizado.preco } });
+    }
+
+    if (passouAVendido && venda) {
+      await registrarVenda(tx, {
+        anuncioId: id,
+        precoFinal: venda.precoFinal,
+        canal: venda.canal,
+        dataVenda: venda.dataVenda ? new Date(venda.dataVenda) : undefined,
+      });
+
+      // A comissão da plataforma vale para qualquer venda marcada, seja qual
+      // for o canal — assim não existe incentivo para declarar "vendi por
+      // fora" só para fugir da cobrança (o que contaminaria os dados de mercado).
+      const jaTemComissao = await tx.pagamento.findFirst({
+        where: { anuncioId: id, tipo: "COMISSAO_VENDA" },
+      });
+      if (!jaTemComissao) {
+        await tx.pagamento.create({
+          data: {
+            canilId: canil.id,
+            anuncioId: id,
+            tipo: "COMISSAO_VENDA",
+            valor: calcularComissaoVenda(venda.precoFinal),
+          },
+        });
+      }
+    }
+
+    return atualizado;
+  });
 
   return NextResponse.json(anuncio);
 }

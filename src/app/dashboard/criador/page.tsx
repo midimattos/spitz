@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { podeVerInteligenciaMercado } from "@/lib/recursos";
 
 export default async function DashboardCriadorPage() {
   const session = await auth();
+  const canil = await getCanilDoCriadorLogado();
+  const naoLidas = session?.user
+    ? await prisma.notificacao.count({ where: { userId: session.user.id, lida: false } })
+    : 0;
+  const radarLiberado = podeVerInteligenciaMercado(canil);
 
   return (
     <main className="flex-1 max-w-4xl mx-auto w-full px-8 py-16">
@@ -57,8 +65,8 @@ export default async function DashboardCriadorPage() {
             Precificação
           </h3>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-            Configure a faixa de preço base por porte e veja a sugestão de
-            cada cão na ficha dele.
+            Sua faixa de preço base por porte e a sugestão de cada cão,
+            guiada pelas vendas e pela procura reais do marketplace.
           </p>
         </Link>
 
@@ -82,11 +90,47 @@ export default async function DashboardCriadorPage() {
 
         <Link href="/dashboard/criador/mercado" className="card p-6 hover:opacity-90">
           <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
-            Inteligência de Mercado <span style={{ color: "var(--brass)" }}>em breve</span>
+            Inteligência de Mercado{" "}
+            {!radarLiberado && <span style={{ color: "var(--brass)" }}>em breve</span>}
           </h3>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-            Tendências de demanda e liquidez de vendas de todo o
-            marketplace — grátis pros primeiros assinantes quando lançar.
+            Demanda por cor e região, buscas mais frequentes, preços reais e
+            tempo de venda — grátis pros primeiros assinantes.
+          </p>
+        </Link>
+
+        <Link href="/dashboard/criador/cuidados" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Cuidados
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Vacinas, vermífugo e antipulgas, com aviso antes de vencer.
+          </p>
+        </Link>
+
+        <Link href="/dashboard/criador/criopreservacao" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Criopreservação
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Inventário de sêmen, embriões e óvulos congelados.
+          </p>
+        </Link>
+
+        <Link href="/dashboard/criador/notificacoes" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Avisos{" "}
+            {naoLidas > 0 && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full text-white align-middle"
+                style={{ background: "var(--brass)" }}
+              >
+                {naoLidas}
+              </span>
+            )}
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Cio, partos, mensagens, interessados e anúncios parados.
           </p>
         </Link>
 

@@ -31,8 +31,13 @@ export async function POST(request: Request) {
   // Todo anúncio nasce GRATUITO. Virar PREMIUM exige pagamento confirmado
   // via webhook (ver /api/pagamentos/anuncio-premium), nunca é definido
   // direto na criação.
-  const anuncio = await prisma.anuncio.create({
-    data: { ...resto, caoId, canilId: canil.id, tipo: "GRATUITO" },
+  const anuncio = await prisma.$transaction(async (tx) => {
+    const criado = await tx.anuncio.create({
+      data: { ...resto, caoId, canilId: canil.id, tipo: "GRATUITO" },
+    });
+    // primeiro ponto do histórico de preço do anúncio
+    await tx.historicoPreco.create({ data: { anuncioId: criado.id, preco: criado.preco } });
+    return criado;
   });
 
   return NextResponse.json(anuncio, { status: 201 });

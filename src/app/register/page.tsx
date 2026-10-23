@@ -139,6 +139,21 @@ function RegisterForm() {
             </div>
           )}
 
+          <label className="flex items-start gap-2 text-xs" style={{ color: "var(--ink-muted)" }}>
+            <input type="checkbox" name="aceite" required className="mt-0.5" />
+            <span>
+              Li e concordo com os{" "}
+              <Link href="/termos" target="_blank" className="underline">
+                Termos de uso
+              </Link>{" "}
+              e a{" "}
+              <Link href="/privacidade" target="_blank" className="underline">
+                Política de privacidade
+              </Link>
+              .
+            </span>
+          </label>
+
           {erro && (
             <p className="text-sm" style={{ color: "#a32d2d" }}>
               {erro}

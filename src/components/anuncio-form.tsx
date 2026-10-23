@@ -3,7 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type CaoOpcao = { id: string; nome: string; precoSugerido: number | null };
+type CaoOpcao = {
+  id: string;
+  nome: string;
+  precoSugerido: number | null;
+  vendaRapida?: number | null;
+  teto?: number | null;
+  confianca?: string | null;
+};
+
+const ROTULO_CONFIANCA: Record<string, string> = {
+  SEM_DADOS: "baseada na sua faixa (sem dados do mercado ainda)",
+  BAIXA: "confiança baixa — pouco dado do mercado",
+  MEDIA: "confiança média",
+  ALTA: "confiança alta",
+};
 
 const campoClasse = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
 const campoEstilo = { borderColor: "var(--border-hairline)" };
@@ -11,12 +25,14 @@ const campoEstilo = { borderColor: "var(--border-hairline)" };
 export function AnuncioForm({ caesDisponiveis }: { caesDisponiveis: CaoOpcao[] }) {
   const router = useRouter();
   const [preco, setPreco] = useState("");
+  const [selecionado, setSelecionado] = useState<CaoOpcao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   function handleSelecionarCao(e: React.ChangeEvent<HTMLSelectElement>) {
     const caoId = e.target.value;
     const cao = caesDisponiveis.find((c) => c.id === caoId);
+    setSelecionado(cao ?? null);
     if (cao?.precoSugerido) setPreco(cao.precoSugerido.toFixed(2).replace(".", ","));
   }
 
@@ -94,6 +110,13 @@ export function AnuncioForm({ caesDisponiveis }: { caesDisponiveis: CaoOpcao[] }
           className={campoClasse}
           style={campoEstilo}
         />
+        {selecionado?.precoSugerido ? (
+          <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>
+            Mercado: venda rápida R$ {selecionado.vendaRapida?.toLocaleString("pt-BR")} · ideal R${" "}
+            {selecionado.precoSugerido.toLocaleString("pt-BR")} · teto R$ {selecionado.teto?.toLocaleString("pt-BR")}
+            {selecionado.confianca ? ` (${ROTULO_CONFIANCA[selecionado.confianca] ?? ""})` : ""}
+          </p>
+        ) : null}
       </div>
       <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
         O anúncio é criado como Gratuito. Dá para destacar como Premium

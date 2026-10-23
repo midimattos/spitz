@@ -6,6 +6,8 @@ import { formatarMoeda } from "@/lib/financeiro";
 import { formatarData } from "@/lib/labels";
 import { calcularNotaMedia } from "@/lib/marketplace";
 import { AvaliacaoForm } from "@/components/avaliacao-form";
+import { RastreadorEvento } from "@/components/rastreador-evento";
+import { calcularReputacao } from "@/lib/reputacao";
 
 export default async function CanilPublicoPage({
   params,
@@ -27,9 +29,11 @@ export default async function CanilPublicoPage({
   const session = await auth();
   const podeAvaliar = session?.user?.role === "COMPRADOR";
   const notaMedia = calcularNotaMedia(canil.avaliacoes);
+  const reputacao = await calcularReputacao(canil.id);
 
   return (
     <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-16">
+      <RastreadorEvento tipo="VISUALIZACAO_CANIL" canilSlug={canil.slug} />
       <div className="flex items-center gap-3">
         <div className="seal w-14 h-14 flex items-center justify-center shrink-0">
           <span className="text-[9px] text-center leading-tight" style={{ color: "var(--pine)" }}>
@@ -53,6 +57,10 @@ export default async function CanilPublicoPage({
           </p>
         </div>
       </div>
+
+      <p className="mt-3 text-sm" style={{ color: "var(--ink-muted)" }}>
+        {reputacao.resumo}
+      </p>
 
       {canil.descricao && <p className="mt-6 text-sm">{canil.descricao}</p>}
 

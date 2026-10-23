@@ -204,29 +204,25 @@ o criador cadastrou no plantel. A lógica está isolada em
 `src/lib/pedigree.ts`, comentada em detalhe, caso queira ajustar a
 profundidade de gerações ou a fórmula.
 
-## 10. Fase 5 — Motor de Precificação Dinâmica
+## 10. Fase 5 — Motor de Precificação (guiado pelo mercado)
 
-Em `/dashboard/criador/precificacao`: configure a faixa de preço
-**mínimo / médio / máximo** por porte (Anão, Pequeno, Médio, ou qualquer
-outro que você já use no cadastro de cães). Sem configuração, o sistema usa
-valores de referência genéricos só para não começar em zero — ajuste para
-a realidade do seu canil e da sua região.
+O preço sugerido de cada cão **não usa mais um "índice de qualidade"**
+(saúde/endogamia/documentação). Ele vem do que o marketplace registra:
 
-Na ficha de cada cão, a seção **Precificação sugerida** mostra uma faixa
-mínimo/ideal/teto, calculada a partir de:
-- **Saúde genética** (40% do peso): proporção de condições Livres vs.
-  Portador/Afetado no painel de saúde
-- **Endogamia** (30% do peso): quanto menor o COI, melhor o score
-- **Documentação** (30% do peso): ter pedigree anexado e dossiê publicado
+1. **Vendas reais comparáveis** (preço FINAL, não o pedido): mesmo porte e
+   cor; se faltar amostra, só porte; depois só cor; depois tudo. Vendas mais
+   recentes pesam mais (meia-vida de ~5 meses).
+2. **Três preços:** venda rápida, ideal e teto (risco de encalhe).
+3. **Demanda x oferta:** desejos ativos, buscas, favoritos contra anúncios
+   ativos do mesmo perfil ajustam os três preços.
+4. **Prêmio de Dossiê:** só aplicado se as vendas mostrarem que cães com
+   Dossiê publicado realmente vendem mais caro.
+5. **Anúncios encalhados** (muitas visualizações, nenhum contato) rebaixam o teto.
+6. **Faixa do criador** (`FaixaPrecoBase`) é a âncora enquanto há pouco dado;
+   o peso do mercado cresce com a amostra e a tela mostra a **confiança**.
 
-### Limitação importante, por design
-Esta fase **ainda não usa dados reais de oferta e demanda** — o
-Marketplace (Fase 6) e o Radar de Demanda (Fase 8) é que vão alimentar
-esse mesmo motor com sinais de mercado de verdade (quantos filhotes
-parecidos estão à venda, tempo médio de venda, etc.). Por enquanto, o
-"preço ideal" reflete só a qualidade do cão dentro da faixa que você
-mesmo definiu. A lógica está isolada em `src/lib/precificacao.ts`, para
-ser estendida sem reescrever nada quando os dados de mercado chegarem.
+Código: motor puro em `src/lib/precificacao.ts` (testável sem banco) e
+carregamento dos dados em `src/lib/mercado.ts`.
 
 ## 12. Fase 6 — Marketplace público
 
@@ -454,3 +450,60 @@ funcionalidades além do plano inicial.
 > baixar o engine do Prisma. É uma restrição só deste ambiente de
 > construção — no seu computador ou na Vercel, com internet normal, o
 > `npm install` resolve isso sozinho.
+
+
+## 24. Fase 11 — Camada de dados do marketplace
+
+Tudo que alimenta a precificação e a inteligência de mercado. Os dados
+começam a ser gravados desde o primeiro acesso:
+
+- **Eventos** (`EventoMercado`): visualização de anúncio e de canil, buscas
+  com filtros (cor, porte, sexo, UF, preço), favoritos, contatos e interesses
+  do radar. A coleta roda no navegador (`RastreadorEvento`) para não contar
+  robôs; visitantes anônimos recebem só um identificador aleatório.
+- **Vendas** (`VendaRegistro`): ao marcar "Vendido" o criador informa preço
+  final, canal e data. A plataforma guarda também as características do cão
+  na hora, as visualizações e os contatos.
+- **Histórico de preço** do anúncio e **histórico de desejos** dos compradores.
+- **Motivo de encerramento** de anúncios pausados (preço alto, desisti, outro).
+- **Favoritos** do comprador (`/dashboard/comprador/favoritos`).
+
+### Inteligência de Mercado (`/dashboard/criador/mercado`)
+Funil de 30 dias, demanda x oferta por **cor**, por **porte** e por **estado**,
+buscas mais frequentes, preço mediano real por cor e liquidez. Liberada para
+todos com `RADAR_MERCADO_ATIVO=true`; senão, só para quem tem PRO.
+
+### Diagnóstico do anúncio
+Na página de cada anúncio: visualizações, favoritos, contatos e um
+diagnóstico ("preço acima do mercado", "poucas visualizações"…).
+
+### Simulador de cruzamento x mercado
+Para cada cor possível na ninhada: chance, filhotes esperados, preço mediano
+de venda, procura, e o valor de mercado esperado da ninhada.
+
+### Reputação do canil
+Calculada só com dados observados (avaliações, taxa e tempo de resposta,
+denúncias). Aparece no marketplace e ordena os anúncios dentro de cada grupo.
+
+## 25. Fase 12 — Rotina do canil e confiança
+
+- **Cuidados** (`/dashboard/criador/cuidados`): vacinas, vermífugo, antipulgas
+  com data da próxima dose.
+- **Criopreservação** (`/dashboard/criador/criopreservacao`): inventário de
+  sêmen, embriões e óvulos, com validade.
+- **Avisos** (`/dashboard/*/notificacoes`): cio, parto, doses vencendo,
+  mensagens, interessados, anúncios parados. Rotina diária em
+  `/api/cron/alertas` (ver `vercel.json`; exige `CRON_SECRET`). E-mail
+  opcional via Resend.
+- **Validação de compradores** (fila no `/admin`): o contato de um comprador
+  só é liberado ao criador quando está aprovado.
+- **Termos de uso e Política de privacidade** (`/termos`, `/privacidade`).
+  São modelos: revise com um advogado antes do lançamento oficial.
+
+### Atualizando o banco de produção
+Esta versão traz a migration `20261023120000_dados_mercado` (só adiciona
+tabelas e colunas). Rode **antes** de publicar o código novo:
+
+```bash
+npx prisma migrate deploy
+```

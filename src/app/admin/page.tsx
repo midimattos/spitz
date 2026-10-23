@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminCanilToggle } from "@/components/admin-canil-toggle";
 import { AdminProToggle } from "@/components/admin-pro-toggle";
 import { AdminAvaliacaoToggle } from "@/components/admin-avaliacao-toggle";
+import { AdminDesejoValidacao } from "@/components/admin-desejo-validacao";
 import { formatarData } from "@/lib/labels";
 
 export default async function AdminPage() {
@@ -32,6 +33,17 @@ export default async function AdminPage() {
     },
     orderBy: { criadoEm: "desc" },
   });
+
+  // Fila de validação de compradores (anti-fraude): pendentes primeiro, mais antigos antes.
+  const compradores = await prisma.desejoComprador.findMany({
+    include: { user: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  const compradoresOrdenados = [...compradores].sort((a, b) => {
+    const peso = (v: string) => (v === "PENDENTE" ? 0 : v === "REJEITADO" ? 2 : 1);
+    return peso(a.validacao) - peso(b.validacao);
+  });
+  const pendentes = compradores.filter((c) => c.validacao === "PENDENTE").length;
 
   const avaliacoes = await prisma.avaliacao.findMany({
     include: { canil: true },
@@ -97,6 +109,59 @@ export default async function AdminPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+          Compradores (validação anti-fraude){" "}
+          {pendentes > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full text-white align-middle" style={{ background: "var(--brass)" }}>
+              {pendentes} na fila
+            </span>
+          )}
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+          O contato de um comprador só é liberado ao criador depois de aprovado aqui. Confira nome, WhatsApp e, se
+          informado, CPF antes de aprovar.
+        </p>
+        {compradoresOrdenados.length === 0 ? (
+          <p className="mt-3 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Nenhum comprador cadastrou desejo ainda.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {compradoresOrdenados.map((c) => (
+              <div key={c.id} className="card p-4 flex items-center justify-between gap-4">
+                <div className="text-sm">
+                  <p>
+                    <strong>{c.user.name}</strong> · {c.user.email}
+                    <span
+                      className="ml-2 text-xs"
+                      style={{
+                        color:
+                          c.validacao === "APROVADO"
+                            ? "var(--pine)"
+                            : c.validacao === "REJEITADO"
+                              ? "#a32d2d"
+                              : "var(--brass)",
+                      }}
+                    >
+                      {c.validacao === "APROVADO" ? "aprovado" : c.validacao === "REJEITADO" ? "rejeitado" : "pendente"}
+                    </span>
+                  </p>
+                  <p style={{ color: "var(--ink-muted)" }}>
+                    WhatsApp {c.telefone}
+                    {c.cpf ? ` · CPF informado` : " · sem CPF"}
+                    {c.porte ? ` · quer porte ${c.porte}` : ""}
+                    {c.corPelagem ? ` · ${c.corPelagem}` : ""}
+                    {c.estado ? ` · ${c.estado}` : ""} · desde {formatarData(c.criadoEm)}
+                  </p>
+                </div>
+                <AdminDesejoValidacao desejoId={c.id} validacao={c.validacao} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mt-10">

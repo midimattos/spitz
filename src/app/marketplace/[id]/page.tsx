@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { corDoCao } from "@/lib/cores";
+import { calcularReputacao } from "@/lib/reputacao";
+import { RastreadorEvento } from "@/components/rastreador-evento";
+import { FavoritoButton } from "@/components/favorito-button";
 import { formatarMoeda } from "@/lib/financeiro";
 import { LABEL_SEXO, LABEL_PAPEL, formatarData } from "@/lib/labels";
 import { ContatoAnuncioForm } from "@/components/contato-anuncio-form";
@@ -21,8 +26,20 @@ export default async function AnuncioPublicoPage({
 
   const { cao, canil } = anuncio;
 
+  const session = await auth();
+  const ehComprador = session?.user?.role === "COMPRADOR";
+  const jaFavoritou = ehComprador
+    ? !!(await prisma.favorito.findUnique({
+        where: { userId_anuncioId: { userId: session!.user.id, anuncioId: anuncio.id } },
+        select: { id: true },
+      }))
+    : false;
+  const reputacao = await calcularReputacao(canil.id);
+  const cor = corDoCao(cao);
+
   return (
     <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-16">
+      <RastreadorEvento tipo="VISUALIZACAO_ANUNCIO" anuncioId={anuncio.id} />
       <div className="grid sm:grid-cols-2 gap-8">
         <div>
           {anuncio.fotos.length > 0 ? (
@@ -55,7 +72,7 @@ export default async function AnuncioPublicoPage({
 
           <p className="mt-4 text-sm" style={{ color: "var(--ink-muted)" }}>
             {LABEL_PAPEL[cao.papel]} · {LABEL_SEXO[cao.sexo]}
-            {cao.corPelagem ? ` · ${cao.corPelagem}` : ""}
+            {cor ? ` · ${cor}` : cao.corPelagem ? ` · ${cao.corPelagem}` : ""}
             {cao.porte ? ` · Porte ${cao.porte}` : ""}
             {" · "}Nascimento: {formatarData(cao.dataNascimento)}
           </p>
@@ -66,6 +83,13 @@ export default async function AnuncioPublicoPage({
             </Link>
             {canil.cidade ? ` · ${canil.cidade}${canil.estado ? `/${canil.estado}` : ""}` : ""}
           </p>
+          <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
+            {reputacao.resumo}
+          </p>
+
+          <div className="mt-4">
+            <FavoritoButton anuncioId={anuncio.id} inicial={jaFavoritou} logadoComoComprador={ehComprador} />
+          </div>
 
           {cao.dossieGenetico?.publicado && (
             <Link

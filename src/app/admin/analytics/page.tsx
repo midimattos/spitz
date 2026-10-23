@@ -3,6 +3,9 @@ import { calcularAnalyticsGerais } from "@/lib/analytics";
 import { formatarMoeda } from "@/lib/financeiro";
 import { SimpleBarChart } from "@/components/simple-bar-chart";
 
+// Os números mudam a cada venda/cadastro: nunca gerar esta página no build.
+export const dynamic = "force-dynamic";
+
 function Card({ titulo, valor }: { titulo: string; valor: string }) {
   return (
     <div className="card p-5">

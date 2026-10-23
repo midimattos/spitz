@@ -81,6 +81,10 @@ model User {
   // Um usuário COMPRADOR pode ter um desejo ativo no Radar de Demanda.
   desejoComprador DesejoComprador?
 
+  favoritos          Favorito[]
+  notificacoes       Notificacao[]
+  desejosHistorico   DesejoHistorico[]
+
   @@index([role])
 }
 
@@ -109,6 +113,8 @@ model Canil {
   anuncios Anuncio[]
   avaliacoes Avaliacao[]
   pagamentos Pagamento[]
+  criopreservacoes Criopreservacao[]
+  vendasRegistradas VendaRegistro[]
   convitesCriados Convite[] @relation("ConvitesCriados")
   conviteUsado    Convite?  @relation("ConviteUsado")
 
@@ -198,6 +204,8 @@ model Cao {
   ninhadasComoPai Ninhada[] @relation("NinhadaPai")
   dossieGenetico DossieGenetico?
   anuncios Anuncio[]
+  cuidados RegistroCuidado[]
+  criopreservacoes Criopreservacao[]
 
   @@index([canilId])
   @@index([papel])
@@ -389,9 +397,19 @@ model Anuncio {
   criadoEm     DateTime      @default(now())
   atualizadoEm DateTime      @updatedAt
 
+  // Datas reais do ciclo de vida do anúncio — alimentam o "tempo até vender"
+  // e a análise de encalhe do motor de mercado (antes usávamos atualizadoEm
+  // como aproximação, o que distorcia o número).
+  publicadoEm        DateTime?
+  encerradoEm        DateTime?
+  motivoEncerramento MotivoEncerramento?
+
   mensagens MensagemContato[]
   matches   Match[]
   pagamentos Pagamento[]
+  historicoPrecos HistoricoPreco[]
+  favoritos Favorito[]
+  venda     VendaRegistro?
 
   @@index([canilId])
   @@index([status])
@@ -410,6 +428,7 @@ model MensagemContato {
   telefone  String?
   mensagem  String
   lida      Boolean  @default(false)
+  respondidaEm DateTime? // quando o criador marcou como respondida (mede tempo de resposta)
   criadoEm  DateTime @default(now())
 
   denuncia DenunciaLead?
@@ -459,6 +478,12 @@ model DesejoComprador {
   cpf        String? // valida só o formato (dígito verificador), não consulta a Receita Federal
   ativo      Boolean  @default(true)
   criadoEm   DateTime @default(now())
+
+  // Validação anti-fraude do comprador (fila de aprovação do admin). O
+  // contato do comprador só é liberado ao criador quando está APROVADO.
+  validacao     StatusValidacao @default(PENDENTE)
+  validadoEm    DateTime?
+  validacaoNota String?
 
   matches Match[]
 }
@@ -545,4 +570,221 @@ model Convite {
   usadoPorCanil    Canil?    @relation("ConviteUsado", fields: [usadoPorCanilId], references: [id], onDelete: SetNull)
   criadoEm         DateTime  @default(now())
   usadoEm          DateTime?
+}
+
+
+// ---------- Fase 11: Camada de dados do marketplace ----------
+//
+// Tudo que alimenta o motor de precificação e a inteligência de mercado
+// nasce aqui. Os eventos NÃO têm chave estrangeira para o anúncio de
+// propósito: se um anúncio for apagado, o dado de mercado que ele gerou
+// continua valendo para as estatísticas.
+
+enum MotivoEncerramento {
+  VENDIDO_PLATAFORMA // vendido para alguém que veio pela plataforma
+  VENDIDO_FORA       // vendido por outro canal
+  DESISTI            // criador desistiu de vender
+  PRECO_ALTO         // retirado porque o preço não vendia
+  OUTRO
+}
+
+enum CanalVenda {
+  PLATAFORMA_MATCH   // veio pelo Radar / double opt-in
+  PLATAFORMA_CONTATO // veio por mensagem de contato no anúncio
+  FORA               // fechou por fora da plataforma
+}
+
+enum TipoEvento {
+  VISUALIZACAO_ANUNCIO
+  VISUALIZACAO_CANIL
+  BUSCA
+  FAVORITO
+  CONTATO
+  MATCH_INTERESSE
+}
+
+enum StatusValidacao {
+  PENDENTE
+  APROVADO
+  REJEITADO
+}
+
+enum TipoCuidado {
+  VACINA
+  VERMIFUGO
+  ANTIPULGAS
+  CONSULTA
+  OUTRO
+}
+
+enum TipoCriopreservacao {
+  SEMEN
+  EMBRIAO
+  OVULO
+}
+
+enum StatusCriopreservacao {
+  DISPONIVEL
+  USADO
+  DESCARTADO
+}
+
+enum TipoNotificacao {
+  MENSAGEM_NOVA
+  MATCH_NOVO
+  MATCH_ACEITO
+  COMPRADOR_APROVADO
+  CANIL_VERIFICADO
+  CIO_PROXIMO
+  PARTO_PROXIMO
+  CUIDADO_VENCENDO
+  ANUNCIO_ENCALHADO
+  SISTEMA
+}
+
+// Evento bruto de comportamento. `visitante` é um identificador anônimo
+// gerado no navegador (sem dado pessoal) para não contar a mesma pessoa
+// várias vezes. Os campos porte/cor/sexo/estado/preco são "fotografias"
+// do que foi visto/buscado, para as agregações não dependerem de joins.
+model EventoMercado {
+  id        String     @id @default(cuid())
+  tipo      TipoEvento
+  anuncioId String?
+  canilId   String?
+  userId    String?
+  visitante String?
+  porte     String?
+  cor       String?
+  sexo      Sexo?
+  estado    String?
+  preco     Decimal?   @db.Decimal(10, 2)
+  filtros   Json?
+  criadoEm  DateTime   @default(now())
+
+  @@index([tipo, criadoEm])
+  @@index([anuncioId, tipo])
+  @@index([canilId])
+}
+
+model Favorito {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anuncioId String
+  anuncio   Anuncio  @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  criadoEm  DateTime @default(now())
+
+  @@unique([userId, anuncioId])
+  @@index([anuncioId])
+}
+
+// Toda mudança de preço de um anúncio (inclusive o preço inicial).
+model HistoricoPreco {
+  id        String   @id @default(cuid())
+  anuncioId String
+  anuncio   Anuncio  @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  preco     Decimal  @db.Decimal(10, 2)
+  criadoEm  DateTime @default(now())
+
+  @@index([anuncioId])
+}
+
+// Registro estruturado de uma venda. É a matéria-prima da precificação:
+// guarda preço final REAL (não o pedido), canal e as características do
+// cão no momento da venda, para comparáveis futuros.
+model VendaRegistro {
+  id             String     @id @default(cuid())
+  anuncioId      String?    @unique
+  anuncio        Anuncio?   @relation(fields: [anuncioId], references: [id], onDelete: SetNull)
+  canilId        String
+  canil          Canil      @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  precoAnunciado Decimal    @db.Decimal(10, 2)
+  precoFinal     Decimal    @db.Decimal(10, 2)
+  canal          CanalVenda
+  dataVenda      DateTime
+  diasAteVender  Int
+  visualizacoes  Int        @default(0)
+  contatos       Int        @default(0)
+  porte          String?
+  cor            String?
+  sexo           Sexo?
+  estado         String?
+  temDossie      Boolean    @default(false)
+  criadoEm       DateTime   @default(now())
+
+  @@index([dataVenda])
+  @@index([porte, cor])
+  @@index([canilId])
+}
+
+// Histórico de desejos: um desejo novo NÃO apaga o anterior, vira linha
+// aqui. Dá a série temporal da demanda por cor/porte/faixa de preço.
+model DesejoHistorico {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  porte      String?
+  sexo       Sexo?
+  precoMax   Decimal? @db.Decimal(10, 2)
+  cor        String?
+  estado     String?
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+
+  @@index([criadoEm])
+  @@index([cor, porte])
+}
+
+// ---------- Fase 12: Rotina do canil (cuidados, criopreservação, avisos) ----------
+
+model RegistroCuidado {
+  id          String      @id @default(cuid())
+  caoId       String
+  cao         Cao         @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  tipo        TipoCuidado
+  nome        String
+  data        DateTime
+  proximaData DateTime?
+  observacoes String?
+  criadoEm    DateTime    @default(now())
+
+  @@index([caoId])
+  @@index([proximaData])
+}
+
+model Criopreservacao {
+  id          String                @id @default(cuid())
+  canilId     String
+  canil       Canil                 @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  caoId       String?
+  cao         Cao?                  @relation(fields: [caoId], references: [id], onDelete: SetNull)
+  tipo        TipoCriopreservacao
+  doses       Int
+  dataColeta  DateTime
+  local       String? // ex: clínica / tanque / botijão
+  validade    DateTime?
+  status      StatusCriopreservacao @default(DISPONIVEL)
+  observacoes String?
+  criadoEm    DateTime              @default(now())
+
+  @@index([canilId])
+  @@index([caoId])
+}
+
+// Aviso interno (sino). `chave` evita duplicar o mesmo aviso automático
+// (ex.: "cio da Bella em 2026-11-05") a cada vez que a rotina roda.
+model Notificacao {
+  id       String          @id @default(cuid())
+  userId   String
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipo     TipoNotificacao
+  titulo   String
+  mensagem String
+  link     String?
+  lida     Boolean         @default(false)
+  chave    String?
+  criadoEm DateTime        @default(now())
+
+  @@unique([userId, chave])
+  @@index([userId, lida])
 }

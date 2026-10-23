@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { formatarData } from "@/lib/labels";
+import { MensagemRespondidaButton } from "@/components/mensagem-respondida-button";
 
 export default async function MensagensPage() {
   const canil = await getCanilDoCriadorLogado();
@@ -45,6 +46,9 @@ export default async function MensagensPage() {
                 </Link>
               </p>
               <p className="mt-2">{m.mensagem}</p>
+              <div className="mt-3">
+                <MensagemRespondidaButton mensagemId={m.id} respondida={!!m.respondidaEm} />
+              </div>
             </div>
           ))}
         </div>

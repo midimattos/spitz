@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { notificar } from "@/lib/notificacoes";
 
 const schema = z.object({ verificado: z.boolean() });
 
@@ -25,6 +26,17 @@ export async function PATCH(
     where: { id },
     data: { verificado: parsed.data.verificado },
   });
+
+  if (parsed.data.verificado) {
+    await notificar({
+      userId: canil.ownerId,
+      tipo: "CANIL_VERIFICADO",
+      titulo: "Seu canil foi verificado",
+      mensagem: "Seus anúncios publicados já aparecem no marketplace.",
+      link: "/dashboard/criador/anuncios",
+      chave: `canil-verificado:${canil.id}`,
+    });
+  }
 
   return NextResponse.json(canil);
 }

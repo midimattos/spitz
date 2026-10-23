@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { BarraNavegacao } from "@/components/barra-navegacao";
+import { RodapeLegal } from "@/components/rodape-legal";
 
 export const metadata: Metadata = {
   title: "Plataforma Spitz Alemão | Marketplace e gestão de canil",
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <BarraNavegacao />
         {children}
+        <RodapeLegal />
       </body>
     </html>
   );
