@@ -58,6 +58,7 @@ export async function registrarEvento(evento: NovoEvento): Promise<boolean> {
           cor: evento.cor ?? null,
           sexo: evento.sexo ?? null,
           estado: evento.estado ?? null,
+          ...(evento.tipo === "BUSCA" && evento.filtros ? { filtros: { equals: evento.filtros } } : {}),
           criadoEm: { gte: new Date(Date.now() - janela) },
           ...(evento.userId ? { userId: evento.userId } : { visitante: evento.visitante }),
         },

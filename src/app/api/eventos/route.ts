@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { registrarEvento } from "@/lib/eventos";
-import { CORES_MERCADO, corDoCao } from "@/lib/cores";
+import { corDoCao, normalizarCor } from "@/lib/cores";
 
 // Recebe os eventos de navegação do marketplace (visualização de anúncio,
 // visualização de canil e busca com filtros). O navegador envia um
@@ -13,9 +13,14 @@ const filtrosSchema = z
   .object({
     porte: z.string().max(30).optional(),
     sexo: z.enum(["MACHO", "FEMEA"]).optional(),
+    precoMin: z.number().positive().max(1_000_000).optional(),
     precoMax: z.number().positive().max(1_000_000).optional(),
-    cor: z.enum(CORES_MERCADO).optional(),
+    corBase: z.string().max(40).optional(),
+    marcacao: z.string().max(40).optional(),
+    diluicao: z.string().max(40).optional(),
+    merle: z.string().max(40).optional(),
     estado: z.string().length(2).optional(),
+    cidade: z.string().max(60).optional(),
   })
   .strict();
 
@@ -77,10 +82,10 @@ export async function POST(request: Request) {
     userId,
     visitante,
     porte: filtros.porte ?? null,
-    cor: filtros.cor ?? null,
+    cor: normalizarCor(filtros.corBase),
     sexo: filtros.sexo ?? null,
     estado: filtros.estado ? filtros.estado.toUpperCase() : null,
-    preco: filtros.precoMax ?? null,
+    preco: filtros.precoMax ?? filtros.precoMin ?? null,
     filtros,
   });
   return NextResponse.json({ ok: true });

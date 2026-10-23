@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { corDoCao } from "@/lib/cores";
 import { calcularReputacao } from "@/lib/reputacao";
 import { RastreadorEvento } from "@/components/rastreador-evento";
 import { FavoritoButton } from "@/components/favorito-button";
@@ -35,7 +34,6 @@ export default async function AnuncioPublicoPage({
       }))
     : false;
   const reputacao = await calcularReputacao(canil.id);
-  const cor = corDoCao(cao);
 
   return (
     <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-16">
@@ -70,12 +68,29 @@ export default async function AnuncioPublicoPage({
             {formatarMoeda(Number(anuncio.preco))}
           </p>
 
-          <p className="mt-4 text-sm" style={{ color: "var(--ink-muted)" }}>
-            {LABEL_PAPEL[cao.papel]} · {LABEL_SEXO[cao.sexo]}
-            {cor ? ` · ${cor}` : cao.corPelagem ? ` · ${cao.corPelagem}` : ""}
-            {cao.porte ? ` · Porte ${cao.porte}` : ""}
-            {" · "}Nascimento: {formatarData(cao.dataNascimento)}
-          </p>
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            {[
+              ["Tipo", LABEL_PAPEL[cao.papel]],
+              ["Sexo", LABEL_SEXO[cao.sexo]],
+              ["Porte", cao.porte],
+              ["Nascimento", cao.dataNascimento ? formatarData(cao.dataNascimento) : null],
+              ["Cor base", cao.corBase ?? (!cao.corBase ? cao.corPelagem : null)],
+              ["Marcação", cao.marcacaoCor],
+              ["Cor da trufa", cao.corTrufa],
+              ["Diluição", cao.diluicaoCor],
+              ["Merle", cao.merleCor],
+              ["Intensidade da cor", cao.intensidadeCor],
+              ["Cores já produzidas", cao.coresJaProduzidas.length ? cao.coresJaProduzidas.join(", ") : null],
+              ["Exame de cor por DNA", cao.temExameCorDNA ? "Sim" : null],
+            ]
+              .filter(([, v]) => v)
+              .map(([k, v]) => (
+                <div key={k as string}>
+                  <dt className="text-xs" style={{ color: "var(--ink-muted)" }}>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+          </dl>
 
           <p className="mt-4 text-sm">
             <Link href={`/canil/${canil.slug}`} className="underline" style={{ color: "var(--brass)" }}>

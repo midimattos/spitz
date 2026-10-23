@@ -5,7 +5,7 @@ import { formatarMoeda } from "@/lib/financeiro";
 import { LABEL_SEXO } from "@/lib/labels";
 import { DesejoForm } from "@/components/desejo-form";
 import { MatchInteresseButton } from "@/components/match-interesse-button";
-import type { Prisma } from "@prisma/client";
+import { avaliarAnuncio, resumoCompatibilidade, type FiltrosBusca } from "@/lib/busca";
 
 export default async function RadarDemandaPage() {
   const session = await auth();
@@ -15,23 +15,38 @@ export default async function RadarDemandaPage() {
     where: { userId: session.user.id },
   });
 
-  const where: Prisma.AnuncioWhereInput = {
-    status: "PUBLICADO",
-    canil: { verificado: true },
-    cao: {
-      ...(desejo?.porte ? { porte: desejo.porte } : {}),
-      ...(desejo?.sexo ? { sexo: desejo.sexo } : {}),
-    },
-    ...(desejo?.precoMax ? { preco: { lte: desejo.precoMax } } : {}),
-  };
+  const filtrosDesejo: FiltrosBusca = desejo
+    ? {
+        ...(desejo.porte ? { porte: desejo.porte } : {}),
+        ...(desejo.sexo ? { sexo: desejo.sexo } : {}),
+        ...(desejo.corBase ? { corBase: desejo.corBase } : {}),
+        ...(desejo.marcacao ? { marcacao: desejo.marcacao } : {}),
+        ...(desejo.diluicao ? { diluicao: desejo.diluicao } : {}),
+        ...(desejo.merle ? { merle: desejo.merle } : {}),
+        ...(desejo.precoMin ? { precoMin: Number(desejo.precoMin) } : {}),
+        ...(desejo.precoMax ? { precoMax: Number(desejo.precoMax) } : {}),
+        ...(desejo.estado ? { estado: desejo.estado } : {}),
+        ...(desejo.cidade ? { cidade: desejo.cidade } : {}),
+      }
+    : {};
 
-  const anunciosCompativeis = desejo
+  const todosAnuncios = desejo
     ? await prisma.anuncio.findMany({
-        where,
+        where: { status: "PUBLICADO", canil: { verificado: true } },
         include: { cao: true, canil: true },
         orderBy: { criadoEm: "desc" },
       })
     : [];
+
+  // Quanto mais critérios do desejo o anúncio atende, mais acima ele aparece.
+  const anunciosCompativeis = todosAnuncios
+    .map((a) => ({ a, c: avaliarAnuncio(filtrosDesejo, a.cao, a.canil, Number(a.preco)) }))
+    .filter((x) => x.c.total === 0 || x.c.casados.length > 0)
+    .sort((x, y) => {
+      const rx = x.c.total ? x.c.casados.length / x.c.total : 0;
+      const ry = y.c.total ? y.c.casados.length / y.c.total : 0;
+      return ry - rx || y.c.casados.length - x.c.casados.length;
+    });
 
   const matchesExistentes = desejo
     ? await prisma.match.findMany({
@@ -70,7 +85,7 @@ export default async function RadarDemandaPage() {
         <DesejoForm
           desejoInicial={
             desejo
-              ? { ...desejo, precoMax: desejo.precoMax ? Number(desejo.precoMax) : null }
+              ? { ...desejo, precoMax: desejo.precoMax ? Number(desejo.precoMax) : null, precoMin: desejo.precoMin ? Number(desejo.precoMin) : null }
               : null
           }
         />
@@ -88,7 +103,7 @@ export default async function RadarDemandaPage() {
             </p>
           ) : (
             <div className="mt-4 space-y-3">
-              {anunciosCompativeis.map((a) => {
+              {anunciosCompativeis.map(({ a, c }) => {
                 const match = statusPorAnuncio.get(a.id);
                 const contatoRevelado =
                   match?.statusComprador === "ACEITO" &&
@@ -101,6 +116,9 @@ export default async function RadarDemandaPage() {
                       <Link href={`/marketplace/${a.id}`} className="font-display hover:underline" style={{ color: "var(--pine)" }}>
                         {a.titulo}
                       </Link>
+                      {resumoCompatibilidade(c) && (
+                        <span className="ml-2 text-xs" style={{ color: "var(--ink-muted)" }}>{resumoCompatibilidade(c)}</span>
+                      )}
                       <p className="text-sm mt-1" style={{ color: "var(--ink-muted)" }}>
                         {a.canil.nome} · {LABEL_SEXO[a.cao.sexo]}
                         {a.cao.porte ? ` · ${a.cao.porte}` : ""} · {formatarMoeda(Number(a.preco))}

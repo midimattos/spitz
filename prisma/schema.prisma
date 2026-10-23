@@ -474,6 +474,14 @@ model DesejoComprador {
   precoMax   Decimal? @db.Decimal(10, 2)
   corPelagem String?
   estado     String?
+  // Características detalhadas do filhote desejado (mesmos campos da busca
+  // do marketplace e do cadastro do cão). Todas opcionais.
+  corBase  String?
+  marcacao String?
+  diluicao String?
+  merle    String?
+  precoMin Decimal? @db.Decimal(10, 2)
+  cidade   String?
   telefone   String
   cpf        String? // valida só o formato (dígito verificador), não consulta a Receita Federal
   ativo      Boolean  @default(true)
@@ -728,6 +736,12 @@ model DesejoHistorico {
   precoMax   Decimal? @db.Decimal(10, 2)
   cor        String?
   estado     String?
+  corBase    String?
+  marcacao   String?
+  diluicao   String?
+  merle      String?
+  precoMin   Decimal? @db.Decimal(10, 2)
+  cidade     String?
   ativo      Boolean  @default(true)
   criadoEm   DateTime @default(now())
 

@@ -8,6 +8,9 @@ import {
   montarRadarPorCor,
   montarRadarPorEstado,
   topBuscas30d,
+  montarRadarCaracteristicas,
+  montarRadarFaixasValor,
+  topCidadesProcuradas,
   type SituacaoMercado,
 } from "@/lib/mercado";
 import { podeVerInteligenciaMercado, AMOSTRA_MINIMA_TENDENCIA } from "@/lib/recursos";
@@ -61,6 +64,9 @@ export default async function MercadoPage() {
   const porCor = montarRadarPorCor(ctx);
   const porEstado = montarRadarPorEstado(ctx).slice(0, 10);
   const buscas = topBuscas30d(ctx);
+  const caracteristicas = montarRadarCaracteristicas(ctx);
+  const faixasValor = montarRadarFaixasValor(ctx);
+  const cidades = topCidadesProcuradas(ctx);
   const emFalta = porCor.filter((l) => l.situacao === "FALTA_OFERTA");
   const totalSinais = ctx.desejos.length + ctx.buscas30d.length + ctx.vendas.length + ctx.ativos.length;
 
@@ -240,6 +246,89 @@ export default async function MercadoPage() {
               </table>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+          O que os compradores procuram
+        </h2>
+        <p className="text-sm mt-1" style={{ color: "var(--ink-muted)" }}>
+          Características digitadas nas buscas (30 dias) e nos desejos do radar, comparadas com os anúncios no ar.
+        </p>
+        <div className="mt-3 grid md:grid-cols-2 gap-5">
+          {caracteristicas.length === 0 && (
+            <div className="card p-6 text-sm" style={{ color: "var(--ink-muted)" }}>Ainda não há buscas detalhadas.</div>
+          )}
+          {caracteristicas.map((r) => (
+            <div key={r.campo} className="card p-6">
+              <h3 className="font-display" style={{ color: "var(--pine)" }}>{r.titulo}</h3>
+              <table className="w-full text-sm mt-2">
+                <thead>
+                  <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
+                    <th className="font-normal pb-1">Valor</th>
+                    <th className="font-normal pb-1">Desejos</th>
+                    <th className="font-normal pb-1">Buscas</th>
+                    <th className="font-normal pb-1">Anúncios</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.linhas.map((l) => (
+                    <tr key={l.valor} className="border-t" style={{ borderColor: "var(--border-hairline)" }}>
+                      <td className="py-1">{l.valor}</td>
+                      <td className="py-1">{l.desejos}</td>
+                      <td className="py-1">{l.buscas30d}</td>
+                      <td className="py-1">{l.anuncios}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          <div className="card p-6">
+            <h3 className="font-display" style={{ color: "var(--pine)" }}>Faixa de valor</h3>
+            <table className="w-full text-sm mt-2">
+              <thead>
+                <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
+                  <th className="font-normal pb-1">Faixa</th>
+                  <th className="font-normal pb-1">Procuras</th>
+                  <th className="font-normal pb-1">Anúncios</th>
+                </tr>
+              </thead>
+              <tbody>
+                {faixasValor.map((f) => (
+                  <tr key={f.rotulo} className="border-t" style={{ borderColor: "var(--border-hairline)" }}>
+                    <td className="py-1">{f.rotulo}</td>
+                    <td className="py-1">{f.procuras}</td>
+                    <td className="py-1">{f.anuncios}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {cidades.length > 0 && (
+            <div className="card p-6">
+              <h3 className="font-display" style={{ color: "var(--pine)" }}>Cidades mais procuradas</h3>
+              <table className="w-full text-sm mt-2">
+                <thead>
+                  <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
+                    <th className="font-normal pb-1">Cidade</th>
+                    <th className="font-normal pb-1">Procuras</th>
+                    <th className="font-normal pb-1">Anúncios</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cidades.map((c) => (
+                    <tr key={c.cidade} className="border-t" style={{ borderColor: "var(--border-hairline)" }}>
+                      <td className="py-1">{c.cidade}</td>
+                      <td className="py-1">{c.procuras}</td>
+                      <td className="py-1">{c.anuncios}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 

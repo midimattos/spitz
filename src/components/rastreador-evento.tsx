@@ -5,9 +5,14 @@ import { useEffect } from "react";
 type Filtros = {
   porte?: string;
   sexo?: string;
+  precoMin?: number;
   precoMax?: number;
-  cor?: string;
+  corBase?: string;
+  marcacao?: string;
+  diluicao?: string;
+  merle?: string;
   estado?: string;
+  cidade?: string;
 };
 
 type Props =

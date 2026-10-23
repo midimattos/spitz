@@ -26,9 +26,20 @@ type Sexo = "MACHO" | "FEMEA";
 
 export type ContextoMercado = {
   vendas: VendaComparavel[];
-  ativos: (AnuncioAtivoComparavel & { id: string; favoritos: number })[];
-  desejos: { porte: string | null; cor: string | null; sexo: Sexo | null; estado: string | null }[];
-  buscas30d: { porte: string | null; cor: string | null; estado: string | null }[];
+  ativos: (AnuncioAtivoComparavel & {
+    id: string; favoritos: number;
+    corBase: string | null; marcacao: string | null; diluicao: string | null; merle: string | null; cidade: string | null;
+  })[];
+  desejos: {
+    porte: string | null; cor: string | null; sexo: Sexo | null; estado: string | null;
+    corBase: string | null; marcacao: string | null; diluicao: string | null; merle: string | null;
+    precoMin: number | null; precoMax: number | null; cidade: string | null;
+  }[];
+  buscas30d: {
+    porte: string | null; cor: string | null; estado: string | null;
+    corBase: string | null; marcacao: string | null; diluicao: string | null; merle: string | null;
+    precoMin: number | null; precoMax: number | null; cidade: string | null;
+  }[];
   favoritos30d: { porte: string | null; cor: string | null }[];
   carregadoEm: Date;
 };
@@ -47,17 +58,17 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
         preco: true,
         criadoEm: true,
         publicadoEm: true,
-        cao: { select: { porte: true, sexo: true, corBase: true, corPelagem: true, merleCor: true, marcacaoCor: true } },
-        canil: { select: { estado: true } },
+        cao: { select: { porte: true, sexo: true, corBase: true, corPelagem: true, merleCor: true, marcacaoCor: true, diluicaoCor: true } },
+        canil: { select: { estado: true, cidade: true } },
       },
     }),
     prisma.desejoComprador.findMany({
       where: { ativo: true, validacao: { not: "REJEITADO" } },
-      select: { porte: true, sexo: true, corPelagem: true, estado: true },
+      select: { porte: true, sexo: true, corPelagem: true, estado: true, corBase: true, marcacao: true, diluicao: true, merle: true, precoMin: true, precoMax: true, cidade: true },
     }),
     prisma.eventoMercado.findMany({
       where: { tipo: "BUSCA", criadoEm: { gte: ha30d } },
-      select: { porte: true, cor: true, estado: true },
+      select: { porte: true, cor: true, estado: true, filtros: true },
     }),
     prisma.eventoMercado.findMany({
       where: { tipo: "FAVORITO", criadoEm: { gte: ha30d } },
@@ -109,6 +120,11 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
         cor: corDoCao(a.cao),
         sexo: a.cao.sexo,
         estado: a.canil.estado,
+        corBase: a.cao.corBase,
+        marcacao: a.cao.marcacaoCor,
+        diluicao: a.cao.diluicaoCor,
+        merle: a.cao.merleCor,
+        cidade: a.canil.cidade,
         diasNoAr: Math.max(0, Math.floor((agora.getTime() - inicio.getTime()) / DIA_MS)),
         visualizacoes: c.views,
         contatos: c.contatos,
@@ -120,8 +136,24 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       cor: normalizarCor(d.corPelagem),
       sexo: d.sexo,
       estado: d.estado,
+      corBase: d.corBase,
+      marcacao: d.marcacao,
+      diluicao: d.diluicao,
+      merle: d.merle,
+      precoMin: d.precoMin ? Number(d.precoMin) : null,
+      precoMax: d.precoMax ? Number(d.precoMax) : null,
+      cidade: d.cidade,
     })),
-    buscas30d: buscasDb,
+    buscas30d: buscasDb.map((b) => {
+      const f = (b.filtros && typeof b.filtros === "object" && !Array.isArray(b.filtros) ? b.filtros : {}) as Record<string, unknown>;
+      const t = (k: string) => (typeof f[k] === "string" ? (f[k] as string) : null);
+      const n = (k: string) => (typeof f[k] === "number" ? (f[k] as number) : null);
+      return {
+        porte: b.porte, cor: b.cor, estado: b.estado,
+        corBase: t("corBase"), marcacao: t("marcacao"), diluicao: t("diluicao"), merle: t("merle"),
+        precoMin: n("precoMin"), precoMax: n("precoMax"), cidade: t("cidade"),
+      };
+    }),
     favoritos30d: favoritosDb,
     carregadoEm: agora,
   };
@@ -394,7 +426,7 @@ export function montarRadarPorEstado(ctx: ContextoMercado): LinhaRadarEstado[] {
 export function topBuscas30d(ctx: ContextoMercado, limite = 8): { descricao: string; total: number }[] {
   const mapa = new Map<string, number>();
   for (const b of ctx.buscas30d) {
-    const partes = [b.cor, b.porte ? `porte ${b.porte}` : null].filter(Boolean);
+    const partes = [b.corBase ?? b.cor, b.marcacao, b.diluicao, b.merle, b.porte ? `porte ${b.porte}` : null].filter(Boolean);
     if (partes.length === 0) continue;
     const chave = partes.join(" · ");
     mapa.set(chave, (mapa.get(chave) ?? 0) + 1);
@@ -454,4 +486,93 @@ export function demandaDasCores(ctx: ContextoMercado, cores: (string | null)[]):
     if (linha) mapa.set(c, linha);
   }
   return mapa;
+}
+
+
+// ---------- Radar por característica (o que os compradores procuram) ----------
+
+export type LinhaCaracteristica = {
+  valor: string;
+  /** compradores com desejo ativo que pediram este valor */
+  desejos: number;
+  /** buscas dos últimos 30 dias que preencheram este valor */
+  buscas30d: number;
+  /** anúncios publicados que têm este valor */
+  anuncios: number;
+  pressao: number;
+  situacao: SituacaoMercado;
+};
+
+export type RadarCaracteristica = { campo: string; titulo: string; linhas: LinhaCaracteristica[] };
+
+const semAc = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+function agruparPor(
+  ctx: ContextoMercado,
+  campo: "corBase" | "marcacao" | "diluicao" | "merle",
+  titulo: string
+): RadarCaracteristica {
+  const mapa = new Map<string, LinhaCaracteristica>();
+  const linha = (v: string | null) => {
+    if (!v || !v.trim()) return null;
+    const chave = semAc(v);
+    if (!mapa.has(chave)) mapa.set(chave, { valor: v.trim(), desejos: 0, buscas30d: 0, anuncios: 0, pressao: 0, situacao: "POUCOS_DADOS" });
+    return mapa.get(chave)!;
+  };
+  ctx.desejos.forEach((d) => { const l = linha(d[campo]); if (l) l.desejos++; });
+  ctx.buscas30d.forEach((b) => { const l = linha(b[campo]); if (l) l.buscas30d++; });
+  ctx.ativos.forEach((a) => { const l = linha(a[campo]); if (l) l.anuncios++; });
+  const linhas = [...mapa.values()].map((l) => {
+    const demanda = l.desejos + 0.1 * l.buscas30d;
+    const pressao = (demanda - l.anuncios) / (demanda + l.anuncios + 4);
+    return { ...l, pressao, situacao: classificarSituacao(pressao, l.desejos + l.buscas30d + l.anuncios) };
+  });
+  linhas.sort((a, b) => b.desejos + b.buscas30d - (a.desejos + a.buscas30d));
+  return { campo, titulo, linhas };
+}
+
+export function montarRadarCaracteristicas(ctx: ContextoMercado): RadarCaracteristica[] {
+  return [
+    agruparPor(ctx, "corBase", "Cor base"),
+    agruparPor(ctx, "marcacao", "Marcação"),
+    agruparPor(ctx, "diluicao", "Diluição"),
+    agruparPor(ctx, "merle", "Merle"),
+  ].filter((r) => r.linhas.length > 0);
+}
+
+// ---------- Faixas de valor procuradas x anunciadas ----------
+
+export const FAIXAS_VALOR = [
+  { rotulo: "Até R$ 2.000", min: 0, max: 2000 },
+  { rotulo: "R$ 2.000 – 4.000", min: 2000, max: 4000 },
+  { rotulo: "R$ 4.000 – 6.000", min: 4000, max: 6000 },
+  { rotulo: "R$ 6.000 – 9.000", min: 6000, max: 9000 },
+  { rotulo: "Acima de R$ 9.000", min: 9000, max: Infinity },
+];
+
+export type LinhaFaixaValor = { rotulo: string; procuras: number; anuncios: number };
+
+/** Uma procura entra em toda faixa que o intervalo pedido alcança; sem teto, vai até a última. */
+export function montarRadarFaixasValor(ctx: ContextoMercado): LinhaFaixaValor[] {
+  const procuras = [...ctx.desejos, ...ctx.buscas30d].filter((p) => p.precoMin !== null || p.precoMax !== null);
+  return FAIXAS_VALOR.map((f) => ({
+    rotulo: f.rotulo,
+    procuras: procuras.filter((p) => (p.precoMax ?? Infinity) > f.min && (p.precoMin ?? 0) < f.max).length,
+    anuncios: ctx.ativos.filter((a) => a.preco >= f.min && a.preco < f.max).length,
+  }));
+}
+
+// ---------- Cidades mais procuradas ----------
+
+export function topCidadesProcuradas(ctx: ContextoMercado, limite = 8): { cidade: string; procuras: number; anuncios: number }[] {
+  const mapa = new Map<string, { cidade: string; procuras: number; anuncios: number }>();
+  const linha = (c: string | null) => {
+    if (!c || !c.trim()) return null;
+    const k = semAc(c);
+    if (!mapa.has(k)) mapa.set(k, { cidade: c.trim(), procuras: 0, anuncios: 0 });
+    return mapa.get(k)!;
+  };
+  [...ctx.desejos, ...ctx.buscas30d].forEach((p) => { const l = linha(p.cidade); if (l) l.procuras++; });
+  ctx.ativos.forEach((a) => { const l = linha(a.cidade); if (l) l.anuncios++; });
+  return [...mapa.values()].filter((l) => l.procuras > 0).sort((a, b) => b.procuras - a.procuras).slice(0, limite);
 }
