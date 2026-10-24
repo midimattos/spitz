@@ -29,6 +29,7 @@ const schema = z.object({
   anuncioId: z.string().max(40).optional(),
   canilSlug: z.string().max(120).optional(),
   visitante: z.string().min(8).max(64).optional(),
+  origem: z.enum(["instagram", "whatsapp", "google", "facebook", "direto", "outro"]).optional(),
   filtros: filtrosSchema.optional(),
 });
 
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 });
 
-  const { tipo, anuncioId, canilSlug, visitante, filtros } = parsed.data;
+  const { tipo, anuncioId, canilSlug, visitante, filtros, origem } = parsed.data;
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       sexo: anuncio.cao.sexo,
       estado: anuncio.canil.estado,
       preco: Number(anuncio.preco),
+      origem,
     });
     return NextResponse.json({ ok: true });
   }

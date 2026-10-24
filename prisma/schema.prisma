@@ -101,6 +101,7 @@ model Canil {
   assinaturaPro Boolean @default(false) // camada PRO (Fase 8) — ativado manualmente pelo admin até a Fase 9 (cobrança) existir
   telefoneContato String?
   instagram   String?
+  avisoSemanal Boolean @default(true) // resumo semanal de saúde da carteira por e-mail
   solicitacaoVerificacaoEm DateTime? // quando o criador pediu revisão (fila de aprovação)
   criadoEm    DateTime @default(now())
 
@@ -289,9 +290,14 @@ model LancamentoFinanceiro {
   descricao String?
   criadoEm  DateTime       @default(now())
 
+  // Custo atribuído a uma ninhada específica (opcional): alimenta o custo real por filhote.
+  ninhadaId String?
+  ninhada   Ninhada?       @relation(fields: [ninhadaId], references: [id], onDelete: SetNull)
+
   @@index([canilId])
   @@index([caoId])
   @@index([tipo])
+  @@index([ninhadaId])
 }
 
 // Registro de início de cio de uma matriz, para prever o próximo ciclo.
@@ -322,6 +328,8 @@ model Ninhada {
   quantidadeFilhotes  Int?
   observacoes         String?
   criadoEm            DateTime  @default(now())
+
+  lancamentos LancamentoFinanceiro[]
 
   @@index([caoMaeId])
 }
@@ -667,6 +675,7 @@ model EventoMercado {
   estado    String?
   preco     Decimal?   @db.Decimal(10, 2)
   filtros   Json?
+  origem    String? // de onde o visitante veio: instagram, whatsapp, google, facebook, direto, outro
   criadoEm  DateTime   @default(now())
 
   @@index([tipo, criadoEm])
@@ -719,6 +728,13 @@ model VendaRegistro {
   estado         String?
   temDossie      Boolean    @default(false)
   criadoEm       DateTime   @default(now())
+
+  // Perfil de quem comprou (informado pelo criador ao registrar a venda; opcional).
+  compradorNome   String?
+  compradorEmail  String? // usado para avaliação verificada, certificado e pós-venda
+  origemComprador String? // MARKETPLACE | INSTAGRAM | INDICACAO | WHATSAPP | OUTRO
+  estadoComprador String?
+  cidadeComprador String?
 
   @@index([dataVenda])
   @@index([porte, cor])

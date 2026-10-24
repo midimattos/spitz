@@ -28,6 +28,11 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
   const [canal, setCanal] = useState("PLATAFORMA_CONTATO");
   const [dataVenda, setDataVenda] = useState(new Date().toISOString().slice(0, 10));
   const [motivo, setMotivo] = useState("");
+  const [compradorNome, setCompradorNome] = useState("");
+  const [compradorEmail, setCompradorEmail] = useState("");
+  const [origem, setOrigem] = useState("");
+  const [estadoComprador, setEstadoComprador] = useState("");
+  const [cidadeComprador, setCidadeComprador] = useState("");
 
   async function salvar(dados: Record<string, unknown>): Promise<boolean> {
     setSalvando(true);
@@ -70,7 +75,16 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
       }
       const ok = await salvar({
         status: "VENDIDO",
-        venda: { precoFinal: valor, canal, dataVenda: dataVenda || undefined },
+        venda: {
+          precoFinal: valor,
+          canal,
+          dataVenda: dataVenda || undefined,
+          ...(compradorNome ? { compradorNome } : {}),
+          ...(compradorEmail ? { compradorEmail } : {}),
+          ...(origem ? { origemComprador: origem } : {}),
+          ...(estadoComprador ? { estadoComprador } : {}),
+          ...(cidadeComprador ? { cidadeComprador } : {}),
+        },
       });
       if (ok) {
         setStatus("VENDIDO");
@@ -171,6 +185,24 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
                 style={campoEstilo}
               />
             </div>
+          </div>
+          <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+            Dados do comprador (opcionais). Com o e-mail, o comprador recebe o certificado do filhote, o convite para
+            avaliar o canil e os lembretes de vacina em nome do seu canil.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <input value={compradorNome} onChange={(e) => setCompradorNome(e.target.value)} placeholder="Nome do comprador" className="px-2 py-1.5 rounded border bg-transparent text-sm w-48" style={campoEstilo} />
+            <input value={compradorEmail} onChange={(e) => setCompradorEmail(e.target.value)} placeholder="E-mail do comprador" type="email" className="px-2 py-1.5 rounded border bg-transparent text-sm w-56" style={campoEstilo} />
+            <input value={cidadeComprador} onChange={(e) => setCidadeComprador(e.target.value)} placeholder="Cidade" className="px-2 py-1.5 rounded border bg-transparent text-sm w-36" style={campoEstilo} />
+            <input value={estadoComprador} onChange={(e) => setEstadoComprador(e.target.value.toUpperCase().slice(0, 2))} placeholder="UF" className="px-2 py-1.5 rounded border bg-transparent text-sm w-16" style={campoEstilo} />
+            <select value={origem} onChange={(e) => setOrigem(e.target.value)} className="px-2 py-1.5 rounded border bg-transparent text-sm" style={campoEstilo}>
+              <option value="">Como o comprador chegou?</option>
+              <option value="MARKETPLACE">Marketplace da plataforma</option>
+              <option value="INSTAGRAM">Instagram</option>
+              <option value="WHATSAPP">WhatsApp</option>
+              <option value="INDICACAO">Indicação</option>
+              <option value="OUTRO">Outro</option>
+            </select>
           </div>
           <div className="flex gap-2">
             <button

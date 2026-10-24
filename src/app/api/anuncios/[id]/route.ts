@@ -9,6 +9,11 @@ const vendaSchema = z.object({
   precoFinal: z.number().positive("Informe o preço final da venda"),
   canal: z.enum(["PLATAFORMA_MATCH", "PLATAFORMA_CONTATO", "FORA"]),
   dataVenda: z.string().optional(),
+  compradorNome: z.string().max(120).optional(),
+  compradorEmail: z.string().email("E-mail do comprador inválido").optional().or(z.literal("")),
+  origemComprador: z.enum(["MARKETPLACE", "INSTAGRAM", "WHATSAPP", "INDICACAO", "OUTRO"]).optional(),
+  estadoComprador: z.string().length(2).optional().or(z.literal("")),
+  cidadeComprador: z.string().max(80).optional(),
 });
 
 const anuncioUpdateSchema = z.object({
@@ -89,6 +94,13 @@ export async function PATCH(
         precoFinal: venda.precoFinal,
         canal: venda.canal,
         dataVenda: venda.dataVenda ? new Date(venda.dataVenda) : undefined,
+        comprador: {
+          nome: venda.compradorNome || null,
+          email: venda.compradorEmail || null,
+          origem: venda.origemComprador ?? null,
+          estado: venda.estadoComprador ? venda.estadoComprador.toUpperCase() : null,
+          cidade: venda.cidadeComprador || null,
+        },
       });
 
       // A comissão da plataforma vale para qualquer venda marcada, seja qual

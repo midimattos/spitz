@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { LABEL_LOCUS, LABEL_ORIGEM_GENOTIPO } from "@/lib/labels";
@@ -134,6 +135,11 @@ export default async function SimuladorCruzamentoPage({
         Compare dois cães do seu plantel e veja a chance de cada cor, marcação
         e gene oculto na ninhada.
       </p>
+
+      <Link href="/dashboard/criador/cruzamentos/sugestoes" className="card mt-6 p-4 block text-sm hover:opacity-90">
+        <strong style={{ color: "var(--pine)" }}>Cruzamentos sugeridos pelo mercado</strong>
+        <span style={{ color: "var(--ink-muted)" }}> — veja quais pares do seu plantel rendem mais e produzem as cores em falta.</span>
+      </Link>
 
       <form method="GET" className="card mt-8 p-6 grid sm:grid-cols-2 gap-4">
         <div>

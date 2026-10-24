@@ -8,7 +8,13 @@ import type { CanalVenda, Prisma } from "@prisma/client";
 
 export async function registrarVenda(
   tx: Prisma.TransactionClient | typeof prisma,
-  args: { anuncioId: string; precoFinal: number; canal: CanalVenda; dataVenda?: Date }
+  args: {
+    anuncioId: string;
+    precoFinal: number;
+    canal: CanalVenda;
+    dataVenda?: Date;
+    comprador?: { nome: string | null; email: string | null; origem: string | null; estado: string | null; cidade: string | null };
+  }
 ) {
   const anuncio = await tx.anuncio.findUniqueOrThrow({
     where: { id: args.anuncioId },
@@ -38,6 +44,11 @@ export async function registrarVenda(
     sexo: anuncio.cao.sexo,
     estado: anuncio.canil.estado,
     temDossie: anuncio.cao.dossieGenetico?.publicado ?? false,
+    compradorNome: args.comprador?.nome ?? null,
+    compradorEmail: args.comprador?.email ?? null,
+    origemComprador: args.comprador?.origem ?? null,
+    estadoComprador: args.comprador?.estado ?? null,
+    cidadeComprador: args.comprador?.cidade ?? null,
   };
 
   return tx.vendaRegistro.upsert({

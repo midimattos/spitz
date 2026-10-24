@@ -5,6 +5,7 @@ import { formatarData, LABEL_SEXO } from "@/lib/labels";
 import { formatarMoeda } from "@/lib/financeiro";
 import { RegistrarPartoForm } from "@/components/registrar-parto-form";
 import { diasEntre, estadoDaNinhada, montarMarcos, ROTULO_ESTADO } from "@/lib/ninhadas";
+import { calcularMargemNinhada } from "@/lib/margem-ninhada";
 
 function Kpi({ titulo, valor, nota }: { titulo: string; valor: string; nota?: string }) {
   return (
@@ -36,6 +37,17 @@ export default async function NinhadasPage() {
       })
     : [];
 
+  const lancamentos = canil
+    ? (await prisma.lancamentoFinanceiro.findMany({ where: { canilId: canil.id } })).map((l) => ({
+        tipo: l.tipo,
+        categoria: l.categoria,
+        valor: Number(l.valor),
+        data: l.data,
+        caoId: l.caoId,
+        ninhadaId: l.ninhadaId,
+      }))
+    : [];
+
   const dadosNinhadas = ninhadas.map((n) => {
     const cria = n.dataParto
       ? filhotes.filter(
@@ -46,7 +58,7 @@ export default async function NinhadasPage() {
     const receita = vendas.reduce((t, v) => t + Number(v.precoFinal), 0);
     const nascidos = n.quantidadeFilhotes ?? cria.length;
     const estado = estadoDaNinhada(n, vendas.length, nascidos, agora);
-    return { n, cria, vendas, receita, nascidos, estado, marcos: montarMarcos(n, agora) };
+    return { n, cria, vendas, receita, nascidos, estado, marcos: montarMarcos(n, agora), margem: calcularMargemNinhada(n, lancamentos, receita, nascidos) };
   });
 
   const emGestacao = dadosNinhadas.filter((d) => d.estado === "GESTACAO" || d.estado === "ATRASADA");
@@ -111,7 +123,7 @@ export default async function NinhadasPage() {
           )}
 
           <div className="mt-8 space-y-5">
-            {dadosNinhadas.map(({ n, cria, vendas, receita, nascidos, estado, marcos }) => (
+            {dadosNinhadas.map(({ n, cria, vendas, receita, nascidos, estado, marcos, margem }) => (
               <article key={n.id} className="card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -153,6 +165,26 @@ export default async function NinhadasPage() {
                       <strong>{nascidos}</strong> nascido(s) · <strong>{vendas.length}</strong> vendido(s)
                       {receita > 0 && <> · receita <strong>{formatarMoeda(receita)}</strong></>}
                     </p>
+                    {margem.custo > 0 || receita > 0 ? (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                          ["Custo da ninhada", formatarMoeda(margem.custo), margem.estimado ? "estimado pelas despesas da mãe" : "lançamentos marcados"],
+                          ["Custo por filhote", margem.custoPorFilhote !== null ? formatarMoeda(margem.custoPorFilhote) : "—", "vender abaixo disso dá prejuízo"],
+                          ["Lucro", formatarMoeda(margem.lucro), margem.margem !== null ? `margem de ${Math.round(margem.margem * 100)}%` : ""],
+                          ["Lucro por filhote", margem.lucroPorFilhote !== null ? formatarMoeda(margem.lucroPorFilhote) : "—", ""],
+                        ].map(([t, v, nota]) => (
+                          <div key={t} className="rounded border p-3" style={{ borderColor: "var(--border-hairline)" }}>
+                            <p className="text-[11px] uppercase tracking-wider" style={{ color: "var(--ink-muted)" }}>{t}</p>
+                            <p className="font-display text-lg" style={{ color: t === "Lucro" && margem.lucro < 0 ? "#a32d2d" : "var(--pine)" }}>{v}</p>
+                            {nota && <p className="text-[11px]" style={{ color: "var(--ink-muted)" }}>{nota}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs mt-3" style={{ color: "var(--ink-muted)" }}>
+                        Para ver custo e margem, lance as despesas desta ninhada no Financeiro escolhendo a ninhada.
+                      </p>
+                    )}
                     {cria.length > 0 ? (
                       <ul className="mt-3 grid sm:grid-cols-2 gap-2 text-sm">
                         {cria.map((f) => {

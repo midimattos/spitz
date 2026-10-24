@@ -89,3 +89,24 @@ a {
 h1 {
   letter-spacing: -0.01em;
 }
+
+@media print {
+  .nao-imprimir,
+  header,
+  nav,
+  footer {
+    display: none !important;
+  }
+  body,
+  html {
+    background: #fff !important;
+  }
+  .card {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}

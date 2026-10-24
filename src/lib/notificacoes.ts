@@ -16,7 +16,7 @@ const TIPOS_COM_EMAIL: TipoNotificacao[] = [
   "CANIL_VERIFICADO",
 ];
 
-async function enviarEmail(para: string, assunto: string, texto: string, link?: string | null) {
+export async function enviarEmail(para: string, assunto: string, texto: string, link?: string | null) {
   const chave = process.env.RESEND_API_KEY;
   if (!chave) return;
 

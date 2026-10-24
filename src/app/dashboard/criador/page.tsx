@@ -99,6 +99,24 @@ export default async function DashboardCriadorPage() {
           </p>
         </Link>
 
+        <Link href="/dashboard/criador/saude" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Saúde da carteira
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail.
+          </p>
+        </Link>
+
+        <Link href="/dashboard/criador/desempenho" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Desempenho
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Seu canil x plataforma, melhor época para cobrir e perfil de quem compra.
+          </p>
+        </Link>
+
         <Link href="/dashboard/criador/cuidados" className="card p-6 hover:opacity-90">
           <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
             Cuidados

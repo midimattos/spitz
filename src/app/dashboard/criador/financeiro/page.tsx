@@ -55,7 +55,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const periodo: PeriodoId = PERIODOS.some((p) => p.id === sp.periodo) ? (sp.periodo as PeriodoId) : "12m";
   const { de, ate } = resolverPeriodo(periodo, sp.de, sp.ate);
 
-  const [brutos, caes] = await Promise.all([
+  const [brutos, caes, ninhadasOpc] = await Promise.all([
     canil
       ? prisma.lancamentoFinanceiro.findMany({
           where: { canilId: canil.id },
@@ -65,6 +65,14 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
       : Promise.resolve([]),
     canil
       ? prisma.cao.findMany({ where: { canilId: canil.id }, select: { id: true, nome: true }, orderBy: { nome: "asc" } })
+      : Promise.resolve([]),
+    canil
+      ? prisma.ninhada.findMany({
+          where: { caoMae: { canilId: canil.id } },
+          include: { caoMae: { select: { nome: true } } },
+          orderBy: { dataCobertura: "desc" },
+          take: 30,
+        })
       : Promise.resolve([]),
   ]);
 
@@ -101,9 +109,14 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             {canil?.nome} · lucro, custos e retorno do investimento
           </p>
         </div>
-        <a href={`/api/financeiro/exportar?${qs}`} className="px-4 py-2 rounded border text-sm" style={estilo}>
-          Exportar planilha (CSV)
-        </a>
+        <div className="flex gap-2">
+          <Link href="/dashboard/criador/financeiro/anual" className="px-4 py-2 rounded border text-sm" style={estilo}>
+            Relatório anual (contador)
+          </Link>
+          <a href={`/api/financeiro/exportar?${qs}`} className="px-4 py-2 rounded border text-sm" style={estilo}>
+            Exportar planilha (CSV)
+          </a>
+        </div>
       </div>
 
       <form method="GET" className="card mt-6 p-4 flex flex-wrap items-end gap-3">
@@ -225,7 +238,10 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
 
       <div className="card mt-6 p-6">
         <h2 className="font-display text-lg mb-4" style={{ color: "var(--pine)" }}>Novo lançamento</h2>
-        <LancamentoForm caesDisponiveis={caes} />
+        <LancamentoForm
+          caesDisponiveis={caes}
+          ninhadasDisponiveis={ninhadasOpc.map((n) => ({ id: n.id, rotulo: `${n.caoMae.nome} · cobertura ${formatarData(n.dataCobertura)}` }))}
+        />
       </div>
 
       <section className="mt-6">

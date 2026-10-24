@@ -38,6 +38,30 @@ function obterVisitante(): string | undefined {
   }
 }
 
+/** Classifica de onde o visitante veio (utm_source ou site de origem), sem guardar o endereço. */
+function detectarOrigem(): "instagram" | "whatsapp" | "google" | "facebook" | "direto" | "outro" {
+  type O = "instagram" | "whatsapp" | "google" | "facebook" | "direto" | "outro";
+  try {
+    // A origem vale para a sessão inteira: guarda a da primeira página aberta.
+    const guardada = window.sessionStorage.getItem("spitz_origem") as O | null;
+    if (guardada) return guardada;
+
+    const utm = new URLSearchParams(window.location.search).get("utm_source")?.toLowerCase() ?? "";
+    const ref = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : "";
+    const alvo = `${utm} ${ref}`;
+    let origem: O = "outro";
+    if (/instagram|\big\b/.test(alvo)) origem = "instagram";
+    else if (/whatsapp|wa\.me/.test(alvo)) origem = "whatsapp";
+    else if (/google/.test(alvo)) origem = "google";
+    else if (/facebook|fb\.|meta/.test(alvo)) origem = "facebook";
+    else if (!utm && (!ref || ref === window.location.hostname)) origem = "direto";
+    window.sessionStorage.setItem("spitz_origem", origem);
+    return origem;
+  } catch {
+    return "direto";
+  }
+}
+
 /**
  * Componente invisível: registra uma visualização ou busca no marketplace.
  * Roda no navegador (e não no servidor) de propósito: assim robôs e
@@ -51,7 +75,7 @@ export function RastreadorEvento(props: Props) {
     fetch("/api/eventos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...JSON.parse(chave), visitante }),
+      body: JSON.stringify({ ...JSON.parse(chave), visitante, origem: detectarOrigem() }),
       keepalive: true,
     }).catch(() => {
       /* coleta de métrica nunca deve atrapalhar a página */

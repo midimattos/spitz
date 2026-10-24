@@ -28,6 +28,7 @@ export type NovoEvento = {
   estado?: string | null;
   preco?: number | null;
   filtros?: Prisma.InputJsonValue | null;
+  origem?: string | null;
 };
 
 export async function registrarEvento(evento: NovoEvento): Promise<boolean> {
@@ -80,6 +81,7 @@ export async function registrarEvento(evento: NovoEvento): Promise<boolean> {
         estado: evento.estado ?? null,
         preco: evento.preco ?? null,
         filtros: evento.filtros ?? undefined,
+        origem: evento.origem ?? null,
       },
     });
     return true;

@@ -12,9 +12,11 @@ type CaoOpcao = { id: string; nome: string };
 export function LancamentoForm({
   caoId,
   caesDisponiveis,
+  ninhadasDisponiveis,
 }: {
   caoId?: string;
   caesDisponiveis?: CaoOpcao[];
+  ninhadasDisponiveis?: { id: string; rotulo: string }[];
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export function LancamentoForm({
       valor: parseFloat(String(formData.get("valor")).replace(",", ".")),
       data: data ? new Date(data).toISOString() : new Date().toISOString(),
       descricao: formData.get("descricao") || undefined,
+      ninhadaId: (formData.get("ninhadaId") as string) || undefined,
     };
 
     const res = await fetch("/api/financeiro", {
@@ -130,6 +133,20 @@ export function LancamentoForm({
               <option key={c.id} value={c.id}>
                 {c.nome}
               </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {ninhadasDisponiveis && ninhadasDisponiveis.length > 0 && (
+        <div>
+          <label className="text-xs" style={{ color: "var(--ink-muted)" }}>
+            Ninhada (opcional — para calcular o custo real por filhote)
+          </label>
+          <select name="ninhadaId" defaultValue="" className={campoClasse} style={campoEstilo}>
+            <option value="">— nenhuma —</option>
+            {ninhadasDisponiveis.map((n) => (
+              <option key={n.id} value={n.id}>{n.rotulo}</option>
             ))}
           </select>
         </div>
