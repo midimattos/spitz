@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { corDoCao, normalizarCor, CORES_MERCADO } from "@/lib/cores";
 import {
   calcularPrecoMercado,
+  aplicarQualidade,
+  type QualidadeCao,
   diagnosticarAnuncio,
   medianaSimples,
   FAIXA_PADRAO_POR_PORTE,
@@ -188,7 +190,39 @@ type CaoParaPreco = {
   merleCor: string | null;
   marcacaoCor: string | null;
   dossieGenetico?: { publicado: boolean } | null;
+  // Opcionais: quando presentes, a sugestão considera as características do cão.
+  microchip?: string | null;
+  paiId?: string | null;
+  maeId?: string | null;
+  temExameCorDNA?: boolean;
+  documentos?: { tipo: string }[];
+  laudosGeneticos?: { id: string }[];
+  cuidados?: { tipo: string; data: Date; proximaData: Date | null }[];
 };
+
+/** Lê as características do cão que valorizam o preço; campos não carregados ficam indefinidos (ignorados). */
+export function qualidadeDoCao(cao: CaoParaPreco, agora = new Date()): QualidadeCao {
+  const q: QualidadeCao = {};
+  if (cao.documentos) q.pedigree = cao.documentos.some((d) => d.tipo === "PEDIGREE");
+  if (cao.laudosGeneticos || cao.temExameCorDNA !== undefined || cao.documentos) {
+    q.exameDNA = !!cao.temExameCorDNA || (cao.laudosGeneticos?.length ?? 0) > 0 || !!cao.documentos?.some((d) => d.tipo === "LAUDO_GENETICO");
+  }
+  if (cao.dossieGenetico !== undefined) q.dossie = !!cao.dossieGenetico?.publicado;
+  if (cao.microchip !== undefined) q.microchip = !!cao.microchip;
+  if (cao.paiId !== undefined && cao.maeId !== undefined) q.genealogia = !!cao.paiId && !!cao.maeId;
+  if (cao.cuidados) {
+    const emDia = (tipo: string) => {
+      const reg = cao.cuidados!.filter((c) => c.tipo === tipo);
+      if (reg.length === 0) return false;
+      // em dia: a aplicação mais recente ainda não venceu (ou foi feita há menos de 1 ano, se não houver próxima data)
+      const ultimo = reg.sort((a, b) => b.data.getTime() - a.data.getTime())[0];
+      return ultimo.proximaData ? ultimo.proximaData >= agora : agora.getTime() - ultimo.data.getTime() < 365 * 86_400_000;
+    };
+    q.vacinas = emDia("VACINA");
+    q.vermifugo = emDia("VERMIFUGO");
+  }
+  return q;
+}
 
 export function caracteristicasDoCao(cao: CaoParaPreco, estado: string | null): CaracteristicasCao {
   return {
@@ -219,7 +253,7 @@ export function sugerirPreco(
   const caracteristicas = caracteristicasDoCao(cao, estado);
   const faixaCriador = (cao.porte && (faixas.get(cao.porte) ?? FAIXA_PADRAO_POR_PORTE[cao.porte])) || null;
 
-  return calcularPrecoMercado({
+  const base = calcularPrecoMercado({
     cao: caracteristicas,
     vendas: ctx.vendas,
     ativos: ctx.ativos,
@@ -227,6 +261,7 @@ export function sugerirPreco(
     faixaCriador,
     agora: ctx.carregadoEm,
   });
+  return base ? aplicarQualidade(base, qualidadeDoCao(cao, ctx.carregadoEm)) : null;
 }
 
 /** Diagnóstico de cada anúncio ativo do canil (usado na tela de anúncios e nos alertas). */

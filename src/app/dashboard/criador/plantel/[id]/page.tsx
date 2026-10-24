@@ -51,6 +51,7 @@ export default async function FichaCaoPage({
       ciclosCio: { orderBy: { dataInicio: "desc" } },
       ninhadasComoMae: { include: { caoPai: true }, orderBy: { dataCobertura: "desc" } },
       dossieGenetico: true,
+      cuidados: { select: { tipo: true, data: true, proximaData: true } },
     },
   });
 

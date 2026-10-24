@@ -1,0 +1,24 @@
+NOVA PAGINA DE PRECIFICACAO
+
+Sem migracao. So troca de arquivos.
+
+O que muda:
+- A pagina lista cada cao a vender (filhotes e caes com anuncio em andamento; "Mostrar todos"
+  exibe o plantel inteiro) com Venda rapida, Preco ideal e Teto, e uma barra mostrando onde
+  esta o preco anunciado.
+- Preco calculado com vendas, anuncios, buscas, favoritos e desejos do marketplace.
+- Quando ha poucos dados, o selo "Estimativa" e o aviso "Dados insuficientes" aparecem, e o preco
+  passa a considerar as caracteristicas do cao: pedigree, exame de DNA, dossie genetico,
+  vacinas em dia, vermifugo, microchip e pai/mae cadastrados. Quanto mais dados do mercado,
+  menos peso essas caracteristicas tem (o mercado ja embute esse valor).
+- "Como chegamos neste valor": lista o que o cao tem e o que falta (com dica de como completar).
+- A faixa de referencia por porte continua, dentro de uma secao recolhida no fim da pagina.
+- O botao "Criar anuncio com este preco" ja abre o formulario com o cao e o preco preenchidos.
+- A mesma regra vale na ficha do cao, no novo anuncio e na pagina do anuncio.
+
+PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
+1. Descompacte o zip por cima da pasta do projeto (substituir arquivos).
+2. git add .
+   git commit -m "Nova precificacao por cao"
+   git push
+3. Espere o deploy ficar Ready e abra Precificacao no painel.

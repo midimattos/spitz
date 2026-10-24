@@ -31,7 +31,7 @@ export default async function AnuncioDetalhePage({
   const anuncio = await prisma.anuncio.findFirst({
     where: { id, canilId: canil.id },
     include: {
-      cao: true,
+      cao: { include: { dossieGenetico: true, documentos: { select: { tipo: true } }, laudosGeneticos: { select: { id: true } }, cuidados: { select: { tipo: true, data: true, proximaData: true } } } },
       mensagens: { orderBy: { criadoEm: "desc" }, include: { denuncia: true } },
       matches: {
         where: { statusComprador: "ACEITO" },

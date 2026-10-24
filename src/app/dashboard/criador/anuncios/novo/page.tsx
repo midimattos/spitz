@@ -3,13 +3,14 @@ import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { carregarContextoMercado, carregarFaixasDoCanil, sugerirPreco } from "@/lib/mercado";
 import { AnuncioForm } from "@/components/anuncio-form";
 
-export default async function NovoAnuncioPage() {
+export default async function NovoAnuncioPage({ searchParams }: { searchParams: Promise<{ cao?: string }> }) {
+  const { cao: caoInicialId } = await searchParams;
   const canil = await getCanilDoCriadorLogado();
 
   const caes = canil
     ? await prisma.cao.findMany({
         where: { canilId: canil.id },
-        include: { dossieGenetico: true },
+        include: { dossieGenetico: true, documentos: { select: { tipo: true } }, laudosGeneticos: { select: { id: true } }, cuidados: { select: { tipo: true, data: true, proximaData: true } } },
         orderBy: { nome: "asc" },
       })
     : [];
@@ -44,7 +45,7 @@ export default async function NovoAnuncioPage() {
       </p>
 
       <div className="card mt-8 p-8">
-        <AnuncioForm caesDisponiveis={caesComSugestao} />
+        <AnuncioForm caesDisponiveis={caesComSugestao} caoInicialId={caoInicialId} />
       </div>
     </main>
   );

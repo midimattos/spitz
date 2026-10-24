@@ -94,7 +94,84 @@ export type ResultadoPrecificacao = {
   fatorDemanda: number;
   /** Frases curtas explicando de onde veio o número. */
   explicacao: string[];
+  /** Preenchido por `aplicarQualidade` quando as características do cão foram avaliadas. */
+  qualidade?: AjusteQualidade & { aplicado: number };
+  /** true quando há pouco dado de mercado: o número é só uma estimativa. */
+  estimativa?: boolean;
 };
+
+// ---------- Qualidade do cão (características que valorizam) ----------
+
+export type QualidadeCao = {
+  pedigree?: boolean;
+  exameDNA?: boolean;
+  dossie?: boolean;
+  vacinas?: boolean;
+  vermifugo?: boolean;
+  microchip?: boolean;
+  genealogia?: boolean;
+};
+
+export type ItemQualidade = { id: keyof QualidadeCao; rotulo: string; ok: boolean; peso: number; dica: string };
+export type AjusteQualidade = { fator: number; itens: ItemQualidade[] };
+
+const PESOS_QUALIDADE: { id: keyof QualidadeCao; rotulo: string; peso: number; dica: string }[] = [
+  { id: "pedigree", rotulo: "Pedigree", peso: 10, dica: "Anexe o pedigree na ficha do cão." },
+  { id: "exameDNA", rotulo: "Exame de DNA", peso: 6, dica: "Cadastre o laudo genético do cão." },
+  { id: "dossie", rotulo: "Dossiê genético publicado", peso: 4, dica: "Gere e publique o Dossiê Genético." },
+  { id: "vacinas", rotulo: "Vacinas em dia", peso: 4, dica: "Registre as vacinas em Cuidados." },
+  { id: "vermifugo", rotulo: "Vermifugado", peso: 1, dica: "Registre o vermífugo em Cuidados." },
+  { id: "microchip", rotulo: "Microchip", peso: 2, dica: "Informe o microchip na ficha." },
+  { id: "genealogia", rotulo: "Pai e mãe cadastrados", peso: 3, dica: "Vincule pai e mãe na árvore genealógica." },
+];
+// Um cão "típico" (pedigree, vacinas, microchip e genealogia) soma 19 e fica neutro-positivo;
+// o cálculo é relativo a esse ponto para não inflar o preço de quem tem tudo.
+const PONTO_NEUTRO_QUALIDADE = 14;
+
+/** Avalia as características informadas. Itens não informados (undefined) são ignorados. */
+export function calcularAjusteQualidade(q: QualidadeCao): AjusteQualidade {
+  const itens: ItemQualidade[] = PESOS_QUALIDADE.filter((p) => q[p.id] !== undefined).map((p) => ({
+    id: p.id,
+    rotulo: p.rotulo,
+    ok: !!q[p.id],
+    peso: p.peso,
+    dica: p.dica,
+  }));
+  if (itens.length === 0) return { fator: 1, itens };
+  const total = PESOS_QUALIDADE.reduce((t, p) => t + (q[p.id] === undefined ? 0 : q[p.id] ? p.peso : 0), 0);
+  // itens não informados contam como "neutros": entram no ponto de referência proporcionalmente
+  const referencia = PONTO_NEUTRO_QUALIDADE * (itens.reduce((t, i) => t + i.peso, 0) / PESOS_QUALIDADE.reduce((t, p) => t + p.peso, 0));
+  const fator = limitar(1 + (total - referencia) / 100, 0.85, 1.2);
+  return { fator, itens };
+}
+
+/**
+ * Ajusta a sugestão pelas características do cão. Quanto MAIS o preço vem do mercado, MENOS esse
+ * ajuste pesa (o mercado já embute o valor dessas características): faixa do criador = 100%,
+ * mistura = 50%, mercado = 0%.
+ */
+export function aplicarQualidade(r: ResultadoPrecificacao, q: QualidadeCao): ResultadoPrecificacao {
+  const ajuste = calcularAjusteQualidade(q);
+  const escala = r.fonte === "FAIXA_DO_CRIADOR" ? 1 : r.fonte === "MISTA" ? 0.5 : 0;
+  const estimativa = r.confianca === "SEM_DADOS" || r.confianca === "BAIXA";
+  if (ajuste.itens.length === 0 || escala === 0) return { ...r, qualidade: { ...ajuste, aplicado: 1 }, estimativa };
+
+  const aplicado = 1 + (ajuste.fator - 1) * escala;
+  const explicacao = [...r.explicacao];
+  const pct = Math.round((aplicado - 1) * 100);
+  if (pct !== 0) {
+    explicacao.push(`Características do cão ${pct > 0 ? "valorizam" : "reduzem"} a sugestão em ${Math.abs(pct)}% (pedigree, exames, vacinas e documentos).`);
+  }
+  return {
+    ...r,
+    vendaRapida: arredondar(r.vendaRapida * aplicado),
+    ideal: arredondar(r.ideal * aplicado),
+    teto: arredondar(r.teto * aplicado),
+    explicacao,
+    qualidade: { ...ajuste, aplicado },
+    estimativa,
+  };
+}
 
 // ---------- Constantes de calibragem ----------
 

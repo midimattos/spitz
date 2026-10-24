@@ -22,10 +22,11 @@ const ROTULO_CONFIANCA: Record<string, string> = {
 const campoClasse = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
 const campoEstilo = { borderColor: "var(--border-hairline)" };
 
-export function AnuncioForm({ caesDisponiveis }: { caesDisponiveis: CaoOpcao[] }) {
+export function AnuncioForm({ caesDisponiveis, caoInicialId }: { caesDisponiveis: CaoOpcao[]; caoInicialId?: string }) {
   const router = useRouter();
-  const [preco, setPreco] = useState("");
-  const [selecionado, setSelecionado] = useState<CaoOpcao | null>(null);
+  const inicial = caesDisponiveis.find((c) => c.id === caoInicialId) ?? null;
+  const [preco, setPreco] = useState(inicial?.precoSugerido ? inicial.precoSugerido.toFixed(2).replace(".", ",") : "");
+  const [selecionado, setSelecionado] = useState<CaoOpcao | null>(inicial);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -76,6 +77,7 @@ export function AnuncioForm({ caesDisponiveis }: { caesDisponiveis: CaoOpcao[] }
         <select
           name="caoId"
           required
+          defaultValue={inicial?.id ?? ""}
           onChange={handleSelecionarCao}
           className={campoClasse}
           style={campoEstilo}
