@@ -29,6 +29,9 @@ function getS3Client(): S3Client {
   if (!s3Client) {
     s3Client = new S3Client({
       region: "auto",
+      // O R2 não aceita os cabeçalhos de checksum automáticos das versões novas do SDK da AWS.
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
       endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
       credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID!,
@@ -158,5 +161,14 @@ export async function diagnosticarArmazenamento() {
       teste = { ok: false, detalhe: e instanceof Error ? `${e.name}: ${e.message}` : "Erro desconhecido" };
     }
   }
-  return { variaveis, teste, ambiente: process.env.VERCEL_ENV ?? "local" };
+  // Pistas para conferir com o Cloudflare sem expor o segredo: o ID da chave é só um identificador;
+  // do segredo mostramos apenas as 2 primeiras e as 2 últimas letras.
+  const idChave = process.env.R2_ACCESS_KEY_ID ?? "";
+  const segredo = process.env.R2_SECRET_ACCESS_KEY ?? "";
+  const pistas = {
+    accessKeyId: idChave,
+    segredoPontas: segredo.length >= 8 ? `${segredo.slice(0, 2)}…${segredo.slice(-2)}` : "",
+    bucket: process.env.R2_BUCKET_NAME ?? "",
+  };
+  return { variaveis, teste, pistas, ambiente: process.env.VERCEL_ENV ?? "local" };
 }

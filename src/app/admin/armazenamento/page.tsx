@@ -43,6 +43,16 @@ export default async function ArmazenamentoPage() {
       </div>
 
       <div className="card mt-6 p-6 text-sm">
+        <p className="font-medium" style={{ color: "var(--pine)" }}>Para conferir com o Cloudflare</p>
+        <ul className="mt-2 space-y-1" style={{ color: "var(--ink-muted)" }}>
+          <li>Access Key ID em uso: <span className="font-mono">{d.pistas.accessKeyId || "—"}</span></li>
+          <li>Segredo em uso começa e termina com: <span className="font-mono">{d.pistas.segredoPontas || "—"}</span></li>
+          <li>Bucket: <span className="font-mono">{d.pistas.bucket || "—"}</span></li>
+        </ul>
+        <p className="mt-2 text-xs" style={{ color: "var(--ink-muted)" }}>O Access Key ID e o segredo precisam ser do mesmo token, criado na mesma tela.</p>
+      </div>
+
+      <div className="card mt-6 p-6 text-sm">
         <p className="font-medium" style={{ color: d.teste.ok ? "var(--pine)" : "#a32d2d" }}>
           Teste de gravação: {d.teste.ok ? "funcionou" : "falhou"}
         </p>
