@@ -99,6 +99,15 @@ export default async function DashboardCriadorPage() {
           </p>
         </Link>
 
+        <Link href="/dashboard/criador/perfil" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Página pública do canil
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Seu endereço próprio, história, fotos, plantel e avaliações de compradores reais.
+          </p>
+        </Link>
+
         <Link href="/dashboard/criador/saude" className="card p-6 hover:opacity-90">
           <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
             Saúde da carteira

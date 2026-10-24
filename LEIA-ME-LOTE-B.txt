@@ -1,0 +1,23 @@
+LOTE B - MARCA DO CANIL
+
+O que muda: pagina propria do canil (seusite/nome-do-canil), selo "Membro desde" e conquistas,
+certificado digital do filhote com QR code, avaliacoes so de compradores reais, cartaz para Stories,
+album de fotos dos filhotes.
+
+PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
+1. Descompacte o zip por cima da pasta do projeto (substituir arquivos).
+2. Apague o arquivo antigo src\components\avaliacao-form.tsx (se existir)
+   npm install
+3. set "DATABASE_URL=SUA_URL_DIRETA_DO_NEON"   (sem -pooler, com aspas)
+4. npx prisma@5.22.0 migrate deploy      (aplica 20261026120000_marca_canil)
+5. git add .
+   git commit -m "Lote B: marca do canil"
+   git push
+6. Aguarde o deploy na Vercel.
+
+COMO USAR:
+- Painel > "Pagina publica do canil": escolha o endereco, escreva a historia, suba fotos, marque o plantel.
+- Plantel > ficha do cao: "Emitir certificado".
+- Ao marcar um anuncio como vendido, informe o e-mail do comprador: ele recebe certificado + convite de avaliacao.
+- Ninhadas (com parto registrado): "Adicionar fotos", link do album, WhatsApp e "Cartaz para Stories".
+Obs.: a pagina publica so aparece para canis verificados. O armazenamento de fotos (R2) precisa estar configurado.

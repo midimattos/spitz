@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { calcularComissaoVenda } from "@/lib/precos-plataforma";
 import { registrarVenda } from "@/lib/vendas";
+import { processarMarcaDaVenda } from "@/lib/marca-venda";
+import { urlBaseDaRequisicao } from "@/lib/url-base";
 
 const vendaSchema = z.object({
   precoFinal: z.number().positive("Informe o preço final da venda"),
@@ -123,6 +125,10 @@ export async function PATCH(
 
     return atualizado;
   });
+
+  if (passouAVendido && venda) {
+    await processarMarcaDaVenda(id, urlBaseDaRequisicao(request));
+  }
 
   return NextResponse.json(anuncio);
 }

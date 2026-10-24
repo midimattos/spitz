@@ -6,6 +6,7 @@ import { formatarData } from "@/lib/labels";
 import { formatarMoeda } from "@/lib/financeiro";
 import { AnuncioStatusForm } from "@/components/anuncio-status-form";
 import { AnuncioFotosForm } from "@/components/anuncio-fotos-form";
+import { CopiarTextoButton } from "@/components/copiar-texto-button";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { DenunciarLeadButton } from "@/components/denunciar-lead-button";
 import { MatchResponderForm } from "@/components/match-responder-form";
@@ -45,6 +46,10 @@ export default async function AnuncioDetalhePage({
     where: { caoId: anuncio.caoId, tipo: "PEDIGREE" },
     orderBy: { criadoEm: "desc" },
   });
+
+  const vendaRegistrada = anuncio.status === "VENDIDO"
+    ? await prisma.vendaRegistro.findUnique({ where: { anuncioId: anuncio.id }, include: { avaliacao: true, certificados: true } })
+    : null;
 
   // ---- desempenho e leitura do mercado para este anúncio ----
   const [totais, ctx, faixas] = await Promise.all([
@@ -237,6 +242,25 @@ export default async function AnuncioDetalhePage({
           <AnuncioFotosForm anuncioId={anuncio.id} />
         </div>
       </section>
+
+      {vendaRegistrada && (
+        <section className="mt-8">
+          <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Pós-venda</h2>
+          <div className="card mt-3 p-6 text-sm space-y-2">
+            {vendaRegistrada.certificados[0] && (
+              <p>Certificado do filhote: <a href={`/certificado/${vendaRegistrada.certificados[0].codigo}`} target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--brass)" }}>{vendaRegistrada.certificados[0].codigo}</a></p>
+            )}
+            {vendaRegistrada.avaliacao ? (
+              <p>Avaliação recebida: <span style={{ color: "var(--brass)" }}>{"★".repeat(vendaRegistrada.avaliacao.nota)}</span></p>
+            ) : vendaRegistrada.tokenAvaliacao ? (
+              <p>Link para o comprador avaliar: <CopiarTextoButton texto={`/avaliar/${vendaRegistrada.tokenAvaliacao}`} rotulo="Copiar link de avaliação" className="underline" style={{ color: "var(--brass)" }} />
+                {vendaRegistrada.compradorEmail ? <span style={{ color: "var(--ink-muted)" }}> (já enviado para {vendaRegistrada.compradorEmail})</span> : null}</p>
+            ) : (
+              <p style={{ color: "var(--ink-muted)" }}>Sem link de avaliação para esta venda.</p>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>

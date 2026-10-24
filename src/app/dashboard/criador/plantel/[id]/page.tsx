@@ -25,6 +25,7 @@ import { carregarContextoMercado, carregarFaixasDoCanil, sugerirPreco } from "@/
 import { PainelPreco } from "@/components/painel-preco";
 import { DossieGeneticoPanel } from "@/components/dossie-genetico-panel";
 import { FotoCaoUpload } from "@/components/foto-cao-upload";
+import { EmitirCertificado } from "@/components/emitir-certificado";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
 
@@ -54,6 +55,7 @@ export default async function FichaCaoPage({
   });
 
   if (!cao) notFound();
+  const certificadoAtual = await prisma.certificado.findFirst({ where: { caoId: cao.id, revogado: false }, orderBy: { emitidoEm: "desc" } });
 
   const machosDisponiveis =
     cao.sexo === "FEMEA"
@@ -131,6 +133,8 @@ export default async function FichaCaoPage({
           )}
         </div>
       </div>
+
+      <EmitirCertificado caoId={cao.id} codigoAtual={certificadoAtual?.codigo ?? null} />
 
       <PedigreeUpload
         caoId={cao.id}

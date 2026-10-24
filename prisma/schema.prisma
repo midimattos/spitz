@@ -102,6 +102,8 @@ model Canil {
   telefoneContato String?
   instagram   String?
   avisoSemanal Boolean @default(true) // resumo semanal de saúde da carteira por e-mail
+  fotos        String[] // galeria da página pública do canil (a primeira é a capa)
+  certificados Certificado[]
   solicitacaoVerificacaoEm DateTime? // quando o criador pediu revisão (fila de aprovação)
   criadoEm    DateTime @default(now())
 
@@ -169,6 +171,8 @@ model Cao {
   merleCor            String? // Não Merle, Merle, Harlequin
   intensidadeCor      String? // Alta (Vívida), Média, Baixa (Pálida)
   coresJaProduzidas   String[] // cores observadas em filhotes deste cão — evidência p/ inferência de portador oculto
+  exibirNoCanil       Boolean  @default(true) // mostra este cão (matriz/padreador) na página pública do canil
+  certificados        Certificado[]
 
   // ---- Genótipo de cor confirmado por exame de DNA (opcional) ----
   // Preenchido manualmente pelo criador a partir de um painel de cor (ex:
@@ -330,6 +334,8 @@ model Ninhada {
   criadoEm            DateTime  @default(now())
 
   lancamentos LancamentoFinanceiro[]
+  tokenAlbum  String? @unique // link público do álbum de fotos dos filhotes
+  fotosAlbum  FotoNinhada[]
 
   @@index([caoMaeId])
 }
@@ -455,6 +461,11 @@ model Avaliacao {
   comentario  String?
   oculta      Boolean  @default(false) // moderação: avaliação escondida pelo admin (spam/fraude)
   criadoEm    DateTime @default(now())
+
+  // Avaliação verificada: nasce de uma venda registrada (link enviado ao comprador).
+  verificada Boolean        @default(false)
+  vendaId    String?        @unique
+  venda      VendaRegistro? @relation(fields: [vendaId], references: [id], onDelete: SetNull)
 
   @@index([canilId])
 }
@@ -732,6 +743,9 @@ model VendaRegistro {
   // Perfil de quem comprou (informado pelo criador ao registrar a venda; opcional).
   compradorNome   String?
   compradorEmail  String? // usado para avaliação verificada, certificado e pós-venda
+  tokenAvaliacao  String? @unique // link único para o comprador avaliar o canil
+  avaliacao       Avaliacao?
+  certificados    Certificado[]
   origemComprador String? // MARKETPLACE | INSTAGRAM | INDICACAO | WHATSAPP | OUTRO
   estadoComprador String?
   cidadeComprador String?
@@ -817,4 +831,37 @@ model Notificacao {
 
   @@unique([userId, chave])
   @@index([userId, lida])
+}
+
+
+// ---------- Lote B: marca do canil ----------
+
+// Foto do álbum de crescimento de uma ninhada (compartilhado por link com compradores).
+model FotoNinhada {
+  id        String   @id @default(cuid())
+  ninhadaId String
+  ninhada   Ninhada  @relation(fields: [ninhadaId], references: [id], onDelete: Cascade)
+  url       String
+  legenda   String?
+  criadoEm  DateTime @default(now())
+
+  @@index([ninhadaId])
+}
+
+// Certificado digital do filhote: cartão com QR code que comprova a procedência.
+model Certificado {
+  id            String         @id @default(cuid())
+  codigo        String         @unique
+  caoId         String
+  cao           Cao            @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  canilId       String
+  canil         Canil          @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  vendaId       String?
+  venda         VendaRegistro? @relation(fields: [vendaId], references: [id], onDelete: SetNull)
+  compradorNome String?
+  emitidoEm     DateTime       @default(now())
+  revogado      Boolean        @default(false)
+
+  @@index([caoId])
+  @@index([canilId])
 }

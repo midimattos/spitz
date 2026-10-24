@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { formatarData, LABEL_SEXO } from "@/lib/labels";
 import { formatarMoeda } from "@/lib/financeiro";
+import { AlbumNinhada } from "@/components/album-ninhada";
 import { RegistrarPartoForm } from "@/components/registrar-parto-form";
 import { diasEntre, estadoDaNinhada, montarMarcos, ROTULO_ESTADO } from "@/lib/ninhadas";
 import { calcularMargemNinhada } from "@/lib/margem-ninhada";
@@ -24,7 +25,7 @@ export default async function NinhadasPage() {
   const ninhadas = canil
     ? await prisma.ninhada.findMany({
         where: { caoMae: { canilId: canil.id } },
-        include: { caoMae: true, caoPai: true },
+        include: { caoMae: true, caoPai: true, fotosAlbum: { orderBy: { criadoEm: "asc" } } },
         orderBy: { dataCobertura: "desc" },
       })
     : [];
@@ -206,6 +207,7 @@ export default async function NinhadasPage() {
                     <Link href="/dashboard/criador/plantel/novo" className="inline-block mt-4 text-sm underline" style={{ color: "var(--brass)" }}>
                       Cadastrar filhote
                     </Link>
+                    <AlbumNinhada ninhadaId={n.id} fotos={n.fotosAlbum.map((f) => ({ id: f.id, url: f.url }))} token={n.tokenAlbum} canilNome={canil?.nome ?? ""} />
                   </div>
                 ) : (
                   <div className="mt-5 pt-5 border-t" style={{ borderColor: "var(--border-hairline)" }}>
