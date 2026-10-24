@@ -1,0 +1,14 @@
+NOVA PÁGINA INICIAL
+Não precisa de migração.
+
+1. Copie a pasta "src" deste zip para dentro da pasta do projeto (substitui src\app\page.tsx).
+2. No cmd, dentro da pasta do projeto:
+   git add .
+   git commit -m "Nova pagina inicial"
+   git push
+3. Aguarde o deploy na Vercel e abra o site.
+
+O que mudou:
+- Compradores: botão "Ver filhotes disponíveis" vai direto ao marketplace (sem cadastro).
+- Criadores: seção própria "Para criadores" com os recursos do sistema e o bloco de lançamento por convite (Cadastrar meu canil / Já tenho conta).
+- Removida a mensagem de "vender mais caro".
