@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { salvarArquivo } from "@/lib/storage";
+import { salvarArquivo, descreverErroArmazenamento } from "@/lib/storage";
 
 const MAX_FOTOS = 9;
 
@@ -19,8 +19,8 @@ export async function POST(request: Request) {
     const { url } = await salvarArquivo(arquivo, `canis/${canil.id}`);
     await prisma.canil.update({ where: { id: canil.id }, data: { fotos: { push: url } } });
     return NextResponse.json({ url }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Não foi possível salvar a imagem. Verifique se o armazenamento está configurado." }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: descreverErroArmazenamento(e) }, { status: 500 });
   }
 }
 

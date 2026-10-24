@@ -45,14 +45,20 @@ async function salvarNoR2(
   contentType: string
 ): Promise<string> {
   const client = getS3Client();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: chave,
-      Body: bytes,
-      ContentType: contentType,
-    })
-  );
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: chave,
+        Body: bytes,
+        ContentType: contentType,
+      })
+    );
+  } catch (e) {
+    // Aparece nos logs da Vercel (Logs > filtrar por Error) para facilitar o diagnóstico.
+    console.error("[storage] falha ao enviar para o R2:", e);
+    throw e;
+  }
 
   // R2_PUBLIC_URL é o domínio público do bucket (custom domain ou
   // r2.dev habilitado no painel da Cloudflare), sem barra no final.
@@ -98,4 +104,20 @@ export async function salvarArquivo(
     : await salvarLocal(bytes, pastaBase, nomeArmazenado);
 
   return { url, nomeArmazenado };
+}
+
+/** Texto amigável (sem segredos) para o motivo mais provável da falha de armazenamento. */
+export function descreverErroArmazenamento(e: unknown): string {
+  const base = "Não foi possível salvar a imagem.";
+  if (!(e instanceof Error)) return `${base} Tente novamente.`;
+  const nome = `${e.name} ${e.message}`;
+  if (e.message === "ARMAZENAMENTO_NAO_CONFIGURADO" || e.message.includes("R2_PUBLIC_URL")) {
+    return "O armazenamento de fotos ainda não foi configurado no servidor.";
+  }
+  if (/InvalidAccessKeyId/i.test(nome)) return `${base} A chave de acesso do R2 (R2_ACCESS_KEY_ID) está incorreta.`;
+  if (/SignatureDoesNotMatch/i.test(nome)) return `${base} A chave secreta do R2 (R2_SECRET_ACCESS_KEY) está incorreta.`;
+  if (/AccessDenied|Forbidden/i.test(nome)) return `${base} A chave do R2 não tem permissão de escrita neste bucket.`;
+  if (/NoSuchBucket/i.test(nome)) return `${base} O nome do bucket (R2_BUCKET_NAME) está incorreto.`;
+  if (/ENOTFOUND|getaddrinfo|EAI_AGAIN/i.test(nome)) return `${base} O código da conta (R2_ACCOUNT_ID) parece incorreto.`;
+  return `${base} Tente novamente.`;
 }

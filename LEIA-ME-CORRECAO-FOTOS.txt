@@ -1,0 +1,12 @@
+CORRECAO: MENSAGENS CLARAS NO ENVIO DE FOTOS
+
+Nao muda o banco (sem migracao). Agora, quando o envio de foto falha, a tela diz o motivo mais
+provavel (chave errada, bucket errado, codigo da conta errado, sem permissao) e o erro completo
+vai para os logs da Vercel.
+
+PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
+1. Descompacte o zip por cima da pasta do projeto (substituir arquivos).
+2. git add .
+   git commit -m "Mensagens claras no envio de fotos"
+   git push
+3. Espere o deploy ficar Ready e tente enviar a foto de novo.

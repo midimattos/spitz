@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { salvarArquivo } from "@/lib/storage";
+import { salvarArquivo, descreverErroArmazenamento } from "@/lib/storage";
 
 export async function POST(
   request: Request,
@@ -29,11 +29,7 @@ export async function POST(
   try {
     ({ url } = await salvarArquivo(arquivo, `caes/${caoId}`));
   } catch (e) {
-    const naoConfigurado = e instanceof Error && (e.message === "ARMAZENAMENTO_NAO_CONFIGURADO" || e.message.includes("R2_PUBLIC_URL"));
-    return NextResponse.json(
-      { error: naoConfigurado ? "O armazenamento de fotos ainda não foi configurado no servidor." : "Falha ao salvar a imagem. Tente novamente." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: descreverErroArmazenamento(e) }, { status: 500 });
   }
 
   const atualizado = await prisma.cao.update({
