@@ -1,0 +1,35 @@
+LOTE D - INTEGRIDADE DOS DADOS DE MERCADO
+
+IMPORTANTE: este lote assume que os Lotes A, B e C ja foram colocados na pasta do projeto.
+Se ainda nao, aplique os zips deles antes, na ordem A, B, C, D.
+
+O que muda:
+- Venda DECLARADA (pelo criador) x CONFIRMADA (comprador aceitou o contrato, avaliou ou clicou
+  "Sim, comprei" no e-mail). O e-mail de pos-venda agora tem o link "Voce confirma que comprou?".
+  Confirmacao feita na MESMA rede de quem registrou a venda NAO conta (fica como sinal).
+- Campo de celular do comprador no registro da venda.
+- Numeros de mercado (radar, precificacao, liquidez, comparativo): cada canil pesa UM voto
+  (mediana das medianas por canil), no maximo 5 vendas por canil em cada segmento, e numeros
+  com menos de 3 canis diferentes nao aparecem.
+- Vendas nao confirmadas com sinal grave (e-mail do comprador igual ao do dono, mesmo comprador
+  em 3 ou mais vendas, telefone igual ao do canil) ficam fora dos numeros automaticamente.
+- Ranking, conquistas e reputacao so contam vendas confirmadas e sem sinal grave
+  (o beneficio no ranking e limitado a 10 vendas).
+- Painel novo: Admin > "Integridade dos dados" (por canil: declaradas, confirmadas, suspeitas;
+  lista de suspeitas; botoes "Confirmei por contato", "Excluir dos dados", "Restaurar").
+- Modo estrito: na Vercel, crie EXIGIR_CONFIRMACAO_NO_MERCADO = true para os numeros usarem SO
+  vendas confirmadas (recomendado quando o marketplace abrir para todos).
+
+PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
+1. Descompacte o zip por cima da pasta do projeto (substituir arquivos).
+2. set "DATABASE_URL=SUA_URL_DIRETA_DO_NEON"   (sem -pooler, com aspas)
+3. npx prisma@5.22.0 migrate deploy      (aplica 20261028120000_integridade_vendas)
+4. git add .
+   git commit -m "Lote D: integridade dos dados"
+   git push
+
+LIMITES (importante saber):
+- Confirmacao do comprador NAO e prova: pode ser alguem ligado ao canil. A defesa real e o peso
+  igual por canil, o minimo de canis e a conferencia por amostragem (ligar/WhatsApp para alguns
+  compradores e usar "Confirmei por contato").
+- A prova forte so existe com pagamento passando por terceiro (fase 2, opcional).

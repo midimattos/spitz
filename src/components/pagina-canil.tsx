@@ -1,3 +1,4 @@
+import { contarVendasConfiaveisPorCanil } from "@/lib/integridade";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -31,7 +32,7 @@ export async function PaginaCanil({ slug }: { slug: string }) {
 
   const [reputacao, vendas] = await Promise.all([
     calcularReputacao(canil.id),
-    prisma.vendaRegistro.count({ where: { canilId: canil.id } }),
+    contarVendasConfiaveisPorCanil().then((m) => m.get(canil.id) ?? 0),
   ]);
 
   const verificadas = canil.avaliacoes.filter((a) => a.verificada);

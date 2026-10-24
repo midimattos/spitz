@@ -1,3 +1,4 @@
+import { filtroVendasDeMercado } from "@/lib/integridade";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { formatarMoeda } from "@/lib/financeiro";
@@ -42,7 +43,7 @@ export default async function DesempenhoPage() {
 
   const [registros, origensViews] = await Promise.all([
     prisma.vendaRegistro.findMany({
-      where: { dataVenda: { gte: new Date(Date.now() - 730 * 86_400_000) } },
+      where: { dataVenda: { gte: new Date(Date.now() - 730 * 86_400_000) }, OR: [{ canilId: canil.id, excluida: false }, { canilId: { not: canil.id }, ...(await filtroVendasDeMercado()) }] },
       include: { anuncio: { select: { cao: { select: { dataNascimento: true } } } } },
     }),
     prisma.eventoMercado.groupBy({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { confirmarVenda, ipDaRequisicao } from "@/lib/integridade";
 
 const schema = z.object({ nome: z.string().min(3, "Digite seu nome completo").max(120), concordo: z.literal(true) });
 
@@ -18,5 +19,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     where: { id: contrato.id },
     data: { aceitoEm: new Date(), aceitoNome: parsed.data.nome, aceitoIp: ip, aceitoNavegador: request.headers.get("user-agent")?.slice(0, 250) ?? null },
   });
+  await confirmarVenda(contrato.vendaId, "CONTRATO", ip ?? ipDaRequisicao(request));
   return NextResponse.json({ ok: true });
 }

@@ -15,7 +15,7 @@ export async function calcularAnalyticsGerais() {
     prisma.cao.count(),
     prisma.anuncio.groupBy({ by: ["status"], _count: { _all: true } }),
     // GMV com o preço FINAL das vendas registradas (não o preço pedido no anúncio)
-    prisma.vendaRegistro.findMany({ select: { precoFinal: true } }),
+    prisma.vendaRegistro.findMany({ where: { excluida: false }, select: { precoFinal: true } }),
     prisma.pagamento.findMany({ where: { status: "APROVADO" }, select: { tipo: true, valor: true } }),
     prisma.user.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
   ]);

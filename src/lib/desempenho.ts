@@ -1,6 +1,8 @@
 // Desempenho do canil frente à plataforma, melhor época e perfil de quem compra.
 // Funções puras: recebem as vendas já carregadas.
 
+import { medianaPorCanil } from "@/lib/integridade";
+
 export type VendaDesempenho = {
   canilId: string;
   precoFinal: number;
@@ -53,10 +55,16 @@ export function compararComPlataforma(vendas: VendaDesempenho[], canilId: string
     return views >= 30 ? a.reduce((t, v) => t + v.contatos, 0) / views : null;
   };
 
+  // Mediana por canil (um canil, um voto) quando há vários canis; o próprio canil usa a mediana simples.
+  const centro = (a: VendaDesempenho[], f: (v: VendaDesempenho) => number) =>
+    new Set(a.map((v) => v.canilId)).size > 1
+      ? medianaPorCanil(a.map((v) => ({ canilId: v.canilId, valor: f(v) })), 1)
+      : mediana(a.map(f));
+
   const def: { rotulo: string; unidade: LinhaComparativo["unidade"]; f: (a: VendaDesempenho[]) => number | null; menorMelhor: boolean }[] = [
-    { rotulo: "Tempo até vender", unidade: "dias", f: (a) => mediana(a.map((v) => v.dias)), menorMelhor: true },
-    { rotulo: "Preço final de venda", unidade: "moeda", f: (a) => mediana(a.map((v) => v.precoFinal)), menorMelhor: false },
-    { rotulo: "Desconto sobre o preço anunciado", unidade: "percentual", f: (a) => mediana(a.map(desconto)), menorMelhor: true },
+    { rotulo: "Tempo até vender", unidade: "dias", f: (a) => centro(a, (v) => v.dias), menorMelhor: true },
+    { rotulo: "Preço final de venda", unidade: "moeda", f: (a) => centro(a, (v) => v.precoFinal), menorMelhor: false },
+    { rotulo: "Desconto sobre o preço anunciado", unidade: "percentual", f: (a) => centro(a, desconto), menorMelhor: true },
     { rotulo: "Visualizações que viram contato", unidade: "percentual", f: taxa, menorMelhor: false },
   ];
 

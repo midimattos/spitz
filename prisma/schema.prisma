@@ -747,6 +747,13 @@ model VendaRegistro {
   compradorNome   String?
   compradorEmail  String? // usado para avaliação verificada, certificado e pós-venda
   tokenAvaliacao  String?         @unique // link único para o comprador avaliar o canil
+  compradorTelefone String?
+  // Integridade dos dados: a venda é declarada pelo criador e só fica "confirmada" quando o comprador age.
+  confirmadaEm    DateTime?
+  confirmacao     String? // CONTRATO | AVALIACAO | COMPRADOR | ADMIN | MESMA_REDE | NEGADA
+  registroIp      String? // rede de quem registrou a venda (sinal de manipulação)
+  confirmacaoIp   String?
+  excluida        Boolean         @default(false) // admin tirou dos números de mercado
   avaliacao       Avaliacao?
   certificados    Certificado[]
   contrato        Contrato?

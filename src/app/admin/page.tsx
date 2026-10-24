@@ -62,6 +62,9 @@ export default async function AdminPage() {
             Logado como {session?.user?.email}.
           </p>
         </div>
+        <Link href="/admin/integridade" className="text-sm underline mr-4" style={{ color: "var(--brass)" }}>
+          Integridade dos dados
+        </Link>
         <Link href="/admin/analytics" className="text-sm underline" style={{ color: "var(--brass)" }}>
           Ver analytics
         </Link>

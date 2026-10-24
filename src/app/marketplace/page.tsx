@@ -1,3 +1,4 @@
+import { contarVendasConfiaveisPorCanil } from "@/lib/integridade";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatarMoeda } from "@/lib/financeiro";
@@ -62,12 +63,8 @@ export default async function MarketplacePage({
 
   const reputacoes = await calcularReputacaoEmLote([...new Set(todos.map((a) => a.canilId))]);
 
-  const vendasAgrupadas = await prisma.vendaRegistro.groupBy({
-    by: ["canilId"],
-    where: { canilId: { in: [...new Set(todos.map((a) => a.canilId))] } },
-    _count: { _all: true },
-  });
-  const vendasPorCanil = new Map(vendasAgrupadas.map((v) => [v.canilId, v._count._all]));
+  // Só vendas confirmadas e sem sinal de manipulação; o benefício é limitado a 10 vendas.
+  const vendasPorCanil = await contarVendasConfiaveisPorCanil();
 
   const avaliados = todos.map((a) => ({
     a,
@@ -82,8 +79,8 @@ export default async function MarketplacePage({
     if (y.c.casados.length !== x.c.casados.length) return y.c.casados.length - x.c.casados.length;
     if (x.a.canil.assinaturaPro !== y.a.canil.assinaturaPro) return x.a.canil.assinaturaPro ? -1 : 1;
     // Premia quem registra vendas na plataforma: mais vendas registradas, mais acima.
-    const vx = vendasPorCanil.get(x.a.canilId) ?? 0;
-    const vy = vendasPorCanil.get(y.a.canilId) ?? 0;
+    const vx = Math.min(10, vendasPorCanil.get(x.a.canilId) ?? 0);
+    const vy = Math.min(10, vendasPorCanil.get(y.a.canilId) ?? 0);
     if (vx !== vy) return vy - vx;
     const d = (reputacoes.get(y.a.canilId)?.score ?? 0) - (reputacoes.get(x.a.canilId)?.score ?? 0);
     return d !== 0 ? d : y.a.criadoEm.getTime() - x.a.criadoEm.getTime();

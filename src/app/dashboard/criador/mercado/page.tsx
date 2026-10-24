@@ -96,6 +96,10 @@ export default async function MercadoPage() {
 
   const abaVisao = (
     <div className="space-y-8">
+      <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+        Cálculos de venda usam {ctx.vendas.length} venda(s) de {new Set(ctx.vendas.map((v) => v.canilId)).size} canil(is). Cada canil pesa um voto e números com menos de 3 canis não são exibidos,
+        para que nenhum canil sozinho distorça o mercado.
+      </p>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           ["Visualizações", funil.visualizacoes30d],

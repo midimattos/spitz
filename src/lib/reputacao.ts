@@ -1,3 +1,4 @@
+import { contarVendasConfiaveisPorCanil } from "@/lib/integridade";
 import { prisma } from "@/lib/prisma";
 import { medianaSimples } from "@/lib/precificacao";
 
@@ -73,7 +74,7 @@ export async function calcularReputacaoEmLote(canilIds: string[]): Promise<Map<s
       where: { anuncio: { canilId: { in: canilIds } } },
       select: { criadoEm: true, respondidaEm: true, anuncio: { select: { canilId: true } } },
     }),
-    prisma.vendaRegistro.groupBy({ by: ["canilId"], where: { canilId: { in: canilIds } }, _count: { _all: true } }),
+    contarVendasConfiaveisPorCanil(),
     prisma.denunciaLead.findMany({
       where: { mensagemContato: { anuncio: { canilId: { in: canilIds } } } },
       select: { mensagemContato: { select: { anuncio: { select: { canilId: true } } } } },
@@ -109,7 +110,7 @@ export async function calcularReputacaoEmLote(canilIds: string[]): Promise<Map<s
       taxaResposta,
       horasMedianasResposta,
       totalMensagens: msgs.length,
-      vendasRegistradas: vendas.find((v) => v.canilId === canilId)?._count._all ?? 0,
+      vendasRegistradas: vendas.get(canilId) ?? 0,
       denuncias,
       score: calcularScore({ somaNotas, totalAvaliacoes: av.length, taxaResposta, horasMedianasResposta, denuncias, interacoes }),
     };

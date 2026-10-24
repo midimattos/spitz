@@ -6,6 +6,7 @@ import { calcularComissaoVenda } from "@/lib/precos-plataforma";
 import { registrarVenda } from "@/lib/vendas";
 import { processarMarcaDaVenda } from "@/lib/marca-venda";
 import { urlBaseDaRequisicao } from "@/lib/url-base";
+import { ipDaRequisicao } from "@/lib/integridade";
 import { alertarNovoAnuncio } from "@/lib/avisos-anuncio";
 
 const vendaSchema = z.object({
@@ -13,6 +14,7 @@ const vendaSchema = z.object({
   canal: z.enum(["PLATAFORMA_MATCH", "PLATAFORMA_CONTATO", "FORA"]),
   dataVenda: z.string().optional(),
   compradorNome: z.string().max(120).optional(),
+  compradorTelefone: z.string().max(30).optional(),
   compradorEmail: z.string().email("E-mail do comprador inválido").optional().or(z.literal("")),
   origemComprador: z.enum(["MARKETPLACE", "INSTAGRAM", "WHATSAPP", "INDICACAO", "OUTRO"]).optional(),
   estadoComprador: z.string().length(2).optional().or(z.literal("")),
@@ -97,7 +99,9 @@ export async function PATCH(
         precoFinal: venda.precoFinal,
         canal: venda.canal,
         dataVenda: venda.dataVenda ? new Date(venda.dataVenda) : undefined,
+        registroIp: ipDaRequisicao(request),
         comprador: {
+          telefone: venda.compradorTelefone || null,
           nome: venda.compradorNome || null,
           email: venda.compradorEmail || null,
           origem: venda.origemComprador ?? null,

@@ -1,3 +1,4 @@
+import { filtroVendasDeMercado, limitarPorCanil, medianaPorCanil } from "@/lib/integridade";
 import { prisma } from "@/lib/prisma";
 import { corDoCao, normalizarCor, CORES_MERCADO } from "@/lib/cores";
 import {
@@ -25,7 +26,7 @@ type Sexo = "MACHO" | "FEMEA";
 // ---------- Contexto carregado uma vez e reaproveitado ----------
 
 export type ContextoMercado = {
-  vendas: VendaComparavel[];
+  vendas: (VendaComparavel & { canilId: string })[];
   ativos: (AnuncioAtivoComparavel & {
     id: string; favoritos: number;
     corBase: string | null; marcacao: string | null; diluicao: string | null; merle: string | null; cidade: string | null;
@@ -49,8 +50,9 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
   const ha30d = new Date(agora.getTime() - 30 * DIA_MS);
   const ha24m = new Date(agora.getTime() - 730 * DIA_MS);
 
+  const filtro = await filtroVendasDeMercado();
   const [vendasDb, anunciosDb, desejosDb, buscasDb, favoritosDb] = await Promise.all([
-    prisma.vendaRegistro.findMany({ where: { dataVenda: { gte: ha24m } } }),
+    prisma.vendaRegistro.findMany({ where: { dataVenda: { gte: ha24m }, ...filtro } }),
     prisma.anuncio.findMany({
       where: { status: "PUBLICADO", canil: { verificado: true } },
       select: {
@@ -99,7 +101,8 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
   }
 
   return {
-    vendas: vendasDb.map((v) => ({
+    vendas: limitarPorCanil(vendasDb, (v) => v.porte ?? "-").map((v) => ({
+      canilId: v.canilId,
       preco: Number(v.precoFinal),
       precoAnunciado: Number(v.precoAnunciado),
       dias: v.diasAteVender,
@@ -270,23 +273,22 @@ export type MetricaLiquidezPorte = {
 /** Por porte: quantas vendas registradas, preço médio FINAL e tempo médio até vender. */
 export async function calcularLiquidezPorPorte(): Promise<MetricaLiquidezPorte[]> {
   const vendas = await prisma.vendaRegistro.findMany({
-    select: { porte: true, precoFinal: true, diasAteVender: true },
+    where: await filtroVendasDeMercado(),
+    select: { canilId: true, dataVenda: true, porte: true, precoFinal: true, diasAteVender: true },
   });
 
-  const grupos = new Map<string, { precos: number[]; dias: number[] }>();
-  for (const v of vendas) {
+  const grupos = new Map<string, { canilId: string; preco: number; dias: number }[]>();
+  for (const v of limitarPorCanil(vendas, (x) => x.porte ?? "-")) {
     const porte = v.porte ?? "Não informado";
-    const g = grupos.get(porte) ?? { precos: [], dias: [] };
-    g.precos.push(Number(v.precoFinal));
-    g.dias.push(v.diasAteVender);
-    grupos.set(porte, g);
+    grupos.set(porte, [...(grupos.get(porte) ?? []), { canilId: v.canilId, preco: Number(v.precoFinal), dias: v.diasAteVender }]);
   }
 
+  // Valor central por canil (um canil, um voto); sem canis suficientes, o número não aparece.
   return [...grupos].map(([porte, g]) => ({
     porte,
-    quantidadeVendida: g.precos.length,
-    precoMedioVenda: g.precos.reduce((a, b) => a + b, 0) / g.precos.length,
-    tempoMedioVendaDias: g.dias.reduce((a, b) => a + b, 0) / g.dias.length,
+    quantidadeVendida: g.length,
+    precoMedioVenda: medianaPorCanil(g.map((x) => ({ canilId: x.canilId, valor: x.preco }))),
+    tempoMedioVendaDias: medianaPorCanil(g.map((x) => ({ canilId: x.canilId, valor: x.dias }))),
   }));
 }
 
@@ -388,8 +390,8 @@ export function montarRadarPorCor(ctx: ContextoMercado): LinhaRadarCor[] {
       favoritos30d,
       anunciosAtivos,
       vendas90d: vendas90.length,
-      precoMedianoVenda: vendasCor.length ? medianaSimples(vendasCor.map((v) => v.preco)) : null,
-      diasMedianosParaVender: vendasCor.length ? medianaSimples(vendasCor.map((v) => v.dias)) : null,
+      precoMedianoVenda: medianaPorCanil(vendasCor.map((v) => ({ canilId: v.canilId, valor: v.preco }))),
+      diasMedianosParaVender: medianaPorCanil(vendasCor.map((v) => ({ canilId: v.canilId, valor: v.dias }))),
       pressao,
       situacao: classificarSituacao(pressao, sinais),
     };
@@ -456,7 +458,7 @@ export async function calcularFunil30d(): Promise<FunilMercado> {
     _count: { _all: true },
   });
   const n = (tipo: string) => grupos.find((g) => g.tipo === tipo)?._count._all ?? 0;
-  const vendas30d = await prisma.vendaRegistro.count({ where: { dataVenda: { gte: ha30d } } });
+  const vendas30d = await prisma.vendaRegistro.count({ where: { dataVenda: { gte: ha30d }, ...(await filtroVendasDeMercado()) } });
 
   const visualizacoes30d = n("VISUALIZACAO_ANUNCIO");
   const contatos30d = n("CONTATO");

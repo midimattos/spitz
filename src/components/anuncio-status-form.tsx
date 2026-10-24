@@ -30,6 +30,7 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
   const [motivo, setMotivo] = useState("");
   const [compradorNome, setCompradorNome] = useState("");
   const [compradorEmail, setCompradorEmail] = useState("");
+  const [compradorTelefone, setCompradorTelefone] = useState("");
   const [origem, setOrigem] = useState("");
   const [estadoComprador, setEstadoComprador] = useState("");
   const [cidadeComprador, setCidadeComprador] = useState("");
@@ -81,6 +82,7 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
           dataVenda: dataVenda || undefined,
           ...(compradorNome ? { compradorNome } : {}),
           ...(compradorEmail ? { compradorEmail } : {}),
+          ...(compradorTelefone ? { compradorTelefone } : {}),
           ...(origem ? { origemComprador: origem } : {}),
           ...(estadoComprador ? { estadoComprador } : {}),
           ...(cidadeComprador ? { cidadeComprador } : {}),
@@ -193,6 +195,7 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
           <div className="flex flex-wrap gap-3">
             <input value={compradorNome} onChange={(e) => setCompradorNome(e.target.value)} placeholder="Nome do comprador" className="px-2 py-1.5 rounded border bg-transparent text-sm w-48" style={campoEstilo} />
             <input value={compradorEmail} onChange={(e) => setCompradorEmail(e.target.value)} placeholder="E-mail do comprador" type="email" className="px-2 py-1.5 rounded border bg-transparent text-sm w-56" style={campoEstilo} />
+            <input value={compradorTelefone} onChange={(e) => setCompradorTelefone(e.target.value)} placeholder="Celular com DDD" inputMode="tel" className="px-2 py-1.5 rounded border bg-transparent text-sm w-40" style={campoEstilo} />
             <input value={cidadeComprador} onChange={(e) => setCidadeComprador(e.target.value)} placeholder="Cidade" className="px-2 py-1.5 rounded border bg-transparent text-sm w-36" style={campoEstilo} />
             <input value={estadoComprador} onChange={(e) => setEstadoComprador(e.target.value.toUpperCase().slice(0, 2))} placeholder="UF" className="px-2 py-1.5 rounded border bg-transparent text-sm w-16" style={campoEstilo} />
             <select value={origem} onChange={(e) => setOrigem(e.target.value)} className="px-2 py-1.5 rounded border bg-transparent text-sm" style={campoEstilo}>
