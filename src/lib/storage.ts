@@ -121,3 +121,42 @@ export function descreverErroArmazenamento(e: unknown): string {
   if (/ENOTFOUND|getaddrinfo|EAI_AGAIN/i.test(nome)) return `${base} O código da conta (R2_ACCOUNT_ID) parece incorreto.`;
   return `${base} Tente novamente.`;
 }
+
+/** Diagnóstico para o admin: confere as variáveis (sem mostrar valores) e tenta gravar um arquivo de teste. */
+export async function diagnosticarArmazenamento() {
+  const esperado: Record<string, number | null> = {
+    R2_ACCOUNT_ID: 32,
+    R2_ACCESS_KEY_ID: 32,
+    R2_SECRET_ACCESS_KEY: 64,
+    R2_BUCKET_NAME: null,
+    R2_PUBLIC_URL: null,
+  };
+  const variaveis = Object.entries(esperado).map(([nome, tamanho]) => {
+    const v = process.env[nome];
+    return {
+      nome,
+      definida: !!v,
+      tamanho: v?.length ?? 0,
+      tamanhoEsperado: tamanho,
+      espacosNasPontas: !!v && v !== v.trim(),
+      comAspas: !!v && /^["'].*["']$/.test(v.trim()),
+      terminaComBarra: nome === "R2_PUBLIC_URL" ? !!v && v.trim().endsWith("/") : false,
+      pareceEndereco: nome === "R2_ACCOUNT_ID" ? !!v && /[:./]/.test(v) : false,
+    };
+  });
+
+  let teste: { ok: boolean; detalhe: string };
+  if (!r2Configurado) {
+    teste = { ok: false, detalhe: "Variáveis R2 ausentes neste ambiente." };
+  } else {
+    try {
+      await getS3Client().send(
+        new PutObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: "diagnostico/teste.txt", Body: Buffer.from("ok"), ContentType: "text/plain" })
+      );
+      teste = { ok: true, detalhe: "Gravação de teste concluída." };
+    } catch (e) {
+      teste = { ok: false, detalhe: e instanceof Error ? `${e.name}: ${e.message}` : "Erro desconhecido" };
+    }
+  }
+  return { variaveis, teste, ambiente: process.env.VERCEL_ENV ?? "local" };
+}

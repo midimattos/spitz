@@ -1,4 +1,4 @@
-CORRECAO: MENSAGENS CLARAS NO ENVIO DE FOTOS
+CORRECAO: DIAGNOSTICO DO ENVIO DE FOTOS
 
 Nao muda o banco (sem migracao). Agora, quando o envio de foto falha, a tela diz o motivo mais
 provavel (chave errada, bucket errado, codigo da conta errado, sem permissao) e o erro completo
@@ -10,3 +10,9 @@ PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
    git commit -m "Mensagens claras no envio de fotos"
    git push
 3. Espere o deploy ficar Ready e tente enviar a foto de novo.
+
+NOVO: depois do deploy, entre como admin e abra  /admin/armazenamento  (tambem ha o link
+"Diagnostico de fotos" no topo da pagina Admin). A pagina mostra, para cada variavel R2, se esta
+definida, o tamanho e problemas comuns (espaco, aspas, tamanho errado) e faz um teste real de
+gravacao. Os valores das chaves nunca aparecem.
+Tamanhos esperados: R2_ACCOUNT_ID = 32, R2_ACCESS_KEY_ID = 32, R2_SECRET_ACCESS_KEY = 64.
