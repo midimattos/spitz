@@ -151,7 +151,9 @@ export default async function PrecificacaoPage({ searchParams }: { searchParams:
 
                     {!sug ? (
                       <p className="mt-4 text-sm" style={{ color: "var(--ink-muted)" }}>
-                        Para estimar o preço, informe o <strong>porte</strong> do cão na{" "}
+                        {cao.porte
+                          ? <>Não reconhecemos o porte &quot;{cao.porte}&quot;. Use Anão, Pequeno ou Médio na{" "}</>
+                          : <>Para estimar o preço, informe o <strong>porte</strong> do cão na{" "}</>}
                         <Link href={`/dashboard/criador/plantel/${cao.id}/editar`} className="underline" style={{ color: "var(--brass)" }}>ficha do plantel</Link>.
                       </p>
                     ) : (

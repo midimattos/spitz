@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { corDoCao, normalizarCor, CORES_MERCADO } from "@/lib/cores";
 import {
   calcularPrecoMercado,
+  normalizarPorte,
   aplicarQualidade,
   type QualidadeCao,
   diagnosticarAnuncio,
@@ -109,7 +110,7 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       precoAnunciado: Number(v.precoAnunciado),
       dias: v.diasAteVender,
       dataVenda: v.dataVenda,
-      porte: v.porte,
+      porte: normalizarPorte(v.porte),
       cor: v.cor,
       sexo: v.sexo,
       estado: v.estado,
@@ -121,7 +122,7 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       return {
         id: a.id,
         preco: Number(a.preco),
-        porte: a.cao.porte,
+        porte: normalizarPorte(a.cao.porte),
         cor: corDoCao(a.cao),
         sexo: a.cao.sexo,
         estado: a.canil.estado,
@@ -137,7 +138,7 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       };
     }),
     desejos: desejosDb.map((d) => ({
-      porte: d.porte,
+      porte: normalizarPorte(d.porte),
       cor: normalizarCor(d.corPelagem),
       sexo: d.sexo,
       estado: d.estado,
@@ -154,12 +155,12 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       const t = (k: string) => (typeof f[k] === "string" ? (f[k] as string) : null);
       const n = (k: string) => (typeof f[k] === "number" ? (f[k] as number) : null);
       return {
-        porte: b.porte, cor: b.cor, estado: b.estado,
+        porte: normalizarPorte(b.porte), cor: b.cor, estado: b.estado,
         corBase: t("corBase"), marcacao: t("marcacao"), diluicao: t("diluicao"), merle: t("merle"),
         precoMin: n("precoMin"), precoMax: n("precoMax"), cidade: t("cidade"),
       };
     }),
-    favoritos30d: favoritosDb,
+    favoritos30d: favoritosDb.map((f) => ({ ...f, porte: normalizarPorte(f.porte) })),
     carregadoEm: agora,
   };
 }
@@ -226,7 +227,7 @@ export function qualidadeDoCao(cao: CaoParaPreco, agora = new Date()): Qualidade
 
 export function caracteristicasDoCao(cao: CaoParaPreco, estado: string | null): CaracteristicasCao {
   return {
-    porte: cao.porte,
+    porte: normalizarPorte(cao.porte),
     cor: corDoCao(cao),
     sexo: cao.sexo,
     estado,
@@ -238,7 +239,7 @@ export async function carregarFaixasDoCanil(canilId: string): Promise<Map<string
   const faixas = await prisma.faixaPrecoBase.findMany({ where: { canilId } });
   return new Map(
     faixas.map((f) => [
-      f.porte,
+      normalizarPorte(f.porte) ?? f.porte,
       { min: Number(f.precoMinimo), medio: Number(f.precoMedio), max: Number(f.precoMaximo) },
     ])
   );
@@ -251,7 +252,8 @@ export function sugerirPreco(
   faixas: Map<string, FaixaPreco>
 ): ResultadoPrecificacao | null {
   const caracteristicas = caracteristicasDoCao(cao, estado);
-  const faixaCriador = (cao.porte && (faixas.get(cao.porte) ?? FAIXA_PADRAO_POR_PORTE[cao.porte])) || null;
+  const porteChave = normalizarPorte(cao.porte);
+  const faixaCriador = (porteChave && (faixas.get(porteChave) ?? FAIXA_PADRAO_POR_PORTE[porteChave])) || null;
 
   const base = calcularPrecoMercado({
     cao: caracteristicas,

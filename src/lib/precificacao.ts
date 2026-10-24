@@ -27,6 +27,20 @@
 // criador usa um destes valores.
 export const PORTES_SUGERIDOS = ["Anão", "Pequeno", "Médio"];
 
+/**
+ * Padroniza o porte digitado ("anao", "Anão ", "ANÃO"...) para um dos portes conhecidos.
+ * Retorna o texto original (limpo) se não reconhecer; null se vazio.
+ */
+export function normalizarPorte(porte: string | null | undefined): string | null {
+  const t = (porte ?? "").trim();
+  if (!t) return null;
+  const sem = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (sem.includes("anao")) return "Anão";
+  if (sem.includes("pequeno") || sem.includes("mini")) return "Pequeno";
+  if (sem.includes("medio") || sem.includes("grande")) return "Médio";
+  return t;
+}
+
 export type FaixaPreco = { min: number; medio: number; max: number };
 
 // Ponto de partida genérico (NÃO é pesquisa de mercado) usado só enquanto o
