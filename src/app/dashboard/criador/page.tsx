@@ -108,6 +108,15 @@ export default async function DashboardCriadorPage() {
           </p>
         </Link>
 
+        <Link href="/dashboard/criador/lista-espera" className="card p-6 hover:opacity-90">
+          <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+            Lista de espera
+          </h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Interessados que serão avisados por e-mail dos seus próximos filhotes.
+          </p>
+        </Link>
+
         <Link href="/dashboard/criador/saude" className="card p-6 hover:opacity-90">
           <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
             Saúde da carteira

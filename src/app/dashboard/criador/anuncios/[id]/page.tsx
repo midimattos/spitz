@@ -7,6 +7,7 @@ import { formatarMoeda } from "@/lib/financeiro";
 import { AnuncioStatusForm } from "@/components/anuncio-status-form";
 import { AnuncioFotosForm } from "@/components/anuncio-fotos-form";
 import { CopiarTextoButton } from "@/components/copiar-texto-button";
+import { ReservaPainel } from "@/components/reserva-painel";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { DenunciarLeadButton } from "@/components/denunciar-lead-button";
 import { MatchResponderForm } from "@/components/match-responder-form";
@@ -38,6 +39,7 @@ export default async function AnuncioDetalhePage({
         orderBy: { criadoEm: "desc" },
       },
       pagamentos: { orderBy: { criadoEm: "desc" } },
+      reservas: { where: { ativa: true }, orderBy: { criadoEm: "desc" } },
       historicoPrecos: { orderBy: { criadoEm: "desc" } },
     },
   });
@@ -48,7 +50,7 @@ export default async function AnuncioDetalhePage({
   });
 
   const vendaRegistrada = anuncio.status === "VENDIDO"
-    ? await prisma.vendaRegistro.findUnique({ where: { anuncioId: anuncio.id }, include: { avaliacao: true, certificados: true } })
+    ? await prisma.vendaRegistro.findUnique({ where: { anuncioId: anuncio.id }, include: { avaliacao: true, certificados: true, contrato: true } })
     : null;
 
   // ---- desempenho e leitura do mercado para este anúncio ----
@@ -250,6 +252,19 @@ export default async function AnuncioDetalhePage({
             {vendaRegistrada.certificados[0] && (
               <p>Certificado do filhote: <a href={`/certificado/${vendaRegistrada.certificados[0].codigo}`} target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--brass)" }}>{vendaRegistrada.certificados[0].codigo}</a></p>
             )}
+            {vendaRegistrada.contrato && (
+              <p>
+                Contrato de venda:{" "}
+                {vendaRegistrada.contrato.aceitoEm ? (
+                  <span style={{ color: "var(--pine)" }}>aceito pelo comprador em {formatarData(vendaRegistrada.contrato.aceitoEm)}</span>
+                ) : (
+                  <span>aguardando aceite do comprador — </span>
+                )}
+                {!vendaRegistrada.contrato.aceitoEm && (
+                  <CopiarTextoButton texto={`/contrato/${vendaRegistrada.contrato.token}`} rotulo="Copiar link do contrato" className="underline" style={{ color: "var(--brass)" }} />
+                )}
+              </p>
+            )}
             {vendaRegistrada.avaliacao ? (
               <p>Avaliação recebida: <span style={{ color: "var(--brass)" }}>{"★".repeat(vendaRegistrada.avaliacao.nota)}</span></p>
             ) : vendaRegistrada.tokenAvaliacao ? (
@@ -258,6 +273,21 @@ export default async function AnuncioDetalhePage({
             ) : (
               <p style={{ color: "var(--ink-muted)" }}>Sem link de avaliação para esta venda.</p>
             )}
+          </div>
+        </section>
+      )}
+
+      {(anuncio.status === "PUBLICADO" || anuncio.reservas.length > 0) && (
+        <section className="mt-8">
+          <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Reserva</h2>
+          <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
+            O sinal é combinado e pago direto a você. Registrar a reserva mostra o selo &quot;Reservado&quot; no anúncio.
+          </p>
+          <div className="card mt-3 p-6">
+            <ReservaPainel
+              anuncioId={anuncio.id}
+              reservas={anuncio.reservas.map((r) => ({ id: r.id, compradorNome: r.compradorNome, compradorEmail: r.compradorEmail, valorSinal: r.valorSinal ? Number(r.valorSinal) : null, criadoEm: r.criadoEm.toISOString() }))}
+            />
           </div>
         </section>
       )}

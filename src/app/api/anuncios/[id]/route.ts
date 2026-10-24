@@ -6,6 +6,7 @@ import { calcularComissaoVenda } from "@/lib/precos-plataforma";
 import { registrarVenda } from "@/lib/vendas";
 import { processarMarcaDaVenda } from "@/lib/marca-venda";
 import { urlBaseDaRequisicao } from "@/lib/url-base";
+import { alertarNovoAnuncio } from "@/lib/avisos-anuncio";
 
 const vendaSchema = z.object({
   precoFinal: z.number().positive("Informe o preço final da venda"),
@@ -111,7 +112,7 @@ export async function PATCH(
       const jaTemComissao = await tx.pagamento.findFirst({
         where: { anuncioId: id, tipo: "COMISSAO_VENDA" },
       });
-      if (!jaTemComissao) {
+      if (!jaTemComissao && calcularComissaoVenda(venda.precoFinal) > 0) {
         await tx.pagamento.create({
           data: {
             canilId: canil.id,
@@ -125,6 +126,10 @@ export async function PATCH(
 
     return atualizado;
   });
+
+  if (camposSimples.status === "PUBLICADO" && !existente.publicadoEm) {
+    await alertarNovoAnuncio(id, urlBaseDaRequisicao(request));
+  }
 
   if (passouAVendido && venda) {
     await processarMarcaDaVenda(id, urlBaseDaRequisicao(request));

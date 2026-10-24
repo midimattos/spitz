@@ -72,6 +72,14 @@ export async function POST(request: Request) {
         where: { id: convite.id },
         data: { usadoPorCanilId: canil.id, usadoEm: new Date() },
       });
+      // Convite com mês grátis: 30 dias de PRO para quem entrou e para quem convidou.
+      const trintaDias = 30 * 24 * 60 * 60 * 1000;
+      await prisma.canil.update({ where: { id: canil.id }, data: { proGratisAte: new Date(Date.now() + trintaDias) } });
+      if (convite.criadoPorCanilId) {
+        const quem = await prisma.canil.findUnique({ where: { id: convite.criadoPorCanilId }, select: { proGratisAte: true } });
+        const inicio = Math.max(Date.now(), quem?.proGratisAte?.getTime() ?? 0);
+        await prisma.canil.update({ where: { id: convite.criadoPorCanilId }, data: { proGratisAte: new Date(inicio + trintaDias) } });
+      }
     }
   }
 

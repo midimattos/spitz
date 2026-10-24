@@ -22,7 +22,7 @@ export default async function ConvitesPage() {
       </h1>
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
         Convide outros canis para a plataforma. Quem se cadastrar com o seu
-        código já entra verificado, sem esperar a fila de aprovação.
+        código já entra verificado, sem esperar a fila de aprovação. Cada canil que entrar dá 30 dias de PRO grátis para vocês dois.
       </p>
 
       {!canil?.verificado ? (

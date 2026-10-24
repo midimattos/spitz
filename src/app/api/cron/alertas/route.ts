@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { gerarAlertasDoCanil } from "@/lib/alertas";
+import { processarPosVenda } from "@/lib/pos-venda";
+import { urlBaseDaRequisicao } from "@/lib/url-base";
 
 // Rodado todo dia pela Vercel (ver vercel.json). A Vercel envia
 // "Authorization: Bearer <CRON_SECRET>" automaticamente quando a variável
@@ -20,5 +22,11 @@ export async function GET(request: Request) {
       console.error("[cron/alertas] falha no canil", canil.id, erro);
     }
   }
-  return NextResponse.json({ canis: canis.length, avisosCriados: total });
+  let posVenda = 0;
+  try {
+    posVenda = await processarPosVenda(urlBaseDaRequisicao(request));
+  } catch (erro) {
+    console.error("[cron/alertas] falha no pós-venda", erro);
+  }
+  return NextResponse.json({ canis: canis.length, avisosCriados: total, lembretesPosVenda: posVenda });
 }

@@ -42,6 +42,7 @@ export default async function AnuncioPublicoPage({ params }: { params: Promise<{
     where: { id, status: "PUBLICADO", canil: { verificado: true } },
     include: {
       canil: true,
+      reservas: { where: { ativa: true }, select: { id: true } },
       cao: {
         include: {
           dossieGenetico: true,
@@ -121,6 +122,11 @@ export default async function AnuncioPublicoPage({ params }: { params: Promise<{
             {LABEL_PAPEL[cao.papel]} · {LABEL_SEXO[cao.sexo]}
             {cao.porte ? ` · ${cao.porte}` : ""}
           </p>
+          {anuncio.reservas.length > 0 && (
+            <p className="inline-block text-xs px-3 py-1 rounded-full mt-2" style={{ background: "var(--brass)", color: "#fff" }}>
+              Reservado — você ainda pode entrar em contato caso a reserva não se confirme
+            </p>
+          )}
           <h1 className="font-display text-4xl mt-2 leading-tight" style={{ color: "var(--pine)" }}>
             {anuncio.titulo}
           </h1>

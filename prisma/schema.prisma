@@ -54,8 +54,8 @@ model VerificationToken {
 // ---------- Papéis do sistema ----------
 
 enum Role {
-  ADMIN     // Equipe da plataforma
-  CRIADOR   // Assinante do SaaS, dono de um ou mais canis
+  ADMIN // Equipe da plataforma
+  CRIADOR // Assinante do SaaS, dono de um ou mais canis
   COMPRADOR // Usuário do marketplace público
 }
 
@@ -81,9 +81,9 @@ model User {
   // Um usuário COMPRADOR pode ter um desejo ativo no Radar de Demanda.
   desejoComprador DesejoComprador?
 
-  favoritos          Favorito[]
-  notificacoes       Notificacao[]
-  desejosHistorico   DesejoHistorico[]
+  favoritos        Favorito[]
+  notificacoes     Notificacao[]
+  desejosHistorico DesejoHistorico[]
 
   @@index([role])
 }
@@ -91,35 +91,37 @@ model User {
 // ---------- Canil (stub — expandido na Fase 1) ----------
 
 model Canil {
-  id          String   @id @default(cuid())
-  nome        String
-  slug        String   @unique
-  cidade      String?
-  estado      String?
-  descricao   String?
-  verificado  Boolean  @default(false) // selo de canil aprovado (fase invite-only)
-  assinaturaPro Boolean @default(false) // camada PRO (Fase 8) — ativado manualmente pelo admin até a Fase 9 (cobrança) existir
-  telefoneContato String?
-  instagram   String?
-  avisoSemanal Boolean @default(true) // resumo semanal de saúde da carteira por e-mail
-  fotos        String[] // galeria da página pública do canil (a primeira é a capa)
-  certificados Certificado[]
+  id                       String        @id @default(cuid())
+  nome                     String
+  slug                     String        @unique
+  cidade                   String?
+  estado                   String?
+  descricao                String?
+  verificado               Boolean       @default(false) // selo de canil aprovado (fase invite-only)
+  assinaturaPro            Boolean       @default(false) // camada PRO (Fase 8) — ativado manualmente pelo admin até a Fase 9 (cobrança) existir
+  telefoneContato          String?
+  instagram                String?
+  proGratisAte             DateTime? // PRO liberado de graça até esta data (convites, fundadores)
+  listaEspera              ListaEspera[]
+  avisoSemanal             Boolean       @default(true) // resumo semanal de saúde da carteira por e-mail
+  fotos                    String[] // galeria da página pública do canil (a primeira é a capa)
+  certificados             Certificado[]
   solicitacaoVerificacaoEm DateTime? // quando o criador pediu revisão (fila de aprovação)
-  criadoEm    DateTime @default(now())
+  criadoEm                 DateTime      @default(now())
 
   ownerId String @unique
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  caes Cao[]
+  caes                   Cao[]
   lancamentosFinanceiros LancamentoFinanceiro[]
-  faixasPreco FaixaPrecoBase[]
-  anuncios Anuncio[]
-  avaliacoes Avaliacao[]
-  pagamentos Pagamento[]
-  criopreservacoes Criopreservacao[]
-  vendasRegistradas VendaRegistro[]
-  convitesCriados Convite[] @relation("ConvitesCriados")
-  conviteUsado    Convite?  @relation("ConviteUsado")
+  faixasPreco            FaixaPrecoBase[]
+  anuncios               Anuncio[]
+  avaliacoes             Avaliacao[]
+  pagamentos             Pagamento[]
+  criopreservacoes       Criopreservacao[]
+  vendasRegistradas      VendaRegistro[]
+  convitesCriados        Convite[]              @relation("ConvitesCriados")
+  conviteUsado           Convite?               @relation("ConviteUsado")
 
   @@index([verificado])
 }
@@ -132,9 +134,9 @@ enum Sexo {
 }
 
 enum PapelCao {
-  MATRIZ     // fêmea reprodutora ativa
-  PADREADOR  // macho reprodutor ativo
-  FILHOTE    // ainda não definiu papel reprodutivo
+  MATRIZ // fêmea reprodutora ativa
+  PADREADOR // macho reprodutor ativo
+  FILHOTE // ainda não definiu papel reprodutivo
   APOSENTADO // não reproduz mais, mas fica no histórico
 }
 
@@ -164,15 +166,15 @@ model Cao {
   atualizadoEm    DateTime  @updatedAt
 
   // ---- Fenótipo estruturado (cor), usado pelo motor de genética de cor ----
-  corBase             String? // Preto, Chocolate, Lilás, Beaver, Laranja/Sable, Wolf Sable, Creme/Branco, Azul/Cinza, Merle, Tricolor
-  marcacaoCor         String? // Sólido, Sable, Wolf Sable, Tan Points, Tricolor, Particolor, Merle, Branco Extremo, Máscara
-  corTrufa            String? // Preta, Marrom, Lilás, Azul/Acinzentada, Carne
-  diluicaoCor         String? // Densa, Diluída
-  merleCor            String? // Não Merle, Merle, Harlequin
-  intensidadeCor      String? // Alta (Vívida), Média, Baixa (Pálida)
-  coresJaProduzidas   String[] // cores observadas em filhotes deste cão — evidência p/ inferência de portador oculto
-  exibirNoCanil       Boolean  @default(true) // mostra este cão (matriz/padreador) na página pública do canil
-  certificados        Certificado[]
+  corBase           String? // Preto, Chocolate, Lilás, Beaver, Laranja/Sable, Wolf Sable, Creme/Branco, Azul/Cinza, Merle, Tricolor
+  marcacaoCor       String? // Sólido, Sable, Wolf Sable, Tan Points, Tricolor, Particolor, Merle, Branco Extremo, Máscara
+  corTrufa          String? // Preta, Marrom, Lilás, Azul/Acinzentada, Carne
+  diluicaoCor       String? // Densa, Diluída
+  merleCor          String? // Não Merle, Merle, Harlequin
+  intensidadeCor    String? // Alta (Vívida), Média, Baixa (Pálida)
+  coresJaProduzidas String[] // cores observadas em filhotes deste cão — evidência p/ inferência de portador oculto
+  exibirNoCanil     Boolean       @default(true) // mostra este cão (matriz/padreador) na página pública do canil
+  certificados      Certificado[]
 
   // ---- Genótipo de cor confirmado por exame de DNA (opcional) ----
   // Preenchido manualmente pelo criador a partir de um painel de cor (ex:
@@ -194,23 +196,23 @@ model Cao {
   // Árvore genealógica: um cão pode referenciar pai e mãe já cadastrados
   // no sistema (do mesmo canil ou de outro, para permitir linhagens externas).
   paiId         String?
-  pai           Cao?  @relation("Paternidade", fields: [paiId], references: [id])
-  filhosComoPai Cao[] @relation("Paternidade")
+  pai           Cao?    @relation("Paternidade", fields: [paiId], references: [id])
+  filhosComoPai Cao[]   @relation("Paternidade")
 
   maeId         String?
-  mae           Cao?  @relation("Maternidade", fields: [maeId], references: [id])
-  filhosComoMae Cao[] @relation("Maternidade")
+  mae           Cao?    @relation("Maternidade", fields: [maeId], references: [id])
+  filhosComoMae Cao[]   @relation("Maternidade")
 
-  documentos Documento[]
-  laudosGeneticos LaudoGenetico[]
+  documentos             Documento[]
+  laudosGeneticos        LaudoGenetico[]
   lancamentosFinanceiros LancamentoFinanceiro[]
-  ciclosCio CicloCio[]
-  ninhadasComoMae Ninhada[] @relation("NinhadaMae")
-  ninhadasComoPai Ninhada[] @relation("NinhadaPai")
-  dossieGenetico DossieGenetico?
-  anuncios Anuncio[]
-  cuidados RegistroCuidado[]
-  criopreservacoes Criopreservacao[]
+  ciclosCio              CicloCio[]
+  ninhadasComoMae        Ninhada[]              @relation("NinhadaMae")
+  ninhadasComoPai        Ninhada[]              @relation("NinhadaPai")
+  dossieGenetico         DossieGenetico?
+  anuncios               Anuncio[]
+  cuidados               RegistroCuidado[]
+  criopreservacoes       Criopreservacao[]
 
   @@index([canilId])
   @@index([papel])
@@ -234,9 +236,9 @@ model Documento {
 // ---------- Fase 2: Inteligência Genética e Saúde ----------
 
 enum StatusGenetico {
-  LIVRE     // não carrega o gene (clear)
-  PORTADOR  // carrega uma cópia do gene, mas não é afetado (carrier)
-  AFETADO   // carrega duas cópias / manifesta a condição (affected)
+  LIVRE // não carrega o gene (clear)
+  PORTADOR // carrega uma cópia do gene, mas não é afetado (carrier)
+  AFETADO // carrega duas cópias / manifesta a condição (affected)
 }
 
 // Um laudo de laboratório (ex: Embark, Wisdom Panel, laboratório local),
@@ -296,7 +298,7 @@ model LancamentoFinanceiro {
 
   // Custo atribuído a uma ninhada específica (opcional): alimenta o custo real por filhote.
   ninhadaId String?
-  ninhada   Ninhada?       @relation(fields: [ninhadaId], references: [id], onDelete: SetNull)
+  ninhada   Ninhada? @relation(fields: [ninhadaId], references: [id], onDelete: SetNull)
 
   @@index([canilId])
   @@index([caoId])
@@ -320,21 +322,21 @@ model CicloCio {
 // O padreador pode ser um cão já cadastrado no sistema (caoPaiId) ou um
 // nome livre, quando o macho pertence a outro canil (padreadorExterno).
 model Ninhada {
-  id                  String    @id @default(cuid())
-  caoMaeId            String
-  caoMae              Cao       @relation("NinhadaMae", fields: [caoMaeId], references: [id], onDelete: Cascade)
-  caoPaiId            String?
-  caoPai              Cao?      @relation("NinhadaPai", fields: [caoPaiId], references: [id])
-  padreadorExterno    String?
-  dataCobertura       DateTime
-  dataPrevistaParto   DateTime // calculada: dataCobertura + 63 dias
-  dataParto           DateTime?
-  quantidadeFilhotes  Int?
-  observacoes         String?
-  criadoEm            DateTime  @default(now())
+  id                 String    @id @default(cuid())
+  caoMaeId           String
+  caoMae             Cao       @relation("NinhadaMae", fields: [caoMaeId], references: [id], onDelete: Cascade)
+  caoPaiId           String?
+  caoPai             Cao?      @relation("NinhadaPai", fields: [caoPaiId], references: [id])
+  padreadorExterno   String?
+  dataCobertura      DateTime
+  dataPrevistaParto  DateTime // calculada: dataCobertura + 63 dias
+  dataParto          DateTime?
+  quantidadeFilhotes Int?
+  observacoes        String?
+  criadoEm           DateTime  @default(now())
 
   lancamentos LancamentoFinanceiro[]
-  tokenAlbum  String? @unique // link público do álbum de fotos dos filhotes
+  tokenAlbum  String?                @unique // link público do álbum de fotos dos filhotes
   fotosAlbum  FotoNinhada[]
 
   @@index([caoMaeId])
@@ -397,19 +399,21 @@ enum StatusAnuncio {
 // estiver com status PUBLICADO — é o que implementa o modo "invite-only"
 // da primeira fase do marketplace.
 model Anuncio {
-  id           String        @id @default(cuid())
-  caoId        String
-  cao          Cao           @relation(fields: [caoId], references: [id], onDelete: Cascade)
-  canilId      String
-  canil        Canil         @relation(fields: [canilId], references: [id], onDelete: Cascade)
-  titulo       String
-  descricao    String?
-  preco        Decimal       @db.Decimal(10, 2)
-  tipo         TipoAnuncio   @default(GRATUITO)
-  status       StatusAnuncio @default(RASCUNHO)
-  fotos        String[]
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
+  id             String         @id @default(cuid())
+  reservas       Reserva[]
+  avisosEnviados AvisoAnuncio[]
+  caoId          String
+  cao            Cao            @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  canilId        String
+  canil          Canil          @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  titulo         String
+  descricao      String?
+  preco          Decimal        @db.Decimal(10, 2)
+  tipo           TipoAnuncio    @default(GRATUITO)
+  status         StatusAnuncio  @default(RASCUNHO)
+  fotos          String[]
+  criadoEm       DateTime       @default(now())
+  atualizadoEm   DateTime       @updatedAt
 
   // Datas reais do ciclo de vida do anúncio — alimentam o "tempo até vender"
   // e a análise de encalhe do motor de mercado (antes usávamos atualizadoEm
@@ -418,12 +422,12 @@ model Anuncio {
   encerradoEm        DateTime?
   motivoEncerramento MotivoEncerramento?
 
-  mensagens MensagemContato[]
-  matches   Match[]
-  pagamentos Pagamento[]
+  mensagens       MensagemContato[]
+  matches         Match[]
+  pagamentos      Pagamento[]
   historicoPrecos HistoricoPreco[]
-  favoritos Favorito[]
-  venda     VendaRegistro?
+  favoritos       Favorito[]
+  venda           VendaRegistro?
 
   @@index([canilId])
   @@index([status])
@@ -434,16 +438,16 @@ model Anuncio {
 // Fase 7 — Radar de Demanda / matchmaking); por ora é uma caixa de
 // entrada simples para o criador.
 model MensagemContato {
-  id        String   @id @default(cuid())
-  anuncioId String
-  anuncio   Anuncio  @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
-  nome      String
-  email     String
-  telefone  String?
-  mensagem  String
-  lida      Boolean  @default(false)
+  id           String    @id @default(cuid())
+  anuncioId    String
+  anuncio      Anuncio   @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  nome         String
+  email        String
+  telefone     String?
+  mensagem     String
+  lida         Boolean   @default(false)
   respondidaEm DateTime? // quando o criador marcou como respondida (mede tempo de resposta)
-  criadoEm  DateTime @default(now())
+  criadoEm     DateTime  @default(now())
 
   denuncia DenunciaLead?
 
@@ -495,12 +499,12 @@ model DesejoComprador {
   estado     String?
   // Características detalhadas do filhote desejado (mesmos campos da busca
   // do marketplace e do cadastro do cão). Todas opcionais.
-  corBase  String?
-  marcacao String?
-  diluicao String?
-  merle    String?
-  precoMin Decimal? @db.Decimal(10, 2)
-  cidade   String?
+  corBase    String?
+  marcacao   String?
+  diluicao   String?
+  merle      String?
+  precoMin   Decimal? @db.Decimal(10, 2)
+  cidade     String?
   telefone   String
   cpf        String? // valida só o formato (dígito verificador), não consulta a Receita Federal
   ativo      Boolean  @default(true)
@@ -519,14 +523,14 @@ model DesejoComprador {
 // Segue o fluxo de "concierge" com double opt-in: o contato só é
 // revelado para os dois lados quando AMBOS aceitam.
 model Match {
-  id              String      @id @default(cuid())
+  id              String          @id @default(cuid())
   desejoId        String
   desejo          DesejoComprador @relation(fields: [desejoId], references: [id], onDelete: Cascade)
   anuncioId       String
-  anuncio         Anuncio     @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
-  statusComprador StatusOptIn @default(PENDENTE)
-  statusCriador   StatusOptIn @default(PENDENTE)
-  criadoEm        DateTime    @default(now())
+  anuncio         Anuncio         @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  statusComprador StatusOptIn     @default(PENDENTE)
+  statusCriador   StatusOptIn     @default(PENDENTE)
+  criadoEm        DateTime        @default(now())
 
   denuncia DenunciaLead?
 
@@ -599,7 +603,6 @@ model Convite {
   usadoEm          DateTime?
 }
 
-
 // ---------- Fase 11: Camada de dados do marketplace ----------
 //
 // Tudo que alimenta o motor de precificação e a inteligência de mercado
@@ -609,16 +612,16 @@ model Convite {
 
 enum MotivoEncerramento {
   VENDIDO_PLATAFORMA // vendido para alguém que veio pela plataforma
-  VENDIDO_FORA       // vendido por outro canal
-  DESISTI            // criador desistiu de vender
-  PRECO_ALTO         // retirado porque o preço não vendia
+  VENDIDO_FORA // vendido por outro canal
+  DESISTI // criador desistiu de vender
+  PRECO_ALTO // retirado porque o preço não vendia
   OUTRO
 }
 
 enum CanalVenda {
-  PLATAFORMA_MATCH   // veio pelo Radar / double opt-in
+  PLATAFORMA_MATCH // veio pelo Radar / double opt-in
   PLATAFORMA_CONTATO // veio por mensagem de contato no anúncio
-  FORA               // fechou por fora da plataforma
+  FORA // fechou por fora da plataforma
 }
 
 enum TipoEvento {
@@ -743,9 +746,11 @@ model VendaRegistro {
   // Perfil de quem comprou (informado pelo criador ao registrar a venda; opcional).
   compradorNome   String?
   compradorEmail  String? // usado para avaliação verificada, certificado e pós-venda
-  tokenAvaliacao  String? @unique // link único para o comprador avaliar o canil
+  tokenAvaliacao  String?         @unique // link único para o comprador avaliar o canil
   avaliacao       Avaliacao?
   certificados    Certificado[]
+  contrato        Contrato?
+  posVendaEnvios  PosVendaEnvio[]
   origemComprador String? // MARKETPLACE | INSTAGRAM | INDICACAO | WHATSAPP | OUTRO
   estadoComprador String?
   cidadeComprador String?
@@ -758,22 +763,22 @@ model VendaRegistro {
 // Histórico de desejos: um desejo novo NÃO apaga o anterior, vira linha
 // aqui. Dá a série temporal da demanda por cor/porte/faixa de preço.
 model DesejoHistorico {
-  id         String   @id @default(cuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  porte      String?
-  sexo       Sexo?
-  precoMax   Decimal? @db.Decimal(10, 2)
-  cor        String?
-  estado     String?
-  corBase    String?
-  marcacao   String?
-  diluicao   String?
-  merle      String?
-  precoMin   Decimal? @db.Decimal(10, 2)
-  cidade     String?
-  ativo      Boolean  @default(true)
-  criadoEm   DateTime @default(now())
+  id       String   @id @default(cuid())
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  porte    String?
+  sexo     Sexo?
+  precoMax Decimal? @db.Decimal(10, 2)
+  cor      String?
+  estado   String?
+  corBase  String?
+  marcacao String?
+  diluicao String?
+  merle    String?
+  precoMin Decimal? @db.Decimal(10, 2)
+  cidade   String?
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now())
 
   @@index([criadoEm])
   @@index([cor, porte])
@@ -833,7 +838,6 @@ model Notificacao {
   @@index([userId, lida])
 }
 
-
 // ---------- Lote B: marca do canil ----------
 
 // Foto do álbum de crescimento de uma ninhada (compartilhado por link com compradores).
@@ -864,4 +868,75 @@ model Certificado {
 
   @@index([caoId])
   @@index([canilId])
+}
+
+// ---------- Lote C: demanda e pós-venda ----------
+
+// Fila de interessados em filhotes de um canil específico.
+model ListaEspera {
+  id          String   @id @default(cuid())
+  canilId     String
+  canil       Canil    @relation(fields: [canilId], references: [id], onDelete: Cascade)
+  nome        String
+  email       String
+  telefone    String?
+  preferencia String? // texto livre: cor, sexo, porte...
+  criadoEm    DateTime @default(now())
+
+  @@unique([canilId, email])
+  @@index([canilId])
+}
+
+// Evita avisar a mesma pessoa duas vezes sobre o mesmo anúncio.
+model AvisoAnuncio {
+  id        String   @id @default(cuid())
+  anuncioId String
+  anuncio   Anuncio  @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  email     String
+  origem    String // LISTA_ESPERA | BUSCA
+  criadoEm  DateTime @default(now())
+
+  @@unique([anuncioId, email])
+}
+
+// Reserva é só um registro: o sinal é combinado e pago direto ao criador.
+model Reserva {
+  id             String   @id @default(cuid())
+  anuncioId      String
+  anuncio        Anuncio  @relation(fields: [anuncioId], references: [id], onDelete: Cascade)
+  compradorNome  String
+  compradorEmail String?
+  valorSinal     Decimal? @db.Decimal(10, 2)
+  ativa          Boolean  @default(true)
+  observacao     String?
+  criadoEm       DateTime @default(now())
+
+  @@index([anuncioId])
+}
+
+// Contrato de venda com aceite eletrônico simples (não é assinatura ICP-Brasil).
+model Contrato {
+  id              String        @id @default(cuid())
+  vendaId         String        @unique
+  venda           VendaRegistro @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  token           String        @unique
+  texto           String // cópia fiel do que o comprador viu
+  hash            String // SHA-256 do texto
+  garantiaDias    Int           @default(7)
+  criadoEm        DateTime      @default(now())
+  aceitoEm        DateTime?
+  aceitoNome      String?
+  aceitoIp        String?
+  aceitoNavegador String?
+}
+
+// Lembretes enviados ao comprador em nome do canil (um por marco).
+model PosVendaEnvio {
+  id        String        @id @default(cuid())
+  vendaId   String
+  venda     VendaRegistro @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  marco     String
+  enviadoEm DateTime      @default(now())
+
+  @@unique([vendaId, marco])
 }

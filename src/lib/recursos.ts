@@ -10,9 +10,15 @@
 
 export const RADAR_MERCADO_ATIVO = process.env.RADAR_MERCADO_ATIVO === "true";
 
-export function podeVerInteligenciaMercado(canil: { assinaturaPro: boolean } | null | undefined): boolean {
+/** PRO pago, liberado pelo admin ou período grátis (convites / fundadores). */
+export function temPro(canil: { assinaturaPro: boolean; proGratisAte?: Date | null } | null | undefined): boolean {
   if (!canil) return false;
-  return RADAR_MERCADO_ATIVO || canil.assinaturaPro;
+  return canil.assinaturaPro || (!!canil.proGratisAte && canil.proGratisAte.getTime() > Date.now());
+}
+
+export function podeVerInteligenciaMercado(canil: { assinaturaPro: boolean; proGratisAte?: Date | null } | null | undefined): boolean {
+  if (!canil) return false;
+  return RADAR_MERCADO_ATIVO || temPro(canil);
 }
 
 // Quantidade mínima de dados para um número ser exibido como "tendência"

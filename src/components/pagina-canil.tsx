@@ -8,6 +8,7 @@ import { calcularReputacao } from "@/lib/reputacao";
 import { calcularConquistas } from "@/lib/conquistas";
 import { RastreadorEvento } from "@/components/rastreador-evento";
 import { Selos } from "@/components/selos";
+import { ListaEsperaForm } from "@/components/lista-espera-form";
 import { CopiarTextoButton } from "@/components/copiar-texto-button";
 
 export async function carregarCanilPublico(slug: string) {
@@ -153,6 +154,12 @@ export async function PaginaCanil({ slug }: { slug: string }) {
             </div>
           </section>
         )}
+
+        <section className="mt-12">
+          <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Lista de espera</h2>
+          <p className="text-sm mt-1 mb-4" style={{ color: "var(--ink-muted)" }}>Quer ser avisado quando sair um novo filhote? Deixe seu e-mail.</p>
+          <ListaEsperaForm slug={canil.slug} canilNome={canil.nome} />
+        </section>
 
         <section className="mt-12">
           <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Avaliações de quem comprou</h2>

@@ -48,6 +48,7 @@ export default async function MarketplacePage({
     where: { status: "PUBLICADO", canil: { verificado: true } },
     include: {
       canil: true,
+      reservas: { where: { ativa: true }, select: { id: true } },
       cao: {
         include: {
           documentos: { select: { tipo: true } },
@@ -61,6 +62,13 @@ export default async function MarketplacePage({
 
   const reputacoes = await calcularReputacaoEmLote([...new Set(todos.map((a) => a.canilId))]);
 
+  const vendasAgrupadas = await prisma.vendaRegistro.groupBy({
+    by: ["canilId"],
+    where: { canilId: { in: [...new Set(todos.map((a) => a.canilId))] } },
+    _count: { _all: true },
+  });
+  const vendasPorCanil = new Map(vendasAgrupadas.map((v) => [v.canilId, v._count._all]));
+
   const avaliados = todos.map((a) => ({
     a,
     c: avaliarAnuncio(filtros, a.cao, a.canil, Number(a.preco)),
@@ -73,6 +81,10 @@ export default async function MarketplacePage({
     if (ry !== rx) return ry - rx;
     if (y.c.casados.length !== x.c.casados.length) return y.c.casados.length - x.c.casados.length;
     if (x.a.canil.assinaturaPro !== y.a.canil.assinaturaPro) return x.a.canil.assinaturaPro ? -1 : 1;
+    // Premia quem registra vendas na plataforma: mais vendas registradas, mais acima.
+    const vx = vendasPorCanil.get(x.a.canilId) ?? 0;
+    const vy = vendasPorCanil.get(y.a.canilId) ?? 0;
+    if (vx !== vy) return vy - vx;
     const d = (reputacoes.get(y.a.canilId)?.score ?? 0) - (reputacoes.get(x.a.canilId)?.score ?? 0);
     return d !== 0 ? d : y.a.criadoEm.getTime() - x.a.criadoEm.getTime();
   };
@@ -105,6 +117,9 @@ export default async function MarketplacePage({
           )}
         </div>
         <div className="p-4">
+          {a.reservas.length > 0 && (
+            <p className="text-xs inline-block px-2 py-0.5 rounded-full mb-1" style={{ background: "var(--brass)", color: "#fff" }}>Reservado</p>
+          )}
           <Selos selos={selos} compacto />
           {selo && (
             <p className="text-xs" style={{ color: c.naoCasam.length === 0 ? "var(--pine)" : "var(--ink-muted)" }}>
