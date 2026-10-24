@@ -59,10 +59,10 @@ export default async function PrecificacaoPage({ searchParams }: { searchParams:
 
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          ["Cães a precificar", lista.length],
-          ["Vendas na base", ctx.vendas.length],
-          ["Anúncios ativos", ctx.ativos.length],
-          ["Desejos de compradores", ctx.desejos.length],
+          ["Seus cães a precificar", lista.length],
+          ["Vendas no marketplace", ctx.vendas.length],
+          ["Anúncios no ar (todos os canis)", ctx.ativos.length],
+          ["Desejos de compradores (todos)", ctx.desejos.length],
         ].map(([rotulo, valor]) => (
           <div key={rotulo as string} className="card px-4 py-3">
             <p className="font-display text-2xl leading-none" style={{ color: "var(--pine)" }}>{valor}</p>
