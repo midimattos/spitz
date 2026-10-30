@@ -13,7 +13,7 @@ export default async function CriopreservacaoPage() {
   const [caes, itens] = canil
     ? await Promise.all([
         prisma.cao.findMany({
-          where: { canilId: canil.id },
+          where: { canilId: canil.id, externo: false },
           select: { id: true, nome: true },
           orderBy: { nome: "asc" },
         }),

@@ -47,7 +47,7 @@ export default async function SimuladorCruzamentoPage({
 
   const caes = canil
     ? await prisma.cao.findMany({
-        where: { canilId: canil.id },
+        where: { canilId: canil.id, externo: false },
         select: { id: true, nome: true, sexo: true },
         orderBy: { nome: "asc" },
       })

@@ -33,6 +33,9 @@ export function Cabecalho({ usuario, sair }: Props) {
               <Link href={painel} className="hover:underline" style={{ color: "var(--ink)" }}>
                 Meu painel
               </Link>
+              <Link href="/conta" className="hidden sm:inline hover:underline" style={{ color: "var(--ink-muted)" }}>
+                Minha conta
+              </Link>
               <span className="hidden sm:inline" style={{ color: "var(--ink-muted)" }}>
                 {usuario.nome}
               </span>

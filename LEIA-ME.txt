@@ -1,14 +1,30 @@
-NOVA PÁGINA INICIAL
-Não precisa de migração.
+LOTE G: REGISTRO DE VENDA MAIS ATRATIVO (e comissão desligada)
+Este zip é CUMULATIVO (inclui os lotes E e F). Pode copiar por cima de tudo.
 
-1. Copie a pasta "src" deste zip para dentro da pasta do projeto (substitui src\app\page.tsx).
-2. No cmd, dentro da pasta do projeto:
-   git add .
-   git commit -m "Nova pagina inicial"
+O QUE MUDOU
+- Ao registrar uma venda (Vendido), a receita entra sozinha no Financeiro ("Venda de filhote").
+- O texto do registro de venda explica o que o criador ganha (certificado, financeiro, vacinas, avaliação).
+- A página do anúncio ganha o bloco "Compre com segurança": orienta o comprador a pedir o registro
+  da compra para receber certificado, lembretes de vacina e poder avaliar o canil.
+- Pausar um anúncio publicado passa a exigir o motivo (e lembra de usar "Vendido" se vendeu).
+- Admin > Integridade: nova seção com anúncios encerrados sem venda registrada que tiveram contato
+  recente, e um quadro por canil (vendas registradas x encerrados sem venda). É um sinal para conversar
+  com o canil, não prova de venda por fora.
+- Comissão por venda fica DESLIGADA por padrão (COMISSAO_VENDA_FIXA="0"). Só cobra se você definir um valor.
+
+PASSO A PASSO
+1. Copie as pastas "src" e "prisma" e os arquivos ".env.example" e "next.config.ts" para a pasta do projeto.
+2. No cmd, na pasta do projeto:
+   npx prisma migrate deploy
+   (a nova é 20261031120000; aplica também as pendentes dos lotes anteriores, em ordem)
+3. git add .
+   git commit -m "Lote G: registro de venda atrativo, sinais de venda por fora"
    git push
-3. Aguarde o deploy na Vercel e abra o site.
+4. Na Vercel, confira que COMISSAO_VENDA_FIXA está em 0 ou ausente.
 
-O que mudou:
-- Compradores: botão "Ver filhotes disponíveis" vai direto ao marketplace (sem cadastro).
-- Criadores: seção própria "Para criadores" com os recursos do sistema e o bloco de lançamento por convite (Cadastrar meu canil / Já tenho conta).
-- Removida a mensagem de "vender mais caro".
+COMO TESTAR
+1. Publique um anúncio (conta com e-mail confirmado) e marque como Vendido com preço e e-mail do comprador.
+2. Abra Financeiro: deve existir a receita "Venda de filhote".
+3. Tente pausar um anúncio publicado sem escolher motivo: deve pedir o motivo.
+4. Abra a página pública do anúncio: deve aparecer "Compre com segurança".
+5. Em /admin/integridade, role até o fim: seção nova de encerrados sem venda.

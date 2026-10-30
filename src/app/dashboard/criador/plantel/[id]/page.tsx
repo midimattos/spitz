@@ -463,19 +463,22 @@ export default async function FichaCaoPage({
             {cao.nome}
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-            {LABEL_PAPEL[cao.papel]} · {LABEL_SEXO[cao.sexo]}
+            {cao.externo ? `De outro canil${cao.canilOrigem ? ` (${cao.canilOrigem})` : ""}` : LABEL_PAPEL[cao.papel]} · {LABEL_SEXO[cao.sexo]}
             {cao.corBase ? ` · ${cao.corBase}` : cao.corPelagem ? ` · ${cao.corPelagem}` : ""}
             {cao.porte ? ` · Porte ${cao.porte}` : ""}
+            {cao.registro ? ` · Registro ${cao.registro}` : ""}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/dashboard/criador/anuncios/novo"
-            className="px-4 py-2 rounded text-white text-sm"
-            style={{ background: "var(--pine)" }}
-          >
-            Criar anúncio
-          </Link>
+          {!cao.externo && (
+            <Link
+              href="/dashboard/criador/anuncios/novo"
+              className="px-4 py-2 rounded text-white text-sm"
+              style={{ background: "var(--pine)" }}
+            >
+              Criar anúncio
+            </Link>
+          )}
           <Link
             href={`/dashboard/criador/plantel/${cao.id}/editar`}
             className="px-4 py-2 rounded border text-sm"

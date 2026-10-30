@@ -9,7 +9,7 @@ export default async function NovoAnuncioPage({ searchParams }: { searchParams: 
 
   const caes = canil
     ? await prisma.cao.findMany({
-        where: { canilId: canil.id },
+        where: { canilId: canil.id, externo: false },
         include: { dossieGenetico: true, documentos: { select: { tipo: true } }, laudosGeneticos: { select: { id: true } }, cuidados: { select: { tipo: true, data: true, proximaData: true } } },
         orderBy: { nome: "asc" },
       })

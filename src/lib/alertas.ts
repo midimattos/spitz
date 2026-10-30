@@ -31,7 +31,7 @@ export async function gerarAlertasDoCanil(canil: { id: string; ownerId: string; 
 
   // ---- cio das matrizes ----
   const matrizes = await prisma.cao.findMany({
-    where: { canilId: canil.id, sexo: "FEMEA", dataFalecimento: null, papel: { not: "APOSENTADO" } },
+    where: { canilId: canil.id, externo: false, sexo: "FEMEA", dataFalecimento: null, papel: { not: "APOSENTADO" } },
     include: { ciclosCio: true },
   });
   for (const m of matrizes) {

@@ -51,6 +51,15 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Contador de tentativas (proteção contra abuso). Uma linha por chave+janela.
+model LimiteTaxa {
+  chave     String   @id
+  contagem  Int      @default(0)
+  expiraEm  DateTime
+
+  @@index([expiraEm])
+}
+
 // ---------- Papéis do sistema ----------
 
 enum Role {
@@ -67,6 +76,13 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   passwordHash  String? // null quando o login é só via provedor OAuth
+
+  // WhatsApp confirmado (único por conta: dificulta criar vários perfis falsos).
+  // "whatsapp" só é preenchido DEPOIS de confirmado; "whatsappPendente" guarda o
+  // número informado enquanto aguarda o código (ou a confirmação manual do admin).
+  whatsapp             String?   @unique
+  whatsappVerificadoEm DateTime?
+  whatsappPendente     String?
   image         String?
   role          Role      @default(COMPRADOR)
   createdAt     DateTime  @default(now())
@@ -173,6 +189,12 @@ model Cao {
   merleCor          String? // Não Merle, Merle, Harlequin
   intensidadeCor    String? // Alta (Vívida), Média, Baixa (Pálida)
   coresJaProduzidas String[] // cores observadas em filhotes deste cão — evidência p/ inferência de portador oculto
+  // Origem: false = cão do plantel do canil; true = cão de outro canil
+  // (ancestral/linhagem). Externos só aparecem na árvore e na escolha de pais:
+  // ficam fora de contagens, alertas, mercado, anúncios e página pública.
+  externo           Boolean       @default(false)
+  registro          String? // nº de registro no pedigree (ex: RG/SPAI/22/08293)
+  canilOrigem       String? // nome do canil/criador de origem (cães externos)
   exibirNoCanil     Boolean       @default(true) // mostra este cão (matriz/padreador) na página pública do canil
   certificados      Certificado[]
 
@@ -216,6 +238,7 @@ model Cao {
 
   @@index([canilId])
   @@index([papel])
+  @@index([registro])
 }
 
 // "Gaveta Digital": documentos anexados à ficha do cão.
@@ -295,6 +318,9 @@ model LancamentoFinanceiro {
   data      DateTime
   descricao String?
   criadoEm  DateTime       @default(now())
+
+  // Receita criada automaticamente quando uma venda é registrada (evita duplicar).
+  vendaId String? @unique
 
   // Custo atribuído a uma ninhada específica (opcional): alimenta o custo real por filhote.
   ninhadaId String?

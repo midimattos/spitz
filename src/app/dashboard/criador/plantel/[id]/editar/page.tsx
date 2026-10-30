@@ -17,7 +17,7 @@ export default async function EditarCaoPage({
 
   const caesExistentes = await prisma.cao.findMany({
     where: { canilId: canil.id },
-    select: { id: true, nome: true, sexo: true },
+    select: { id: true, nome: true, sexo: true, externo: true },
     orderBy: { nome: "asc" },
   });
 
@@ -35,6 +35,9 @@ export default async function EditarCaoPage({
             nome: cao.nome,
             sexo: cao.sexo,
             papel: cao.papel,
+            externo: cao.externo,
+            registro: cao.registro,
+            canilOrigem: cao.canilOrigem,
             corPelagem: cao.corPelagem,
             porte: cao.porte,
             microchip: cao.microchip,

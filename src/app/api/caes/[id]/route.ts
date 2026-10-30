@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { validarGenealogia } from "@/lib/genealogia";
 
 const caoUpdateSchema = z.object({
   nome: z.string().min(1).optional(),
   sexo: z.enum(["MACHO", "FEMEA"]).optional(),
   papel: z.enum(["MATRIZ", "PADREADOR", "FILHOTE", "APOSENTADO"]).optional(),
+  externo: z.boolean().optional(),
+  registro: z.string().max(60).optional(),
+  canilOrigem: z.string().max(120).optional(),
   corPelagem: z.string().optional(),
   porte: z.string().optional(),
   microchip: z.string().optional(),
@@ -83,10 +87,34 @@ export async function PATCH(
 
   const { paiId, maeId, dataNascimento, dataFalecimento, ...resto } = parsed.data;
 
+  const erroGenealogia = await validarGenealogia(canil.id, id, paiId, maeId);
+  if (erroGenealogia) return NextResponse.json({ error: erroGenealogia }, { status: 400 });
+
+  // Não dá para marcar como "de outro canil" um cão que já tem anúncio ativo.
+  if (resto.externo === true && !existente.externo) {
+    const ativos = await prisma.anuncio.count({ where: { caoId: id, status: { in: ["PUBLICADO", "PAUSADO"] } } });
+    if (ativos > 0) {
+      return NextResponse.json({ error: "Este cão tem anúncio ativo. Encerre o anúncio antes de marcá-lo como de outro canil." }, { status: 400 });
+    }
+  }
+
+  const registro = resto.registro !== undefined ? resto.registro.trim() || null : undefined;
+  if (registro) {
+    const duplicado = await prisma.cao.findFirst({ where: { canilId: canil.id, registro, NOT: { id } }, select: { nome: true } });
+    if (duplicado) {
+      return NextResponse.json({ error: `O registro ${registro} já está cadastrado (${duplicado.nome}).` }, { status: 409 });
+    }
+  }
+
   const cao = await prisma.cao.update({
     where: { id },
     data: {
       ...resto,
+      ...(registro !== undefined && { registro }),
+      ...(resto.externo !== undefined && {
+        canilOrigem: resto.externo ? resto.canilOrigem?.trim() || null : null,
+        ...(resto.externo ? { exibirNoCanil: false } : {}),
+      }),
       ...(paiId !== undefined && { paiId: paiId || null }),
       ...(maeId !== undefined && { maeId: maeId || null }),
       ...(dataNascimento !== undefined && {

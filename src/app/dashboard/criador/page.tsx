@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { situacaoDoContato } from "@/lib/whatsapp";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
@@ -74,13 +75,14 @@ export default async function DashboardCriadorPage() {
   const [naoLidas, caes, anunciosAtivos, semResposta, fila] = canil
     ? await Promise.all([
         session?.user ? prisma.notificacao.count({ where: { userId: session.user.id, lida: false } }) : 0,
-        prisma.cao.count({ where: { canilId: canil.id, dataFalecimento: null } }),
+        prisma.cao.count({ where: { canilId: canil.id, externo: false, dataFalecimento: null } }),
         prisma.anuncio.count({ where: { canilId: canil.id, status: "PUBLICADO" } }),
         prisma.mensagemContato.count({ where: { anuncio: { canilId: canil.id }, respondidaEm: null } }),
         prisma.listaEspera.count({ where: { canilId: canil.id } }),
       ])
     : [0, 0, 0, 0, 0];
 
+  const contato = session?.user ? await situacaoDoContato(session.user.id) : null;
   const pro = temPro(canil);
   const gratisAte = canil?.proGratisAte && canil.proGratisAte.getTime() > Date.now() && !canil.assinaturaPro ? canil.proGratisAte : null;
 
@@ -136,6 +138,14 @@ export default async function DashboardCriadorPage() {
           </Link>
         )}
       </header>
+
+      {contato && !contato.liberado && (
+        <Link href="/conta" className="block mt-6 rounded-lg p-4 text-sm border" style={{ borderColor: "var(--brass)", background: "#f7ecd9", color: "var(--ink)" }}>
+          <strong>Confirme seu contato:</strong>{" "}
+          {[!contato.emailOk && "e-mail", contato.exigeWhatsapp && !contato.whatsappOk && "WhatsApp"].filter(Boolean).join(" e ")} pendente. É necessário para publicar anúncios.{" "}
+          <span style={{ color: "var(--brass)" }}>Confirmar agora →</span>
+        </Link>
+      )}
 
       {canil && !canil.verificado && (
         <Link href="/dashboard/criador/verificacao" className="block mt-6 rounded-lg p-4 text-sm border" style={{ borderColor: "var(--brass)", background: "#f7ecd9", color: "var(--ink)" }}>

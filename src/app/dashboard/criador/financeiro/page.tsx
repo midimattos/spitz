@@ -64,7 +64,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         })
       : Promise.resolve([]),
     canil
-      ? prisma.cao.findMany({ where: { canilId: canil.id }, select: { id: true, nome: true }, orderBy: { nome: "asc" } })
+      ? prisma.cao.findMany({ where: { canilId: canil.id, externo: false }, select: { id: true, nome: true }, orderBy: { nome: "asc" } })
       : Promise.resolve([]),
     canil
       ? prisma.ninhada.findMany({

@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { validarGenealogia } from "@/lib/genealogia";
 
 const caoSchema = z.object({
   nome: z.string().min(1, "Informe o nome do cão"),
   sexo: z.enum(["MACHO", "FEMEA"]),
   papel: z.enum(["MATRIZ", "PADREADOR", "FILHOTE", "APOSENTADO"]).default("FILHOTE"),
+  externo: z.boolean().optional(),
+  registro: z.string().max(60).optional(),
+  canilOrigem: z.string().max(120).optional(),
   corPelagem: z.string().optional(),
   porte: z.string().optional(),
   microchip: z.string().optional(),
@@ -65,9 +69,24 @@ export async function POST(request: Request) {
 
   const { paiId, maeId, dataNascimento, ...resto } = parsed.data;
 
+  const erroGenealogia = await validarGenealogia(canil.id, null, paiId, maeId);
+  if (erroGenealogia) return NextResponse.json({ error: erroGenealogia }, { status: 400 });
+
+  const registro = resto.registro?.trim() || undefined;
+  if (registro) {
+    const duplicado = await prisma.cao.findFirst({ where: { canilId: canil.id, registro }, select: { nome: true } });
+    if (duplicado) {
+      return NextResponse.json({ error: `O registro ${registro} já está cadastrado (${duplicado.nome}).` }, { status: 409 });
+    }
+  }
+
   const cao = await prisma.cao.create({
     data: {
       ...resto,
+      registro: registro ?? null,
+      canilOrigem: resto.externo ? resto.canilOrigem?.trim() || null : null,
+      // cão de outro canil nunca aparece na página pública
+      ...(resto.externo ? { exibirNoCanil: false, papel: "APOSENTADO" as const } : {}),
       canilId: canil.id,
       paiId: paiId || null,
       maeId: maeId || null,

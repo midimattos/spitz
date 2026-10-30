@@ -24,6 +24,7 @@ function RegisterForm() {
       password: formData.get("password"),
       role,
       codigoConvite: formData.get("codigoConvite") || undefined,
+      site: formData.get("site") || undefined,
     };
 
     const res = await fetch("/api/register", {
@@ -41,7 +42,7 @@ function RegisterForm() {
 
     // Após criar a conta, autentica automaticamente e leva ao dashboard certo.
     await signIn("credentials", {
-      email: payload.email,
+      email: String(payload.email ?? "").trim().toLowerCase(),
       password: payload.password,
       redirect: false,
     });
@@ -84,6 +85,9 @@ function RegisterForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, overflow: "hidden" }}>
+            <label>Não preencha este campo<input name="site" tabIndex={-1} autoComplete="off" /></label>
+          </div>
           <div>
             <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
               Nome completo

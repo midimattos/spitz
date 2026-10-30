@@ -26,13 +26,17 @@ function LoginForm() {
     });
 
     if (res?.error) {
-      setErro("E-mail ou senha incorretos");
+      setErro(
+        res.code === "limite"
+          ? "Muitas tentativas de acesso. Aguarde alguns minutos e tente de novo."
+          : "E-mail ou senha incorretos"
+      );
       setCarregando(false);
       return;
     }
 
     // Se veio de uma página protegida (middleware), respeita o callbackUrl
-    if (callbackUrl) {
+    if (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
       router.push(callbackUrl);
       router.refresh();
       return;
@@ -87,6 +91,12 @@ function LoginForm() {
               style={{ borderColor: "var(--border-hairline)" }}
             />
           </div>
+
+          <p className="text-right text-xs -mt-2">
+            <Link href="/recuperar-senha" className="underline" style={{ color: "var(--ink-muted)" }}>
+              Esqueci minha senha
+            </Link>
+          </p>
 
           {erro && (
             <p className="text-sm" style={{ color: "#a32d2d" }}>

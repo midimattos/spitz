@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slugify";
+import { verificarLimite, ipDe, mensagemLimite } from "@/lib/limite-taxa";
+import { enviarConfirmacaoEmail } from "@/lib/confirmacao-email";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Informe seu nome completo"),
@@ -10,11 +12,27 @@ const registerSchema = z.object({
   password: z.string().min(8, "A senha precisa ter no mínimo 8 caracteres"),
   role: z.enum(["CRIADOR", "COMPRADOR"]),
   codigoConvite: z.string().optional(),
+  // campo-isca: pessoas não veem; robôs preenchem
+  site: z.string().optional(),
 });
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);
+
+  // No máximo 5 cadastros por hora e 15 por dia vindos do mesmo endereço.
+  const ip = ipDe(request.headers);
+  const [hora, dia] = await Promise.all([
+    verificarLimite(`register:ip:${ip}:h`, 5, 60 * 60),
+    verificarLimite(`register:ip:${ip}:d`, 15, 24 * 60 * 60),
+  ]);
+  if (!hora.ok || !dia.ok) {
+    return NextResponse.json({ error: mensagemLimite(hora.ok ? dia : hora) }, { status: 429 });
+  }
+  if (parsed.success && parsed.data.site) {
+    // robô: responde como se tivesse dado certo, sem criar nada
+    return NextResponse.json({ id: "ok", email: parsed.data.email }, { status: 201 });
+  }
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -23,9 +41,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, email, password, role, codigoConvite } = parsed.data;
+  const { name, password, role, codigoConvite } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
 
-  const existente = await prisma.user.findUnique({ where: { email } });
+  const existente = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
   if (existente) {
     return NextResponse.json(
       { error: "Já existe uma conta com este e-mail" },
@@ -82,6 +101,8 @@ export async function POST(request: Request) {
       }
     }
   }
+
+  await enviarConfirmacaoEmail({ id: user.id, email: user.email, name: user.name }).catch(() => null);
 
   return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
 }

@@ -19,7 +19,7 @@ export async function carregarCanilPublico(slug: string) {
       anuncios: { where: { status: "PUBLICADO" }, include: { cao: { include: { documentos: { select: { tipo: true } } } } }, orderBy: { criadoEm: "desc" } },
       avaliacoes: { where: { oculta: false }, orderBy: { criadoEm: "desc" } },
       caes: {
-        where: { exibirNoCanil: true, dataFalecimento: null, papel: { in: ["MATRIZ", "PADREADOR"] } },
+        where: { externo: false, exibirNoCanil: true, dataFalecimento: null, papel: { in: ["MATRIZ", "PADREADOR"] } },
         orderBy: { nome: "asc" },
       },
     },

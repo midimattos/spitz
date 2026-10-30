@@ -13,13 +13,16 @@ import {
   LABEL_LOCUS,
 } from "@/lib/genetica-cor";
 
-type CaoResumo = { id: string; nome: string; sexo: "MACHO" | "FEMEA" };
+type CaoResumo = { id: string; nome: string; sexo: "MACHO" | "FEMEA"; externo?: boolean };
 
 type CaoFormValues = {
   id?: string;
   nome?: string;
   sexo?: "MACHO" | "FEMEA";
   papel?: "MATRIZ" | "PADREADOR" | "FILHOTE" | "APOSENTADO";
+  externo?: boolean;
+  registro?: string | null;
+  canilOrigem?: string | null;
   corPelagem?: string | null;
   porte?: string | null;
   microchip?: string | null;
@@ -60,6 +63,7 @@ export function CaoForm({
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [externo, setExterno] = useState(!!valoresIniciais?.externo);
   const [temExameCorDNA, setTemExameCorDNA] = useState(!!valoresIniciais?.temExameCorDNA);
   const [coresProduzidas, setCoresProduzidas] = useState<string[]>(
     valoresIniciais?.coresJaProduzidas ?? []
@@ -97,7 +101,10 @@ export function CaoForm({
     const payload = {
       nome: formData.get("nome"),
       sexo: formData.get("sexo"),
-      papel: formData.get("papel"),
+      papel: externo ? "APOSENTADO" : formData.get("papel"),
+      externo,
+      registro: String(formData.get("registro") ?? "").trim(),
+      canilOrigem: externo ? String(formData.get("canilOrigem") ?? "").trim() : "",
       corPelagem: formData.get("corPelagem") || undefined,
       porte: formData.get("porte") || undefined,
       microchip: formData.get("microchip") || undefined,
@@ -143,6 +150,32 @@ export function CaoForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="card p-4">
+        <p className="text-sm" style={{ color: "var(--ink-muted)" }}>Este cão é…</p>
+        <div className="mt-2 grid sm:grid-cols-2 gap-3">
+          {([
+            [false, "Do meu plantel", "Cão do seu canil: entra nas contagens, alertas, financeiro e pode ser anunciado."],
+            [true, "De outro canil", "Ancestral ou reprodutor de fora: serve para montar a árvore genealógica, sem entrar no seu plantel."],
+          ] as const).map(([valor, titulo, texto]) => (
+            <label
+              key={titulo}
+              className="rounded border p-3 cursor-pointer"
+              style={{ borderColor: externo === valor ? "var(--pine)" : "var(--border-hairline)", background: externo === valor ? "var(--parchment)" : "transparent" }}
+            >
+              <input type="radio" name="origem" className="mr-2" checked={externo === valor} onChange={() => setExterno(valor)} />
+              <span className="font-medium" style={{ color: "var(--pine)" }}>{titulo}</span>
+              <span className="block text-xs mt-1" style={{ color: "var(--ink-muted)" }}>{texto}</span>
+            </label>
+          ))}
+        </div>
+        {externo && (
+          <div className="mt-3">
+            <label className="text-sm" style={{ color: "var(--ink-muted)" }}>Canil ou criador de origem (opcional)</label>
+            <input name="canilOrigem" defaultValue={valoresIniciais?.canilOrigem ?? ""} className={campoClasse} style={campoEstilo} />
+          </div>
+        )}
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
@@ -174,7 +207,7 @@ export function CaoForm({
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <div>
+        <div style={externo ? { display: "none" } : undefined}>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
             Papel no plantel
           </label>
@@ -230,7 +263,20 @@ export function CaoForm({
         </div>
       </div>
 
-      <div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Nº de registro (pedigree)
+          </label>
+          <input
+            name="registro"
+            placeholder="Ex: RG/SPAI/22/08293"
+            defaultValue={valoresIniciais?.registro ?? ""}
+            className={campoClasse}
+            style={campoEstilo}
+          />
+        </div>
+        <div>
         <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
           Microchip
         </label>
@@ -240,6 +286,7 @@ export function CaoForm({
           className={campoClasse}
           style={campoEstilo}
         />
+      </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">

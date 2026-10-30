@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -33,6 +34,21 @@ function Ficha({ itens }: { itens: [string, string | null | undefined][] }) {
       ))}
     </dl>
   );
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const a = await prisma.anuncio.findFirst({
+    where: { id, status: "PUBLICADO", canil: { verificado: true } },
+    include: { canil: { select: { nome: true, cidade: true, estado: true } }, cao: { select: { nome: true, sexo: true, corBase: true, corPelagem: true, fotoUrl: true } } },
+  });
+  if (!a) return { title: "Anúncio não encontrado" };
+  const cor = a.cao.corBase ?? a.cao.corPelagem;
+  const local = [a.canil.cidade, a.canil.estado].filter(Boolean).join("/");
+  const titulo = `Filhote de Spitz Alemão${cor ? ` ${cor}` : ""} · ${a.canil.nome}`;
+  const descricao = `${a.cao.sexo === "MACHO" ? "Macho" : "Fêmea"}${local ? ` em ${local}` : ""}. Ficha completa com pedigree, exames e selos de verificação.`;
+  const foto = fotosDoAnuncio(a, a.cao)[0];
+  return { title: titulo, description: descricao, openGraph: { title: titulo, description: descricao, images: foto ? [foto] : [] } };
 }
 
 export default async function AnuncioPublicoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -262,6 +278,15 @@ export default async function AnuncioPublicoPage({ params }: { params: Promise<{
           />
         </Secao>
       )}
+
+      <section className="mt-10 rounded-lg border p-5" style={{ borderColor: "var(--border-hairline)", background: "var(--parchment-card)" }}>
+        <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>Compre com segurança</h2>
+        <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+          Combine tudo com o criador e, ao fechar, <strong>peça que ele registre a venda aqui na plataforma</strong>. Você recebe por e-mail o
+          certificado digital do filhote (procedência e linhagem), lembretes das vacinas nas datas certas e o direito de avaliar o
+          canil depois de alguns dias de convivência. Compras não registradas ficam sem esses benefícios.
+        </p>
+      </section>
 
       <section id="contato" className="mt-10 scroll-mt-8">
         <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Fale com o criador</h2>

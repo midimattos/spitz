@@ -8,6 +8,8 @@ import { processarMarcaDaVenda } from "@/lib/marca-venda";
 import { urlBaseDaRequisicao } from "@/lib/url-base";
 import { ipDaRequisicao } from "@/lib/integridade";
 import { alertarNovoAnuncio } from "@/lib/avisos-anuncio";
+import { auth } from "@/lib/auth";
+import { situacaoDoContato, mensagemContatoPendente } from "@/lib/whatsapp";
 
 const vendaSchema = z.object({
   precoFinal: z.number().positive("Informe o preço final da venda"),
@@ -66,6 +68,23 @@ export async function PATCH(
     );
   }
 
+  // Publicar exige e-mail (e WhatsApp, quando o envio de código está ativo) confirmados.
+  if (camposSimples.status === "PUBLICADO" && existente.status !== "PUBLICADO") {
+    const sessao = await auth();
+    if (sessao?.user && sessao.user.role !== "ADMIN") {
+      const contato = await situacaoDoContato(sessao.user.id);
+      if (!contato.liberado) return NextResponse.json({ error: mensagemContatoPendente(contato) }, { status: 403 });
+    }
+  }
+
+  // Encerrar um anúncio publicado sem vender exige o motivo (vendeu? use "Vendido").
+  if (camposSimples.status === "PAUSADO" && existente.status === "PUBLICADO" && !motivo) {
+    return NextResponse.json(
+      { error: "Informe o motivo da pausa. Se o filhote foi vendido, use a opção Vendido para registrar a venda." },
+      { status: 400 }
+    );
+  }
+
   const dados: Record<string, unknown> = { ...camposSimples };
 
   // ---- datas e motivos do ciclo de vida ----
@@ -94,7 +113,7 @@ export async function PATCH(
     }
 
     if (passouAVendido && venda) {
-      await registrarVenda(tx, {
+      const registro = await registrarVenda(tx, {
         anuncioId: id,
         precoFinal: venda.precoFinal,
         canal: venda.canal,
@@ -108,6 +127,24 @@ export async function PATCH(
           estado: venda.estadoComprador ? venda.estadoComprador.toUpperCase() : null,
           cidade: venda.cidadeComprador || null,
         },
+      });
+
+      // Registrar a venda também lança a receita no financeiro do canil.
+      const caoDaVenda = await tx.cao.findUnique({ where: { id: existente.caoId }, select: { nome: true } });
+      const dataLancamento = venda.dataVenda ? new Date(venda.dataVenda) : new Date();
+      await tx.lancamentoFinanceiro.upsert({
+        where: { vendaId: registro.id },
+        create: {
+          canilId: canil.id,
+          caoId: existente.caoId,
+          tipo: "RECEITA",
+          categoria: "Venda de filhote",
+          valor: venda.precoFinal,
+          data: dataLancamento,
+          descricao: `Venda de ${caoDaVenda?.nome ?? "filhote"} (lançada automaticamente)`,
+          vendaId: registro.id,
+        },
+        update: { valor: venda.precoFinal, data: dataLancamento },
       });
 
       // A comissão da plataforma vale para qualquer venda marcada, seja qual

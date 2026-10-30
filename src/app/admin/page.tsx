@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminCanilToggle } from "@/components/admin-canil-toggle";
 import { AdminProToggle } from "@/components/admin-pro-toggle";
+import { AdminConfirmarContato } from "@/components/admin-confirmar-contato";
+import { formatarCelular } from "@/lib/whatsapp";
 import { AdminAvaliacaoToggle } from "@/components/admin-avaliacao-toggle";
 import { AdminDesejoValidacao } from "@/components/admin-desejo-validacao";
 import { formatarData } from "@/lib/labels";
@@ -99,6 +101,19 @@ export default async function AdminPage() {
                   {c.owner.name} · {c.owner.email} · {c._count.caes} cão(ães) ·{" "}
                   {c._count.anuncios} anúncio(s)
                   {c.cidade ? ` · ${c.cidade}${c.estado ? `/${c.estado}` : ""}` : ""}
+                </p>
+                <p className="text-xs mt-1 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--ink-muted)" }}>
+                  <span>E-mail: {c.owner.emailVerified ? "✓ confirmado" : "pendente"}</span>
+                  {!c.owner.emailVerified && <AdminConfirmarContato userId={c.owner.id} campo="email" />}
+                  <span>
+                    WhatsApp:{" "}
+                    {c.owner.whatsappVerificadoEm
+                      ? `✓ ${c.owner.whatsapp ? formatarCelular(c.owner.whatsapp) : ""}`
+                      : c.owner.whatsappPendente
+                        ? `aguardando (${formatarCelular(c.owner.whatsappPendente)})`
+                        : "não informado"}
+                  </span>
+                  {!c.owner.whatsappVerificadoEm && c.owner.whatsappPendente && <AdminConfirmarContato userId={c.owner.id} campo="whatsapp" />}
                 </p>
                 {(c.telefoneContato || c.instagram) && (
                   <p className="text-sm" style={{ color: "var(--ink-muted)" }}>

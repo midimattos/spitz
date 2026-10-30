@@ -93,7 +93,11 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
         setPendente(null);
       }
     } else if (pendente === "PAUSADO") {
-      const ok = await salvar({ status: "PAUSADO", ...(motivo ? { motivo } : {}) });
+      if (!motivo) {
+        setErro("Escolha o motivo da pausa.");
+        return;
+      }
+      const ok = await salvar({ status: "PAUSADO", motivo });
       if (ok) {
         setStatus("PAUSADO");
         setPendente(null);
@@ -144,8 +148,9 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
       {pendente === "VENDIDO" && (
         <div className="mt-4 p-4 rounded border space-y-3" style={campoEstilo}>
           <p className="text-sm" style={{ color: "var(--pine)" }}>
-            <strong>Parabéns pela venda!</strong> Esses dados ajudam o mercado — e a sua próxima
-            precificação — a ficarem mais precisos.
+            <strong>Parabéns pela venda!</strong> Ao registrar, o sistema emite o certificado digital do
+            filhote, lança a receita no seu financeiro, envia ao comprador os lembretes de vacina em nome
+            do seu canil e libera a avaliação verificada — que aparece na sua página e sobe seu canil no marketplace.
           </p>
           <div className="flex flex-wrap gap-3">
             <div>
@@ -189,8 +194,8 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
             </div>
           </div>
           <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
-            Dados do comprador (opcionais). Com o e-mail, o comprador recebe o certificado do filhote, o convite para
-            avaliar o canil e os lembretes de vacina em nome do seu canil.
+            Dados do comprador (opcionais, mas recomendados). Com o e-mail, o comprador recebe o certificado do filhote,
+            o convite para avaliar o canil e os lembretes de vacina. Sem ele, nada disso é enviado.
           </p>
           <div className="flex flex-wrap gap-3">
             <input value={compradorNome} onChange={(e) => setCompradorNome(e.target.value)} placeholder="Nome do comprador" className="px-2 py-1.5 rounded border bg-transparent text-sm w-48" style={campoEstilo} />
@@ -233,7 +238,7 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
         <div className="mt-4 p-4 rounded border space-y-3" style={campoEstilo}>
           <div>
             <label className="text-xs block" style={{ color: "var(--ink-muted)" }}>
-              Por que está pausando? (opcional)
+              Por que está pausando?
             </label>
             <select
               value={motivo}
@@ -241,12 +246,15 @@ export function AnuncioStatusForm({ anuncio }: { anuncio: Anuncio }) {
               className="px-2 py-1.5 rounded border bg-transparent text-sm"
               style={campoEstilo}
             >
-              <option value="">Prefiro não informar</option>
+              <option value="">Selecione…</option>
               <option value="PRECO_ALTO">O preço não estava vendendo</option>
               <option value="DESISTI">Desisti de vender</option>
               <option value="OUTRO">Outro motivo</option>
             </select>
           </div>
+          <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+            Vendeu o filhote? Não pause: escolha <strong>Vendido</strong> para registrar a venda e liberar o certificado digital, o lançamento no financeiro e a avaliação do comprador.
+          </p>
           <div className="flex gap-2">
             <button
               type="button"

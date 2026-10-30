@@ -12,7 +12,7 @@ export async function calcularAnalyticsGerais() {
   ] = await Promise.all([
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
     prisma.canil.findMany({ select: { verificado: true } }),
-    prisma.cao.count(),
+    prisma.cao.count({ where: { externo: false } }),
     prisma.anuncio.groupBy({ by: ["status"], _count: { _all: true } }),
     // GMV com o preço FINAL das vendas registradas (não o preço pedido no anúncio)
     prisma.vendaRegistro.findMany({ where: { excluida: false }, select: { precoFinal: true } }),

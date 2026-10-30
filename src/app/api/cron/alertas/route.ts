@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { gerarAlertasDoCanil } from "@/lib/alertas";
 import { processarPosVenda } from "@/lib/pos-venda";
 import { urlBaseDaRequisicao } from "@/lib/url-base";
+import { limparLimites } from "@/lib/limite-taxa";
 
 // Rodado todo dia pela Vercel (ver vercel.json). A Vercel envia
 // "Authorization: Bearer <CRON_SECRET>" automaticamente quando a variável
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
       console.error("[cron/alertas] falha no canil", canil.id, erro);
     }
   }
+  await limparLimites();
   let posVenda = 0;
   try {
     posVenda = await processarPosVenda(urlBaseDaRequisicao(request));

@@ -6,12 +6,14 @@ import { LABEL_PAPEL, LABEL_SEXO, formatarData } from "@/lib/labels";
 export default async function PlantelPage() {
   const canil = await getCanilDoCriadorLogado();
 
-  const caes = canil
+  const todos = canil
     ? await prisma.cao.findMany({
         where: { canilId: canil.id },
         orderBy: { criadoEm: "desc" },
       })
     : [];
+  const caes = todos.filter((c) => !c.externo);
+  const linhagem = todos.filter((c) => c.externo);
 
   return (
     <main className="flex-1 max-w-5xl mx-auto w-full px-8 py-16">
@@ -24,13 +26,29 @@ export default async function PlantelPage() {
             {canil?.nome}
           </p>
         </div>
-        <Link
-          href="/dashboard/criador/plantel/novo"
-          className="px-4 py-2 rounded text-white text-sm"
-          style={{ background: "var(--pine)" }}
-        >
-          Cadastrar cão
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/criador/plantel/importar-pedigree"
+            className="px-4 py-2 rounded border text-sm"
+            style={{ borderColor: "var(--brass)", color: "var(--brass)" }}
+          >
+            Importar pedigree
+          </Link>
+          <Link
+            href="/dashboard/criador/plantel/novo?origem=externo"
+            className="px-4 py-2 rounded border text-sm"
+            style={{ borderColor: "var(--border-hairline)" }}
+          >
+            Cão de outro canil
+          </Link>
+          <Link
+            href="/dashboard/criador/plantel/novo"
+            className="px-4 py-2 rounded text-white text-sm"
+            style={{ background: "var(--pine)" }}
+          >
+            Cadastrar cão
+          </Link>
+        </div>
       </div>
 
       {caes.length === 0 ? (
@@ -84,6 +102,36 @@ export default async function PlantelPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {linhagem.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+            Linhagem: cães de outros canis
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Ancestrais e reprodutores de fora. Aparecem só na árvore genealógica e na escolha de pais; não entram nas contagens, nos alertas nem no marketplace.
+          </p>
+          <div className="mt-4 card divide-y" style={{ borderColor: "var(--border-hairline)" }}>
+            {linhagem.map((c) => (
+              <Link
+                key={c.id}
+                href={`/dashboard/criador/plantel/${c.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 hover:opacity-80"
+              >
+                <span>
+                  <span className="font-display" style={{ color: "var(--pine)" }}>{c.nome}</span>
+                  <span className="text-xs ml-2" style={{ color: "var(--ink-muted)" }}>
+                    {LABEL_SEXO[c.sexo]}{c.corBase ? ` · ${c.corBase}` : c.corPelagem ? ` · ${c.corPelagem}` : ""}
+                  </span>
+                </span>
+                <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                  {c.registro ? `${c.registro}` : "sem registro"}{c.canilOrigem ? ` · ${c.canilOrigem}` : ""}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
     </main>
   );

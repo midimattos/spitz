@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
   const { caoId, ...resto } = parsed.data;
 
-  const cao = await prisma.cao.findFirst({ where: { id: caoId, canilId: canil.id } });
+  const cao = await prisma.cao.findFirst({ where: { id: caoId, canilId: canil.id, externo: false } });
   if (!cao) return NextResponse.json({ error: "Cão não encontrado no seu plantel" }, { status: 404 });
 
   // Todo anúncio nasce GRATUITO. Virar PREMIUM exige pagamento confirmado

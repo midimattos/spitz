@@ -28,7 +28,7 @@ export default async function PrecificacaoPage({ searchParams }: { searchParams:
     carregarContextoMercado(),
     carregarFaixasDoCanil(canil.id),
     prisma.cao.findMany({
-      where: { canilId: canil.id, dataFalecimento: null },
+      where: { canilId: canil.id, externo: false, dataFalecimento: null },
       include: {
         dossieGenetico: true,
         documentos: { select: { tipo: true } },

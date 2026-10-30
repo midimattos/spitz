@@ -30,7 +30,7 @@ export default async function SugestoesCruzamentoPage() {
   if (!canil) return null;
 
   const caes = await prisma.cao.findMany({
-    where: { canilId: canil.id, dataFalecimento: null, papel: { in: ["MATRIZ", "PADREADOR"] } },
+    where: { canilId: canil.id, externo: false, dataFalecimento: null, papel: { in: ["MATRIZ", "PADREADOR"] } },
   });
   const femeas = caes.filter((c) => c.sexo === "FEMEA");
   const machos = caes.filter((c) => c.sexo === "MACHO");
