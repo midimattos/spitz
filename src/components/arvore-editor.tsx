@@ -87,7 +87,7 @@ export function ArvoreEditor({
   const [lista, setLista] = useState(caes);
   const porId = useMemo(() => new Map(lista.map((c) => [c.id, c])), [lista]);
   const [aberto, setAberto] = useState<string | null>(null);
-  const profundidadeUsada = Math.max(2, ...Object.keys(mapa).map((k) => k.length));
+  const profundidadeUsada = Math.max(3, ...Object.keys(mapa).map((k) => k.length));
   const [geracoes, setGeracoes] = useState(Math.min(MAX_GERACOES, profundidadeUsada));
   const g = Math.max(geracoes, profundidadeUsada);
 
@@ -276,7 +276,7 @@ export function ArvoreEditor({
             + Mostrar mais uma geração
           </button>
         )}
-        {g > 2 && g === geracoes && g > profundidadeUsada && (
+        {g > 3 && g === geracoes && g > profundidadeUsada && (
           <button type="button" onClick={() => setGeracoes(g - 1)} className="px-3 py-1.5 rounded border" style={{ ...borda, color: "var(--ink-muted)" }}>
             Mostrar menos
           </button>
