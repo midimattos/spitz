@@ -15,13 +15,13 @@ export default async function NovoCaoPage({
   const caesExistentes = canil
     ? await prisma.cao.findMany({
         where: { canilId: canil.id },
-        select: { id: true, nome: true, sexo: true, externo: true, registro: true },
+        select: { id: true, nome: true, sexo: true, externo: true, registro: true, microchip: true, paiId: true, maeId: true, fotoUrl: true, corPelagem: true, corBase: true },
         orderBy: { nome: "asc" },
       })
     : [];
 
   return (
-    <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-16">
+    <main className="flex-1 max-w-6xl mx-auto w-full px-8 py-16">
       <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>
         {deOutroCanil ? "Cadastrar cão de outro canil" : "Cadastrar cão"}
       </h1>

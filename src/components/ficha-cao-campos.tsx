@@ -108,7 +108,7 @@ export function FichaCaoCampos({
         ) : (
           <div>
             <label className="text-sm" style={rotulo}>
-              Nº de registro (pedigree)
+              Nº de registro (privado: não aparece para compradores)
             </label>
             <input value={ficha.registro} onChange={(e) => set("registro", e.target.value)} placeholder="Ex: RG/SPAI/22/08293" className={campo} style={borda} />
           </div>
@@ -119,7 +119,7 @@ export function FichaCaoCampos({
         {mostrarSexo && (
           <div>
             <label className="text-sm" style={rotulo}>
-              Nº de registro (pedigree)
+              Nº de registro (privado: não aparece para compradores)
             </label>
             <input value={ficha.registro} onChange={(e) => set("registro", e.target.value)} placeholder="Ex: RG/SPAI/22/08293" className={campo} style={borda} />
           </div>

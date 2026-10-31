@@ -48,6 +48,7 @@ type CaoFormValues = {
   dnaLocusI?: string | null;
 };
 
+const NOVO = "__novo__";
 const campoClasse = "mt-1 w-full px-3 py-2 rounded border bg-transparent";
 const campoEstilo = { borderColor: "var(--border-hairline)" };
 
@@ -63,6 +64,9 @@ export function CaoForm({
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const editando = !!valoresIniciais?.id;
+  const [paiSel, setPaiSel] = useState<string>(valoresIniciais?.paiId ?? "");
+  const [maeSel, setMaeSel] = useState<string>(valoresIniciais?.maeId ?? "");
   const [externo, setExterno] = useState(!!valoresIniciais?.externo);
   const [temExameCorDNA, setTemExameCorDNA] = useState(!!valoresIniciais?.temExameCorDNA);
   const [coresProduzidas, setCoresProduzidas] = useState<string[]>(
@@ -109,8 +113,14 @@ export function CaoForm({
       porte: formData.get("porte") || undefined,
       microchip: formData.get("microchip") || undefined,
       observacoes: formData.get("observacoes") || undefined,
-      paiId: formData.get("paiId") || "",
-      maeId: formData.get("maeId") || "",
+      // na edição, pai/mãe/avós são gerenciados na aba "Árvore genealógica"
+      ...(editando ? {} : { paiId: paiSel === NOVO ? "" : paiSel, maeId: maeSel === NOVO ? "" : maeSel }),
+      ...(editando ? {} : paiSel === NOVO
+        ? { novoPai: { nome: String(formData.get("novoPaiNome") ?? ""), registro: String(formData.get("novoPaiRegistro") ?? ""), cor: String(formData.get("novoPaiCor") ?? ""), canilOrigem: String(formData.get("novoPaiCanil") ?? "") } }
+        : {}),
+      ...(editando ? {} : maeSel === NOVO
+        ? { novaMae: { nome: String(formData.get("novaMaeNome") ?? ""), registro: String(formData.get("novaMaeRegistro") ?? ""), cor: String(formData.get("novaMaeCor") ?? ""), canilOrigem: String(formData.get("novaMaeCanil") ?? "") } }
+        : {}),
       dataNascimento: dataNascimento
         ? new Date(dataNascimento).toISOString()
         : undefined,
@@ -266,7 +276,7 @@ export function CaoForm({
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            Nº de registro (pedigree)
+            Nº de registro (pedigree) · privado, nunca aparece para compradores
           </label>
           <input
             name="registro"
@@ -289,18 +299,21 @@ export function CaoForm({
       </div>
       </div>
 
+      {!editando && (
+        <>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            Pai (padreador já cadastrado)
+            Pai
           </label>
           <select
-            name="paiId"
-            defaultValue={valoresIniciais?.paiId ?? ""}
+            value={paiSel}
+            onChange={(e) => setPaiSel(e.target.value)}
             className={campoClasse}
             style={campoEstilo}
           >
             <option value="">— não informado —</option>
+            <option value={NOVO}>+ Cadastrar o pai agora</option>
             {machos.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
@@ -310,15 +323,16 @@ export function CaoForm({
         </div>
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            Mãe (matriz já cadastrada)
+            Mãe
           </label>
           <select
-            name="maeId"
-            defaultValue={valoresIniciais?.maeId ?? ""}
+            value={maeSel}
+            onChange={(e) => setMaeSel(e.target.value)}
             className={campoClasse}
             style={campoEstilo}
           >
             <option value="">— não informada —</option>
+            <option value={NOVO}>+ Cadastrar a mãe agora</option>
             {femeas.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
@@ -327,6 +341,28 @@ export function CaoForm({
           </select>
         </div>
       </div>
+
+      {(paiSel === NOVO || maeSel === NOVO) && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          {([["Pai", "novoPai", paiSel], ["Mãe", "novaMae", maeSel]] as const).map(([rot, pre, sel]) =>
+            sel === NOVO ? (
+              <div key={pre} className="card p-4 space-y-2">
+                <p className="text-xs uppercase tracking-wider" style={{ color: "var(--brass)" }}>{rot}: cadastro rápido</p>
+                <input name={`${pre}Nome`} required placeholder="Nome" className={campoClasse} style={campoEstilo} />
+                <input name={`${pre}Registro`} placeholder="Nº de registro (opcional)" className={campoClasse} style={campoEstilo} />
+                <input name={`${pre}Cor`} placeholder="Cor (opcional)" className={campoClasse} style={campoEstilo} />
+                <input name={`${pre}Canil`} placeholder="Canil de origem (opcional)" className={campoClasse} style={campoEstilo} />
+                <p className="text-xs" style={{ color: "var(--ink-muted)" }}>Fica registrado como cão de outro canil: aparece só na árvore, não no seu plantel. Depois você pode completar a ficha.</p>
+              </div>
+            ) : (
+              <div key={pre} />
+            )
+          )}
+        </div>
+      )}
+
+        </>
+      )}
 
       <div>
         <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
