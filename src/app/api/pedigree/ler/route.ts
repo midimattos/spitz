@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { lerPedigreeComIA } from "@/lib/anthropic";
+import { lerPedigreeComIA } from "@/lib/ia";
 import { verificarLimite, mensagemLimite } from "@/lib/limite-taxa";
 import { achatarArvore, normalizarArvore, normalizarRegistro, sexoDoCaminho } from "@/lib/pedigree-arvore";
 

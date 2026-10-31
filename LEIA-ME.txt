@@ -1,17 +1,23 @@
-CADASTRO DO CÃO COM ABAS: CÃO / PAIS / AVÓS
-Não precisa de migração. Este zip substitui o "cadastro-facil.zip" (se já aplicou aquele, pode aplicar este por cima).
+LEITURA DE PEDIGREE: opção gratuita (Gemini) + teste de conexão
+Não precisa de migração. Este zip é separado: aplique por cima do "cadastro-abas.zip".
 
-1. Copie a pasta "src" deste zip para dentro da pasta spitz (aceite substituir).
+1. Copie a pasta "src" e o arquivo ".env.example" para dentro de spitz (aceite substituir).
 2. No cmd, dentro de spitz:
    git add .
-   git commit -m "Cadastro do cao com abas Cao, Pais e Avos"
+   git commit -m "Leitura de pedigree com Gemini e teste de conexao"
    git push
 
-COMO FUNCIONA
-- Plantel > Cadastrar cão abre uma tela com 3 abas: Cão, Pais, Avós.
-- Cada aba tem a ficha COMPLETA (nome, registro, nascimento, microchip, cor, porte, fenótipo de cor, DNA...).
-- Em TODO cão há a escolha "Meu canil" ou "Outro canil". Cão de outro canil não entra no plantel.
-- Para pai e mãe: "Não informar", "Já cadastrado" (escolhe da lista) ou "Cadastrar agora".
-- Os avós ficam disponíveis quando o pai/mãe é "Cadastrar agora".
-- Se o nº de registro já existe no sistema, o cão é reaproveitado (não duplica).
-- Para editar um cão já existente continua valendo a tela de edição anterior.
+COMO USAR O GEMINI GRATUITO (SÓ PARA TESTE)
+1. Entre em aistudio.google.com, faça login com sua conta Google e clique em "Get API key" > criar chave.
+2. Na Vercel (Settings > Environment Variables) crie GEMINI_API_KEY com a chave. NÃO cole a chave no chat.
+3. Faça um Redeploy.
+4. Entre como admin > Admin > "Leitura de pedigree (IA)" > "Testar conexão".
+   Deve aparecer "Funcionando". Se aparecer erro, o texto diz o motivo (chave inválida, limite, modelo).
+5. Só depois do teste ok, vá em Plantel > Importar pedigree e envie UMA foto.
+
+OBSERVAÇÕES
+- Se existir ANTHROPIC_API_KEY, ela tem prioridade. Para forçar o Gemini, defina IA_PROVEDOR=gemini.
+- O modelo padrão do Gemini é gemini-2.5-flash. Se o teste disser que o modelo não existe, troque
+  GEMINI_MODEL na Vercel por um modelo atual listado no Google AI Studio.
+- O plano gratuito do Google pode usar o conteúdo enviado para melhorar produtos deles. Use só para
+  testar com o seu pedigree. Para clientes reais, use um plano pago (Anthropic ou Gemini pago).

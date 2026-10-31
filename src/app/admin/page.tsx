@@ -67,6 +67,9 @@ export default async function AdminPage() {
         <Link href="/admin/armazenamento" className="text-sm underline mr-4" style={{ color: "var(--brass)" }}>
           Diagnóstico de fotos
         </Link>
+        <Link href="/admin/ia" className="text-sm underline mr-4" style={{ color: "var(--brass)" }}>
+          Leitura de pedigree (IA)
+        </Link>
         <Link href="/admin/integridade" className="text-sm underline mr-4" style={{ color: "var(--brass)" }}>
           Integridade dos dados
         </Link>

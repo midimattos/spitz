@@ -81,7 +81,7 @@ export async function extrairLaudoComIA(pdfBase64: string): Promise<ExtracaoLaud
   }
 }
 
-const PROMPT_PEDIGREE = `Você recebeu a foto ou o PDF de um PEDIGREE brasileiro de cão (CBKC/FCI), no formato de árvore genealógica.
+export const PROMPT_PEDIGREE = `Você recebeu a foto ou o PDF de um PEDIGREE brasileiro de cão (CBKC/FCI), no formato de árvore genealógica.
 Leia o documento e responda APENAS com um JSON válido, sem texto antes ou depois.
 
 Formato (cada cão é um objeto; "pai" e "mae" repetem o mesmo formato, de forma aninhada):
@@ -108,10 +108,10 @@ Como ler o documento:
 
 export type ResultadoLeituraPedigree =
   | { ok: true; arvore: unknown }
-  | { ok: false; motivo: "sem-chave" | "falha" | "ilegivel" };
+  | { ok: false; motivo: "sem-chave" | "falha" | "ilegivel"; detalhe?: string };
 
 /** Lê um pedigree (imagem ou PDF) e devolve a árvore bruta; quem chama deve normalizá-la. */
-export async function lerPedigreeComIA(base64: string, mediaType: string): Promise<ResultadoLeituraPedigree> {
+export async function lerPedigreeAnthropic(base64: string, mediaType: string): Promise<ResultadoLeituraPedigree> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, motivo: "sem-chave" };
   const arquivo =
@@ -129,8 +129,9 @@ export async function lerPedigreeComIA(base64: string, mediaType: string): Promi
       }),
     });
     if (!response.ok) {
-      console.error("[pedigree-ia] API respondeu", response.status, await response.text().catch(() => ""));
-      return { ok: false, motivo: "falha" };
+      const corpo = await response.text().catch(() => "");
+      console.error("[pedigree-ia] Anthropic respondeu", response.status, corpo);
+      return { ok: false, motivo: "falha", detalhe: `Anthropic ${response.status}` };
     }
     const data = await response.json();
     const resposta = (data.content ?? [])
