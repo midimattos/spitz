@@ -20,7 +20,7 @@ export function CadastroCaoArvore({ caesExistentes, principalExterno }: { caesEx
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
-  const nAncestrais = Object.values(arvore).filter((s) => (s.modo === "existente" ? true : s.modo === "novo" ? !!s.nome.trim() : false)).length;
+  const nAncestrais = Object.values(arvore).filter((s) => (s.modo === "existente" ? true : s.modo === "novo" ? !!s.ficha.nome.trim() : false)).length;
   const dupPrincipal = cao.nome.trim() ? acharDuplicado(caesExistentes, { nome: cao.nome, sexo, registro: cao.registro, microchip: cao.microchip }) : null;
 
   async function salvar() {

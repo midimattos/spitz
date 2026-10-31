@@ -1,3 +1,5 @@
+import type { FichaCao } from "@/lib/ficha-cao";
+
 // Árvore genealógica em pirâmide (usada no navegador e no servidor).
 // Cada posição é um "caminho": "p" = pai, "m" = mãe, "pp" = pai do pai, "pm" = mãe do pai...
 // até 5 gerações (caminho de até 5 letras).
@@ -7,7 +9,10 @@ export const MAX_GERACOES = 5;
 export type SlotNo =
   | { modo: "nenhum" }
   | { modo: "existente"; id: string }
-  | { modo: "novo"; nome: string; cor: string; registro: string };
+  | { modo: "novo"; ficha: FichaCao };
+
+/** Pais e avós têm a ficha completa; do 3º nível em diante basta nome e cor. */
+export const GERACOES_FICHA_COMPLETA = 2;
 
 export type MapaArvore = Record<string, SlotNo>;
 

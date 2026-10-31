@@ -2,9 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { acharDuplicado } from "@/lib/duplicados";
+import { FichaCaoCampos } from "@/components/ficha-cao-campos";
+import { fichaAncestral } from "@/lib/ficha-cao";
 import { prepararImagem, mensagemDeErro } from "@/lib/imagem-cliente";
 import {
   MAX_GERACOES,
+  GERACOES_FICHA_COMPLETA,
   caminhosDaGeracao,
   expandirExistente,
   ladoDoPai,
@@ -83,6 +86,7 @@ export function ArvoreEditor({
 }) {
   const [lista, setLista] = useState(caes);
   const porId = useMemo(() => new Map(lista.map((c) => [c.id, c])), [lista]);
+  const [aberto, setAberto] = useState<string | null>(null);
   const profundidadeUsada = Math.max(2, ...Object.keys(mapa).map((k) => k.length));
   const [geracoes, setGeracoes] = useState(Math.min(MAX_GERACOES, profundidadeUsada));
   const g = Math.max(geracoes, profundidadeUsada);
@@ -93,7 +97,7 @@ export function ArvoreEditor({
     const sem = { ...mapa };
     for (const k of Object.keys(sem)) if (k.length > caminho.length && k.startsWith(caminho)) delete sem[k];
     if (v === "") onChange({ ...sem, [caminho]: { modo: "nenhum" } });
-    else if (v === NOVO) onChange({ ...sem, [caminho]: { modo: "novo", nome: "", cor: "", registro: "" } });
+    else if (v === NOVO) { setAberto(caminho.length <= GERACOES_FICHA_COMPLETA ? caminho : null); onChange({ ...sem, [caminho]: { modo: "novo", ficha: fichaAncestral(sexoDoCaminho(caminho)) } }); }
     else onChange(expandirExistente(sem, caminho, v, porId));
   }
 
@@ -120,8 +124,8 @@ export function ArvoreEditor({
     const doPlantel = opcoes.filter((c) => !c.externo);
     const deOutros = opcoes.filter((c) => c.externo);
     const dup =
-      slot.modo === "novo" && slot.nome.trim()
-        ? acharDuplicado(lista, { nome: slot.nome, sexo, registro: slot.registro })
+      slot.modo === "novo" && slot.ficha.nome.trim()
+        ? acharDuplicado(lista, { nome: slot.ficha.nome, sexo, registro: slot.ficha.registro, microchip: slot.ficha.microchip })
         : null;
 
     return (
@@ -163,29 +167,35 @@ export function ArvoreEditor({
         {slot.modo === "novo" && (
           <>
             <input
-              value={slot.nome}
-              onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, nome: e.target.value } })}
+              value={slot.ficha.nome}
+              onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, ficha: { ...slot.ficha, nome: e.target.value } } })}
               placeholder="Nome"
               className={campo}
               style={borda}
             />
             <input
-              value={slot.cor}
-              onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, cor: e.target.value } })}
+              value={slot.ficha.corPelagem}
+              onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, ficha: { ...slot.ficha, corPelagem: e.target.value } } })}
               placeholder="Cor"
               className={campo}
               style={borda}
             />
-            <details className="text-[11px]" style={{ color: "var(--ink-muted)" }}>
-              <summary className="cursor-pointer">Registro (opcional, privado)</summary>
-              <input
-                value={slot.registro}
-                onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, registro: e.target.value } })}
-                placeholder="Nº do pedigree"
-                className={`${campo} mt-1`}
-                style={borda}
-              />
-            </details>
+            {caminho.length <= GERACOES_FICHA_COMPLETA ? (
+              <button type="button" onClick={() => setAberto(aberto === caminho ? null : caminho)} className="text-[11px] underline" style={{ color: "var(--pine)" }}>
+                {aberto === caminho ? "Fechar ficha completa" : "Preencher ficha completa ›"}
+              </button>
+            ) : (
+              <details className="text-[11px]" style={{ color: "var(--ink-muted)" }}>
+                <summary className="cursor-pointer">Registro (opcional, privado)</summary>
+                <input
+                  value={slot.ficha.registro}
+                  onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, ficha: { ...slot.ficha, registro: e.target.value } } })}
+                  placeholder="Nº do pedigree"
+                  className={`${campo} mt-1`}
+                  style={borda}
+                />
+              </details>
+            )}
             {dup && (
               <p className="text-[11px] rounded p-1.5" style={{ background: "#f7ecd9" }}>
                 <strong>{dup.cao.nome}</strong> já existe.{" "}
@@ -204,6 +214,11 @@ export function ArvoreEditor({
                 {existente.corBase ?? existente.corPelagem}
                 {existente.externo ? " · outro canil" : ""}
               </p>
+            )}
+            {modoEdicao && (
+              <a href={`/dashboard/criador/plantel/${existente.id}`} className="text-[11px] underline" style={{ color: "var(--pine)" }}>
+                Abrir ficha completa
+              </a>
             )}
             {modoEdicao && (
               <FotoMini
@@ -237,6 +252,24 @@ export function ArvoreEditor({
           ))}
         </div>
       </div>
+      {aberto && mapa[aberto]?.modo === "novo" && (
+        <div className="mt-4 rounded border p-4" style={borda}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+              Ficha completa: {rotuloCaminho(aberto)}
+            </h3>
+            <button type="button" onClick={() => setAberto(null)} className="text-sm underline" style={{ color: "var(--ink-muted)" }}>
+              Fechar
+            </button>
+          </div>
+          {(() => {
+            const sl = mapa[aberto];
+            if (sl.modo !== "novo") return null;
+            return <FichaCaoCampos ficha={sl.ficha} onChange={(f) => onChange({ ...mapa, [aberto]: { modo: "novo", ficha: f } })} titulo="Ficha do cão" />;
+          })()}
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap gap-3 items-center text-sm">
         {g < MAX_GERACOES && (
           <button type="button" onClick={() => setGeracoes(g + 1)} className="px-3 py-1.5 rounded border" style={{ ...borda, color: "var(--pine)" }}>
@@ -249,7 +282,7 @@ export function ArvoreEditor({
           </button>
         )}
         <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
-          Só nome e cor bastam. Cada ancestral vira um cão de outro canil e você completa a ficha dele depois.
+          Pais e avós têm ficha completa; do 3º nível em diante basta nome e cor. Você completa a ficha depois quando quiser.
         </span>
       </div>
     </div>
@@ -264,7 +297,7 @@ export function arvoreParaEnvio(mapa: MapaArvore, edicao: boolean): MapaArvore {
     const paiAtivo = pai === "" || (mapa[pai] && mapa[pai].modo !== "nenhum");
     if (!paiAtivo) continue;
     if (v.modo === "nenhum" && !edicao) continue;
-    if (v.modo === "novo" && !v.nome.trim()) continue;
+    if (v.modo === "novo" && !v.ficha.nome.trim()) continue;
     out[k] = v;
   }
   return out;

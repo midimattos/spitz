@@ -13,7 +13,6 @@ import {
 import { consolidarStatusGenetico, calcularHerancaPreditiva } from "@/lib/genetica";
 import { resumirLancamentos, formatarMoeda } from "@/lib/financeiro";
 import { preverProximoCio } from "@/lib/reproducao";
-import { ArvoreGenealogica } from "../_components/arvore-genealogica";
 import { DocumentoUploadForm } from "../_components/documento-upload-form";
 import { LaudoGeneticoForm } from "../_components/laudo-genetico-form";
 import { PainelGeneticaCor } from "../_components/painel-genetica-cor";
@@ -28,6 +27,7 @@ import { FotoCaoUpload } from "@/components/foto-cao-upload";
 import { EmitirCertificado } from "@/components/emitir-certificado";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
+import { ArvoreEdicao } from "@/components/arvore-edicao";
 
 export default async function FichaCaoPage({
   params,
@@ -66,6 +66,12 @@ export default async function FichaCaoPage({
           orderBy: { nome: "asc" },
         })
       : [];
+
+  const todosCaes = await prisma.cao.findMany({
+    where: { canilId: canil.id },
+    select: { id: true, nome: true, sexo: true, externo: true, registro: true, microchip: true, paiId: true, maeId: true, fotoUrl: true, corPelagem: true, corBase: true },
+    orderBy: { nome: "asc" },
+  });
 
   const proximoCio = preverProximoCio(cao.ciclosCio);
   const resumoFinanceiro = resumirLancamentos(cao.lancamentosFinanceiros);
@@ -206,7 +212,7 @@ export default async function FichaCaoPage({
 
   const abaGenealogia = (
     <div>
-      <ArvoreGenealogica pai={cao.pai} mae={cao.mae} />
+      <ArvoreEdicao caoId={cao.id} caes={todosCaes} />
 
       {filhos.length > 0 && (
         <div className="mt-6">

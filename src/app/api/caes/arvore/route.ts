@@ -2,80 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { LOCI_DNA } from "@/lib/ficha-cao";
 import type { Prisma } from "@prisma/client";
 import { acharDuplicado, mensagemDuplicado } from "@/lib/duplicados";
 import { carregarChaves } from "@/lib/duplicados-db";
-import { aplicarArvore, arvoreSchema, ErroNegocio } from "@/lib/arvore-servidor";
-
-const txt = (n: number) => z.string().max(n).default("");
-
-const fichaSchema = z.object({
-  nome: txt(160),
-  registro: txt(60),
-  microchip: txt(40),
-  dataNascimento: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/).default(""),
-  porte: txt(40),
-  corPelagem: txt(60),
-  observacoes: txt(2000),
-  corBase: txt(40),
-  marcacaoCor: txt(40),
-  corTrufa: txt(40),
-  diluicaoCor: txt(40),
-  merleCor: txt(40),
-  intensidadeCor: txt(40),
-  coresJaProduzidas: z.array(z.string().max(40)).max(30).default([]),
-  temExameCorDNA: z.boolean().default(false),
-  dnaLocusB: txt(10),
-  dnaLocusE: txt(10),
-  dnaLocusK: txt(10),
-  dnaLocusA: txt(10),
-  dnaLocusD: txt(10),
-  dnaLocusS: txt(10),
-  dnaLocusM: txt(10),
-  dnaLocusI: txt(10),
-  externo: z.boolean().default(false),
-  canilOrigem: txt(120),
-  papel: z.enum(["MATRIZ", "PADREADOR", "FILHOTE", "APOSENTADO"]).default("FILHOTE"),
-});
-type Ficha = z.infer<typeof fichaSchema>;
+import { aplicarArvore, arvoreSchema, dadosDaFicha, ErroNegocio, fichaSchema } from "@/lib/arvore-servidor";
 
 const schema = z.object({
   cao: fichaSchema.extend({ sexo: z.enum(["MACHO", "FEMEA"]) }),
   arvore: arvoreSchema,
 });
-
-function dadosDaFicha(f: Ficha, sexo: "MACHO" | "FEMEA", canilId: string, paiId: string | null, maeId: string | null) {
-  const dna: Record<string, string | null> = {};
-  for (const l of LOCI_DNA) dna[`dnaLocus${l}`] = f.temExameCorDNA ? (f[`dnaLocus${l}` as keyof Ficha] as string).trim() || null : null;
-  const vazio = (s: string) => s.trim() || null;
-  return {
-    nome: f.nome.trim(),
-    sexo,
-    canilId,
-    externo: f.externo,
-    registro: vazio(f.registro)?.toUpperCase() ?? null,
-    canilOrigem: f.externo ? vazio(f.canilOrigem) : null,
-    microchip: vazio(f.microchip)?.replace(/\D/g, "") || null,
-    porte: vazio(f.porte),
-    corPelagem: vazio(f.corPelagem),
-    observacoes: vazio(f.observacoes),
-    dataNascimento: f.dataNascimento ? new Date(`${f.dataNascimento}T12:00:00Z`) : null,
-    corBase: vazio(f.corBase),
-    marcacaoCor: vazio(f.marcacaoCor),
-    corTrufa: vazio(f.corTrufa),
-    diluicaoCor: vazio(f.diluicaoCor),
-    merleCor: vazio(f.merleCor),
-    intensidadeCor: vazio(f.intensidadeCor),
-    coresJaProduzidas: f.coresJaProduzidas,
-    temExameCorDNA: f.temExameCorDNA,
-    ...dna,
-    papel: f.externo ? ("APOSENTADO" as const) : f.papel,
-    exibirNoCanil: !f.externo,
-    paiId,
-    maeId,
-  };
-}
 
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
