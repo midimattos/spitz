@@ -1,0 +1,30 @@
+LOTE C - DEMANDA E POS-VENDA
+
+O que muda:
+- Lista de espera por canil (formulario na pagina publica do canil; painel "Lista de espera").
+- E-mail automatico quando um anuncio e publicado: para a lista de espera do canil e para
+  compradores cujo "desejo" combina com o filhote.
+- Reserva (apenas registro; o sinal e pago direto ao criador). Aparece o selo "Reservado".
+- Contrato digital de venda com garantia de saude (7 dias), com aceite eletronico do comprador
+  (data, hora, IP e impressao digital do texto). Link enviado por e-mail ao comprador.
+- Pos-venda automatico: lembretes de vacina ao comprador (45, 70, 100 e 120 dias) em nome do canil.
+- Convite com mes gratis: 30 dias de PRO para quem entra e para quem convidou.
+- Comissao por venda DESLIGADA (R$ 0). Para ativar depois: na Vercel, em Settings > Environment
+  Variables, crie COMISSAO_VENDA_FIXA = 49.90 e faca um novo deploy.
+- Canis com mais vendas registradas aparecem um pouco mais acima na busca.
+
+PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
+1. Descompacte o zip por cima da pasta do projeto (substituir arquivos).
+2. set "DATABASE_URL=SUA_URL_DIRETA_DO_NEON"   (sem -pooler, com aspas)
+3. npx prisma@5.22.0 migrate deploy      (aplica 20261027120000_demanda_posvenda;
+                                           se o Lote B ainda nao foi aplicado, aplica os dois)
+4. git add .
+   git commit -m "Lote C: demanda e pos-venda"
+   git push
+
+IMPORTANTE:
+- Os e-mails dependem de RESEND_API_KEY na Vercel. Sem ela, nada e enviado (o resto funciona).
+  Sem um dominio proprio verificado no Resend, so e possivel enviar para o seu proprio e-mail.
+- O contrato e um modelo padrao com aceite eletronico simples. Peca para um advogado revisar o texto
+  (arquivo src/lib/contrato.ts) antes de usar com clientes reais.
+- O pos-venda roda junto da rotina diaria que ja existe (nao cria rotina nova na Vercel).

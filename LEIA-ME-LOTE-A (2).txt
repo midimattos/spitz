@@ -1,0 +1,19 @@
+LOTE A: RELATÓRIOS DO CRIADOR
+
+Novidades: Saúde da carteira (+ resumo semanal por e-mail), custo e margem por ninhada,
+Desempenho (você x plataforma, melhor época, perfil do comprador), cruzamentos sugeridos
+pelo mercado, relatório anual para o contador, dados do comprador ao registrar a venda.
+
+ESTA ATUALIZAÇÃO TEM MIGRAÇÃO DE BANCO. ORDEM:
+1) Copie os arquivos do zip por cima da pasta do projeto (aceite substituir).
+2) No cmd, dentro da pasta do projeto (use a URL DIRETA do Neon, sem -pooler):
+   set "DATABASE_URL=SUA_URL_DIRETA"
+   npx prisma@5.22.0 migrate deploy
+   (deve aplicar 20261025120000_relatorios_criador)
+3) Depois:
+   git add .
+   git commit -m "lote A relatorios"
+   git push
+
+E-MAIL SEMANAL: precisa de RESEND_API_KEY na Vercel (já usada nos avisos). O envio roda
+toda segunda às 08h (Brasília). Sem a chave, o resumo continua na tela "Saúde da carteira".

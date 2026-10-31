@@ -1,30 +1,17 @@
-LOTE G: REGISTRO DE VENDA MAIS ATRATIVO (e comissão desligada)
-Este zip é CUMULATIVO (inclui os lotes E e F). Pode copiar por cima de tudo.
+CADASTRO DO CÃO COM ABAS: CÃO / PAIS / AVÓS
+Não precisa de migração. Este zip substitui o "cadastro-facil.zip" (se já aplicou aquele, pode aplicar este por cima).
 
-O QUE MUDOU
-- Ao registrar uma venda (Vendido), a receita entra sozinha no Financeiro ("Venda de filhote").
-- O texto do registro de venda explica o que o criador ganha (certificado, financeiro, vacinas, avaliação).
-- A página do anúncio ganha o bloco "Compre com segurança": orienta o comprador a pedir o registro
-  da compra para receber certificado, lembretes de vacina e poder avaliar o canil.
-- Pausar um anúncio publicado passa a exigir o motivo (e lembra de usar "Vendido" se vendeu).
-- Admin > Integridade: nova seção com anúncios encerrados sem venda registrada que tiveram contato
-  recente, e um quadro por canil (vendas registradas x encerrados sem venda). É um sinal para conversar
-  com o canil, não prova de venda por fora.
-- Comissão por venda fica DESLIGADA por padrão (COMISSAO_VENDA_FIXA="0"). Só cobra se você definir um valor.
-
-PASSO A PASSO
-1. Copie as pastas "src" e "prisma" e os arquivos ".env.example" e "next.config.ts" para a pasta do projeto.
-2. No cmd, na pasta do projeto:
-   npx prisma migrate deploy
-   (a nova é 20261031120000; aplica também as pendentes dos lotes anteriores, em ordem)
-3. git add .
-   git commit -m "Lote G: registro de venda atrativo, sinais de venda por fora"
+1. Copie a pasta "src" deste zip para dentro da pasta spitz (aceite substituir).
+2. No cmd, dentro de spitz:
+   git add .
+   git commit -m "Cadastro do cao com abas Cao, Pais e Avos"
    git push
-4. Na Vercel, confira que COMISSAO_VENDA_FIXA está em 0 ou ausente.
 
-COMO TESTAR
-1. Publique um anúncio (conta com e-mail confirmado) e marque como Vendido com preço e e-mail do comprador.
-2. Abra Financeiro: deve existir a receita "Venda de filhote".
-3. Tente pausar um anúncio publicado sem escolher motivo: deve pedir o motivo.
-4. Abra a página pública do anúncio: deve aparecer "Compre com segurança".
-5. Em /admin/integridade, role até o fim: seção nova de encerrados sem venda.
+COMO FUNCIONA
+- Plantel > Cadastrar cão abre uma tela com 3 abas: Cão, Pais, Avós.
+- Cada aba tem a ficha COMPLETA (nome, registro, nascimento, microchip, cor, porte, fenótipo de cor, DNA...).
+- Em TODO cão há a escolha "Meu canil" ou "Outro canil". Cão de outro canil não entra no plantel.
+- Para pai e mãe: "Não informar", "Já cadastrado" (escolhe da lista) ou "Cadastrar agora".
+- Os avós ficam disponíveis quando o pai/mãe é "Cadastrar agora".
+- Se o nº de registro já existe no sistema, o cão é reaproveitado (não duplica).
+- Para editar um cão já existente continua valendo a tela de edição anterior.

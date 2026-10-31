@@ -1,0 +1,376 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { LABEL_LOCUS, LABEL_ORIGEM_GENOTIPO } from "@/lib/labels";
+import {
+  inferirGenotipo,
+  simularCruzamentoCor,
+  avaliarAlertasGeneticos,
+  resumirNinhada,
+  contarLocusInformados,
+  filhotesMaisProvaveis,
+  type FenotipoCao,
+} from "@/lib/genetica-cor";
+import { ResumoNinhadaView } from "@/components/resumo-ninhada";
+import { carregarContextoMercado, montarRadarPorCor, type LinhaRadarCor } from "@/lib/mercado";
+import { calcularValorNinhada } from "@/lib/valor-ninhada";
+import { formatarMoeda } from "@/lib/financeiro";
+
+const TAMANHO_NINHADA_PADRAO = 4;
+const TAMANHO_NINHADA_MAXIMO = 12;
+
+const ROTULO_SITUACAO_COR: Record<string, string> = {
+  FALTA_OFERTA: "procura maior que a oferta",
+  EQUILIBRADO: "mercado equilibrado",
+  EXCESSO_OFERTA: "oferta sobrando",
+  POUCOS_DADOS: "poucos dados",
+};
+
+const CORES_ALERTA: Record<string, string> = {
+  CRITICO: "#a32d2d",
+  ATENCAO: "var(--brass)",
+  INFO: "var(--ink-muted)",
+};
+
+export default async function SimuladorCruzamentoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ a?: string; b?: string; n?: string }>;
+}) {
+  const { a, b, n } = await searchParams;
+  const canil = await getCanilDoCriadorLogado();
+
+  const nInformado = Number.parseInt(n ?? "", 10);
+  const tamanhoNinhada = Number.isFinite(nInformado)
+    ? Math.min(TAMANHO_NINHADA_MAXIMO, Math.max(1, nInformado))
+    : TAMANHO_NINHADA_PADRAO;
+
+  const caes = canil
+    ? await prisma.cao.findMany({
+        where: { canilId: canil.id, externo: false },
+        select: { id: true, nome: true, sexo: true },
+        orderBy: { nome: "asc" },
+      })
+    : [];
+
+  let resultadoCor: ReturnType<typeof simularCruzamentoCor> | null = null;
+  let resumoCor: ReturnType<typeof resumirNinhada> | null = null;
+  let alertasCor: ReturnType<typeof avaliarAlertasGeneticos> | null = null;
+  let genotipoA: ReturnType<typeof inferirGenotipo> | null = null;
+  let genotipoB: ReturnType<typeof inferirGenotipo> | null = null;
+  let valorMercado: ReturnType<typeof calcularValorNinhada> | null = null;
+  let nomeA = "";
+  let nomeB = "";
+
+  function paraFenotipo(cao: {
+    corBase: string | null;
+    marcacaoCor: string | null;
+    corTrufa: string | null;
+    diluicaoCor: string | null;
+    merleCor: string | null;
+    intensidadeCor: string | null;
+    coresJaProduzidas: string[];
+    temExameCorDNA: boolean;
+    dnaLocusB: string | null;
+    dnaLocusE: string | null;
+    dnaLocusK: string | null;
+    dnaLocusA: string | null;
+    dnaLocusD: string | null;
+    dnaLocusS: string | null;
+    dnaLocusM: string | null;
+    dnaLocusI: string | null;
+  }): FenotipoCao {
+    return {
+      corBase: cao.corBase,
+      marcacaoCor: cao.marcacaoCor,
+      corTrufa: cao.corTrufa,
+      diluicaoCor: cao.diluicaoCor,
+      merleCor: cao.merleCor,
+      intensidadeCor: cao.intensidadeCor,
+      coresJaProduzidas: cao.coresJaProduzidas,
+      dna: cao.temExameCorDNA
+        ? {
+            B: cao.dnaLocusB ?? undefined,
+            E: cao.dnaLocusE ?? undefined,
+            K: cao.dnaLocusK ?? undefined,
+            A: cao.dnaLocusA ?? undefined,
+            D: cao.dnaLocusD ?? undefined,
+            S: cao.dnaLocusS ?? undefined,
+            M: cao.dnaLocusM ?? undefined,
+            I: cao.dnaLocusI ?? undefined,
+          }
+        : undefined,
+    };
+  }
+
+  if (a && b && a !== b) {
+    const [caoA, caoB] = await Promise.all([
+      prisma.cao.findFirst({ where: { id: a, canilId: canil?.id } }),
+      prisma.cao.findFirst({ where: { id: b, canilId: canil?.id } }),
+    ]);
+
+    if (caoA && caoB) {
+      nomeA = caoA.nome;
+      nomeB = caoB.nome;
+
+      genotipoA = inferirGenotipo(paraFenotipo(caoA));
+      genotipoB = inferirGenotipo(paraFenotipo(caoB));
+      alertasCor = avaliarAlertasGeneticos(genotipoA, genotipoB);
+      resultadoCor = simularCruzamentoCor(genotipoA, genotipoB);
+      resumoCor = resumirNinhada(genotipoA, genotipoB);
+
+      // Quanto o mercado paga e procura por cada cor que essa ninhada pode ter
+      const ctx = await carregarContextoMercado();
+      const radar = new Map<string, LinhaRadarCor>(montarRadarPorCor(ctx).map((l) => [l.cor, l]));
+      valorMercado = calcularValorNinhada(resultadoCor, tamanhoNinhada, radar);
+    }
+  }
+
+  return (
+    <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-16">
+      <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>
+        Simulador de cruzamento
+      </h1>
+      <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+        Compare dois cães do seu plantel e veja a chance de cada cor, marcação
+        e gene oculto na ninhada.
+      </p>
+
+      <Link href="/dashboard/criador/cruzamentos/sugestoes" className="card mt-6 p-4 block text-sm hover:opacity-90">
+        <strong style={{ color: "var(--pine)" }}>Cruzamentos sugeridos pelo mercado</strong>
+        <span style={{ color: "var(--ink-muted)" }}> — veja quais pares do seu plantel rendem mais e produzem as cores em falta.</span>
+      </Link>
+
+      <form method="GET" className="card mt-8 p-6 grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Cão 1
+          </label>
+          <select
+            name="a"
+            defaultValue={a ?? ""}
+            required
+            className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
+            style={{ borderColor: "var(--border-hairline)" }}
+          >
+            <option value="" disabled>
+              Selecione
+            </option>
+            {caes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Cão 2
+          </label>
+          <select
+            name="b"
+            defaultValue={b ?? ""}
+            required
+            className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
+            style={{ borderColor: "var(--border-hairline)" }}
+          >
+            <option value="" disabled>
+              Selecione
+            </option>
+            {caes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Tamanho esperado da ninhada (filhotes)
+          </label>
+          <input
+            name="n"
+            type="number"
+            min={1}
+            max={TAMANHO_NINHADA_MAXIMO}
+            defaultValue={tamanhoNinhada}
+            className="mt-1 w-28 px-3 py-2 rounded border bg-transparent"
+            style={{ borderColor: "var(--border-hairline)" }}
+          />
+        </div>
+        <button
+          type="submit"
+          className="sm:col-span-2 px-6 py-2 rounded text-white text-sm"
+          style={{ background: "var(--pine)" }}
+        >
+          Comparar
+        </button>
+      </form>
+
+      {a && b && a === b && (
+        <p className="mt-6 text-sm" style={{ color: "#a32d2d" }}>
+          Selecione dois cães diferentes.
+        </p>
+      )}
+
+      {resultadoCor && genotipoA && genotipoB && (
+        <div className="mt-8">
+          <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+            {nomeA} × {nomeB}
+          </h2>
+          <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
+            Genética de cor da ninhada
+          </p>
+
+          {alertasCor && alertasCor.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {alertasCor.map((alerta, i) => (
+                <div
+                  key={i}
+                  className="card p-4 text-sm"
+                  style={{ borderColor: CORES_ALERTA[alerta.nivel], borderWidth: 1 }}
+                >
+                  <p style={{ color: CORES_ALERTA[alerta.nivel] }}>
+                    <strong>{alerta.titulo}</strong>
+                  </p>
+                  <p className="mt-1" style={{ color: "var(--ink-muted)" }}>
+                    {alerta.descricao}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {resumoCor && (
+            <ResumoNinhadaView
+              resumo={resumoCor}
+              tamanhoNinhada={tamanhoNinhada}
+              maisProvavel={filhotesMaisProvaveis(resultadoCor)}
+              nomeA={nomeA}
+              nomeB={nomeB}
+              baseA={contarLocusInformados(genotipoA)}
+              baseB={contarLocusInformados(genotipoB)}
+            />
+          )}
+
+          {valorMercado && (
+            <div className="card mt-4 p-6">
+              <h3 className="font-display text-lg" style={{ color: "var(--pine)" }}>
+                O que o mercado diz sobre essa ninhada
+              </h3>
+              <table className="w-full text-sm mt-3">
+                <thead>
+                  <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
+                    <th className="font-normal pb-2">Cor</th>
+                    <th className="font-normal pb-2">Chance</th>
+                    <th className="font-normal pb-2">Esperados</th>
+                    <th className="font-normal pb-2">Preço de venda</th>
+                    <th className="font-normal pb-2">Procura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valorMercado.linhas.map((l) => (
+                    <tr key={l.cor} className="border-t" style={{ borderColor: "var(--border-hairline)" }}>
+                      <td className="py-2">{l.cor}</td>
+                      <td className="py-2">{(l.probabilidade * 100).toFixed(0)}%</td>
+                      <td className="py-2">{l.filhotesEsperados.toFixed(1)}</td>
+                      <td className="py-2">
+                        {l.precoMediano !== null ? formatarMoeda(l.precoMediano) : "sem vendas ainda"}
+                      </td>
+                      <td className="py-2 text-xs" style={{ color: "var(--ink-muted)" }}>
+                        {l.situacao ? ROTULO_SITUACAO_COR[l.situacao] : "sem dados"}
+                        {l.desejosAtivos > 0 ? ` · ${l.desejosAtivos} desejo${l.desejosAtivos > 1 ? "s" : ""}` : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {valorMercado.valorEsperado !== null && (
+                <p className="mt-4 text-sm">
+                  Valor de mercado esperado da ninhada de {tamanhoNinhada}:{" "}
+                  <strong style={{ color: "var(--pine)" }}>{formatarMoeda(valorMercado.valorEsperado)}</strong>
+                  {valorMercado.coberturaPreco < 0.95 && (
+                    <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                      {" "}
+                      (considera só as cores com venda registrada — {(valorMercado.coberturaPreco * 100).toFixed(0)}% das
+                      chances)
+                    </span>
+                  )}
+                </p>
+              )}
+              <p className="mt-2 text-xs" style={{ color: "var(--ink-muted)" }}>
+                Preços são a mediana das vendas reais registradas na plataforma por cor. Estimativa — não é promessa de
+                venda.
+              </p>
+            </div>
+          )}
+
+          <details className="card mt-4 p-6">
+            <summary className="text-sm cursor-pointer" style={{ color: "var(--ink-muted)" }}>
+              Ver genótipo de cada cão (confirmado por DNA quando informado, senão inferido do fenótipo)
+            </summary>
+            <table className="w-full text-sm mt-3">
+              <thead>
+                <tr className="text-left" style={{ color: "var(--ink-muted)" }}>
+                  <th className="font-normal pb-2">Lócus</th>
+                  <th className="font-normal pb-2">{nomeA}</th>
+                  <th className="font-normal pb-2">{nomeB}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(["B", "E", "K", "A", "D", "S", "M", "I"] as const).map((locus) => (
+                  <tr key={locus} className="border-t" style={{ borderColor: "var(--border-hairline)" }}>
+                    <td className="py-2" style={{ color: "var(--ink-muted)" }}>{LABEL_LOCUS[locus]}</td>
+                    <td className="py-2">
+                      <span className="font-mono">{genotipoA![locus].genotipo.join("/")}</span>
+                      <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                        {LABEL_ORIGEM_GENOTIPO[genotipoA![locus].origem]}
+                      </p>
+                    </td>
+                    <td className="py-2">
+                      <span className="font-mono">{genotipoB![locus].genotipo.join("/")}</span>
+                      <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                        {LABEL_ORIGEM_GENOTIPO[genotipoB![locus].origem]}
+                      </p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+
+          <details className="card mt-4 p-6">
+            <summary className="text-sm cursor-pointer" style={{ color: "var(--ink-muted)" }}>
+              Ver todas as combinações possíveis (cor · marcação · trufa)
+            </summary>
+            <ul className="divide-y mt-3" style={{ borderColor: "var(--border-hairline)" }}>
+              {resultadoCor.map((r, i) => (
+                <li key={i} className="py-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <p>
+                      <strong>{r.fenotipo.corBase}</strong> · {r.fenotipo.marcacao} · trufa {r.fenotipo.corTrufa}
+                    </p>
+                    <span className="font-display" style={{ color: "var(--pine)" }}>
+                      {(r.probabilidade * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  {r.fenotipo.observacao && (
+                    <p className="mt-1 text-xs" style={{ color: "var(--brass)" }}>
+                      {r.fenotipo.observacao}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+
+          <p className="mt-4 text-xs" style={{ color: "var(--ink-muted)" }}>
+            Estimativa baseada no genótipo inferido de cada cão — não substitui um exame de
+            DNA de cor. Quanto mais cores este cão já produziu (cadastradas na ficha dele),
+            mais precisa fica a inferência de alelos recessivos ocultos.
+          </p>
+        </div>
+      )}
+    </main>
+  );
+}

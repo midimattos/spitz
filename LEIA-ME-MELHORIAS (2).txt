@@ -1,0 +1,16 @@
+ATUALIZAÇÃO: FOTOS, ANÚNCIO RICO, SELOS, FINANCEIRO, NINHADAS, MERCADO
+
+NÃO HÁ MIGRAÇÃO DE BANCO NESTA ATUALIZAÇÃO. Basta copiar os arquivos e enviar ao GitHub.
+
+1) Copie os arquivos do zip por cima da pasta do projeto (aceite substituir).
+2) APAGUE esta pasta (o destaque Premium pago foi removido):
+   src\app\api\pagamentos\anuncio-premium
+3) No cmd, dentro da pasta do projeto:
+   git add .
+   git commit -m "melhorias: fotos, anuncio, selos, financeiro, ninhadas, mercado"
+   git push
+
+FOTOS: se ao enviar foto aparecer "O armazenamento de fotos ainda não foi configurado",
+faltam as variáveis R2_* na Vercel (Settings > Environment Variables):
+R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL.
+Depois faça Redeploy.

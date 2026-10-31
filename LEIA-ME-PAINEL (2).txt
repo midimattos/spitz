@@ -1,0 +1,15 @@
+NOVO PAINEL DO CRIADOR
+
+Muda so a tela inicial do criador (src/app/dashboard/criador/page.tsx). Sem migracao.
+- Numeros no topo: caes, anuncios no ar, mensagens sem resposta, avisos novos.
+- Bloco em destaque (fundo verde) com o que justifica a assinatura: Inteligencia de Mercado,
+  Precificacao, Desempenho, Saude da carteira.
+- Depois: No dia a dia, Sua marca e sua demanda, Mais ferramentas.
+- Aviso de verificacao no topo quando o canil ainda nao foi verificado.
+
+PASSO A PASSO (cmd, dentro de C:\Users\midia\PROJETOS\spitz-saas\spitz):
+1. Descompacte o zip por cima da pasta do projeto (substituir arquivos).
+2. git add .
+   git commit -m "Novo painel do criador"
+   git push
+3. Espere o deploy ficar Ready e abra o painel.

@@ -1,0 +1,15 @@
+ATUALIZAÇÃO: MARKETPLACE PÚBLICO + BUSCA DETALHADA
+
+O que muda
+- Marketplace aberto a todos (sem login). Busca por cor base, marcação, diluição, merle, porte, sexo, faixa de valor (de/até), estado e cidade. Nenhum campo é obrigatório; quanto mais preenchido, melhor o ranking ("Combina em X de Y critérios").
+- Página do anúncio mostra todos os campos do cão preenchidos no cadastro.
+- Toda busca grava suas características; o Radar (Inteligência de Mercado) mostra procura x oferta por cor base, marcação, diluição, merle, faixa de valor e cidade.
+- O formulário do Radar de Demanda do comprador usa os mesmos campos.
+
+ORDEM DO DEPLOY (importante: banco primeiro)
+1) Copie os arquivos do zip por cima da pasta do projeto (aceite substituir).
+2) No cmd, dentro da pasta do projeto:
+   set "DATABASE_URL=SUA_URL_DIRETA_DO_NEON"
+   npx prisma@5.22.0 migrate deploy
+   (URL direta = sem "-pooler" e sem channel_binding)
+3) Só depois: git add . && git commit -m "busca detalhada" && git push

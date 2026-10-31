@@ -1,0 +1,68 @@
+ATUALIZAÇÃO — DADOS DO MARKETPLACE + PRECIFICAÇÃO GUIADA PELO MERCADO
+=====================================================================
+
+O QUE MUDOU
+- A precificação deixou de usar "qualidade da ninhada". Agora usa vendas
+  reais, anúncios ativos, desejos, buscas e favoritos do marketplace.
+- Coleta de dados desde o primeiro acesso (visualizações, buscas, favoritos,
+  contatos, vendas com preço final, histórico de preço e de desejos).
+- Inteligência de Mercado completa (cor, porte, estado, buscas, funil).
+- Simulador de cruzamento mostra preço e procura de mercado por cor.
+- Diagnóstico de cada anúncio (preço acima do mercado, poucas visualizações).
+- Reputação do canil. Validação de compradores (fila no /admin).
+- Cuidados (vacinas), Criopreservação, Avisos (sino + e-mail opcional),
+  Favoritos, Termos de uso e Política de privacidade.
+
+PASSO A PASSO (nesta ordem)
+1) Copie TODOS os arquivos deste zip para dentro da sua pasta "spitz",
+   mantendo as pastas (src, prisma, etc.) e aceitando substituir os
+   arquivos que já existem.
+
+2) ATUALIZE O BANCO ANTES DE PUBLICAR (importante).
+   Abra o terminal DENTRO da pasta "spitz" e rode:
+
+   PowerShell:
+     $env:DATABASE_URL="COLE_AQUI_A_MESMA_DATABASE_URL_DA_VERCEL"
+     npx prisma migrate deploy
+
+   Prompt de comando (cmd):
+     set DATABASE_URL=COLE_AQUI_A_MESMA_DATABASE_URL_DA_VERCEL
+     npx prisma migrate deploy
+
+   Deve aparecer "1 migration found / applied". A migração só ADICIONA
+   tabelas e colunas; não apaga nada.
+
+3) Na Vercel (Settings > Environment Variables, ambiente Production):
+     RADAR_MERCADO_ATIVO = true      (libera a Inteligência de Mercado)
+     CRON_SECRET         = (qualquer texto longo e aleatório)
+     NEXT_PUBLIC_CONTATO_EMAIL = seu e-mail de contato (aparece nos Termos)
+   Opcional (e-mail dos avisos): RESEND_API_KEY e EMAIL_REMETENTE.
+
+4) Publique (ainda na pasta "spitz"):
+     git add .
+     git commit -m "Dados de mercado, precificacao guiada pelo mercado e rotina do canil"
+     git push
+   A Vercel publica sozinha. Depois do deploy, faça Redeploy se tiver
+   criado variáveis novas.
+
+5) TESTE RÁPIDO
+   a) Como criador: Plantel > cadastre um cão com porte e cor > Anúncios >
+      Criar anúncio: aparece "Mercado: venda rápida / ideal / teto".
+   b) Publique o anúncio (canil precisa estar verificado).
+   c) Como comprador (outra conta): abra o anúncio, favorite, use os
+      filtros de cor/estado no Marketplace e cadastre um desejo no Radar.
+   d) Como admin (/admin): aprove o comprador na nova fila.
+   e) Como criador: no anúncio, mude o status para "Vendido" e informe o
+      preço final. Veja "Desempenho e mercado" e a Inteligência de Mercado.
+
+OBSERVAÇÕES
+- Com poucos dados, a sugestão de preço mistura o mercado com a SUA faixa
+  (página Precificação) e mostra o nível de confiança. Quanto mais vendas
+  registradas, mais o mercado manda.
+- A rotina diária de avisos (cio/vacinas/partos) roda pela Vercel às 08h
+  (horário de Brasília) e também ao abrir a página Avisos.
+- Os Termos de uso e a Política de privacidade são modelos: peça para um
+  advogado revisar antes do lançamento oficial.
+- Se você editou direto no GitHub algum destes arquivos depois da última
+  versão que enviei, me avise antes de substituir (principalmente
+  plantel/[id]/page.tsx).
