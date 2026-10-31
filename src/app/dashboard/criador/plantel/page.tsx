@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { agruparDuplicados } from "@/lib/duplicados";
+import { JuntarDuplicados } from "@/components/juntar-duplicados";
 import { LABEL_PAPEL, LABEL_SEXO, formatarData } from "@/lib/labels";
 
 export default async function PlantelPage() {
@@ -14,6 +16,7 @@ export default async function PlantelPage() {
     : [];
   const caes = todos.filter((c) => !c.externo);
   const linhagem = todos.filter((c) => c.externo);
+  const duplicados = agruparDuplicados(todos);
 
   return (
     <main className="flex-1 max-w-5xl mx-auto w-full px-8 py-16">
@@ -102,6 +105,22 @@ export default async function PlantelPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {duplicados.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-xl" style={{ color: "#a32d2d" }}>
+            Possíveis cadastros duplicados ({duplicados.length})
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Estes cães têm o mesmo registro, microchip ou nome. Junte-os para manter a árvore e os dados corretos.
+          </p>
+          <div className="mt-4 card divide-y" style={{ borderColor: "var(--border-hairline)" }}>
+            {duplicados.map((g) => (
+              <JuntarDuplicados key={g.cães.map((c) => c.id).join("-")} grupo={g.cães.map((c) => ({ id: c.id, nome: c.nome, registro: c.registro, externo: c.externo }))} />
+            ))}
+          </div>
+        </section>
       )}
 
       {linhagem.length > 0 && (

@@ -1,0 +1,9 @@
+PACOTE COMPLETO DE CADASTRO (junta os dois pacotes anteriores: sem duplicados + arvore em piramide)
+Use ESTE no lugar dos outros dois. Corrige o erro de build "Can't resolve '@/lib/duplicados'".
+
+1. Copie a pasta "src" deste zip sobre a pasta spitz, escolhendo "Substituir" (nunca "Manter ambos").
+2. No cmd, uma linha por vez:
+git add .
+git commit -m "cadastro completo"
+git push
+Sem migration.

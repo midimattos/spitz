@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { lerPedigreeComIA } from "@/lib/ia";
+import { acharDuplicado } from "@/lib/duplicados";
 import { verificarLimite, mensagemLimite } from "@/lib/limite-taxa";
-import { achatarArvore, normalizarArvore, normalizarRegistro, sexoDoCaminho } from "@/lib/pedigree-arvore";
+import { achatarArvore, normalizarArvore, sexoDoCaminho } from "@/lib/pedigree-arvore";
 
 const TIPOS = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
@@ -41,15 +42,11 @@ export async function POST(request: Request) {
   // Quais cães já existem na conta (por registro ou por nome + sexo)?
   const existentes = await prisma.cao.findMany({
     where: { canilId: canil.id },
-    select: { id: true, nome: true, sexo: true, registro: true },
+    select: { id: true, nome: true, sexo: true, registro: true, microchip: true },
   });
   for (const l of linhas) {
     const sexo = sexoDoCaminho(l.caminho) ?? sexoPrincipal;
-    const reg = normalizarRegistro(l.registro);
-    const achado =
-      (reg && existentes.find((e) => normalizarRegistro(e.registro) === reg)) ||
-      (!reg && existentes.find((e) => e.sexo === sexo && e.nome.trim().toLowerCase() === l.nome.trim().toLowerCase())) ||
-      null;
+    const achado = acharDuplicado(existentes, { nome: l.nome, sexo, registro: l.registro, microchip: l.microchip })?.cao ?? null;
     if (achado) {
       l.existenteId = achado.id;
       l.existenteNome = achado.nome;

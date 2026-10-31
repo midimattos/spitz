@@ -1,13 +1,17 @@
+import { acharDuplicado, mensagemDuplicado } from "@/lib/duplicados";
+import { carregarChaves } from "@/lib/duplicados-db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
-import { validarGenealogia } from "@/lib/genealogia";
+import { validarGenealogia, resolverAncestral } from "@/lib/genealogia";
 
 const caoUpdateSchema = z.object({
   nome: z.string().min(1).optional(),
   sexo: z.enum(["MACHO", "FEMEA"]).optional(),
   papel: z.enum(["MATRIZ", "PADREADOR", "FILHOTE", "APOSENTADO"]).optional(),
+  novoPai: z.object({ nome: z.string().max(160), registro: z.string().max(60).optional(), cor: z.string().max(60).optional(), canilOrigem: z.string().max(120).optional() }).optional(),
+  novaMae: z.object({ nome: z.string().max(160), registro: z.string().max(60).optional(), cor: z.string().max(60).optional(), canilOrigem: z.string().max(120).optional() }).optional(),
   externo: z.boolean().optional(),
   registro: z.string().max(60).optional(),
   canilOrigem: z.string().max(120).optional(),
@@ -85,7 +89,19 @@ export async function PATCH(
     );
   }
 
-  const { paiId, maeId, dataNascimento, dataFalecimento, ...resto } = parsed.data;
+  const { paiId: paiIdInformado, maeId: maeIdInformado, novoPai, novaMae, dataNascimento, dataFalecimento, ...resto } = parsed.data;
+  let paiId = paiIdInformado;
+  let maeId = maeIdInformado;
+  if (novoPai?.nome?.trim()) {
+    const r = await resolverAncestral(canil.id, "MACHO", novoPai);
+    if ("erro" in r) return NextResponse.json({ error: r.erro }, { status: 400 });
+    paiId = r.id;
+  }
+  if (novaMae?.nome?.trim()) {
+    const r = await resolverAncestral(canil.id, "FEMEA", novaMae);
+    if ("erro" in r) return NextResponse.json({ error: r.erro }, { status: 400 });
+    maeId = r.id;
+  }
 
   const erroGenealogia = await validarGenealogia(canil.id, id, paiId, maeId);
   if (erroGenealogia) return NextResponse.json({ error: erroGenealogia }, { status: 400 });
@@ -98,12 +114,19 @@ export async function PATCH(
     }
   }
 
-  const registro = resto.registro !== undefined ? resto.registro.trim() || null : undefined;
-  if (registro) {
-    const duplicado = await prisma.cao.findFirst({ where: { canilId: canil.id, registro, NOT: { id } }, select: { nome: true } });
-    if (duplicado) {
-      return NextResponse.json({ error: `O registro ${registro} já está cadastrado (${duplicado.nome}).` }, { status: 409 });
-    }
+  const registro = resto.registro !== undefined ? resto.registro.trim().toUpperCase() || null : undefined;
+  {
+    const cand = {
+      nome: resto.nome ?? existente.nome,
+      sexo: (resto.sexo ?? existente.sexo) as "MACHO" | "FEMEA",
+      registro: registro !== undefined ? registro : existente.registro,
+      microchip: resto.microchip !== undefined ? resto.microchip : existente.microchip,
+    };
+    const mudouIdentidade =
+      cand.nome !== existente.nome || cand.sexo !== existente.sexo || (cand.registro ?? null) !== (existente.registro ?? null) || (cand.microchip ?? null) !== (existente.microchip ?? null);
+    // só confere quando a identidade mudou, para não travar a edição de cães que já eram duplicados
+    const dup = mudouIdentidade ? acharDuplicado(await carregarChaves(canil.id), cand, id) : null;
+    if (dup) return NextResponse.json({ error: mensagemDuplicado(cand, dup) }, { status: 409 });
   }
 
   const cao = await prisma.cao.update({

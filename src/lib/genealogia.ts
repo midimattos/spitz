@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { acharDuplicado, mensagemDuplicado } from "@/lib/duplicados";
+import { carregarChaves } from "@/lib/duplicados-db";
 
 type Db = typeof prisma | Prisma.TransactionClient;
 
@@ -49,4 +51,48 @@ export async function validarGenealogia(
     }
   }
   return null;
+}
+
+export type NovoAncestral = { nome: string; registro?: string; cor?: string; canilOrigem?: string };
+
+/**
+ * Cadastro rápido de pai/mãe dentro do formulário do cão. Se o número de registro
+ * já existe na conta, reaproveita esse cão; senão cria um novo "de outro canil".
+ * Retorna o id ou uma mensagem de erro.
+ */
+export async function resolverAncestral(
+  canilId: string,
+  sexo: "MACHO" | "FEMEA",
+  dados: NovoAncestral
+): Promise<{ id: string } | { erro: string }> {
+  const nome = dados.nome.trim();
+  if (!nome) return { erro: sexo === "MACHO" ? "Informe o nome do pai." : "Informe o nome da mãe." };
+  const registro = dados.registro?.trim().toUpperCase() || null;
+  const cand = { nome, sexo, registro };
+  const lista = await carregarChaves(canilId);
+  const dup = acharDuplicado(lista, cand);
+  if (dup) {
+    // mesmo registro: é o mesmo cão (só confere o sexo). Só o nome: pede para escolher na lista.
+    if (dup.motivo === "registro") {
+      if (dup.cao.sexo !== sexo) return { erro: `O registro ${registro} já pertence a ${dup.cao.nome}, que tem outro sexo.` };
+      return { id: dup.cao.id };
+    }
+    return { erro: mensagemDuplicado(cand, dup) };
+  }
+  // registro igual ao de um cão de OUTRO sexo (acharDuplicado só olha o mesmo sexo no nome, mas registro vale para todos)
+  const cor = dados.cor?.trim() || null;
+  const criado = await prisma.cao.create({
+    data: {
+      nome,
+      sexo,
+      canilId,
+      externo: true,
+      registro,
+      canilOrigem: dados.canilOrigem?.trim() || null,
+      corPelagem: cor,
+      papel: "APOSENTADO",
+      exibirNoCanil: false,
+    },
+  });
+  return { id: criado.id };
 }

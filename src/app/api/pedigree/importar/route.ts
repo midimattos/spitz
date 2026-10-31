@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { validarGenealogia } from "@/lib/genealogia";
+import { acharDuplicado } from "@/lib/duplicados";
 import { verificarLimite, mensagemLimite } from "@/lib/limite-taxa";
 import {
   chaveDoCao,
@@ -65,13 +66,10 @@ export async function POST(request: Request) {
     if (l.caminho === "" && caoPrincipalId) existenteId = caoPrincipalId;
     else {
       const chave = chaveDoCao(l);
-      const reg = normalizarRegistro(l.registro);
       const cliente = l.existenteId && porId.has(l.existenteId) ? l.existenteId : null;
       const achado =
         cliente ??
-        (reg
-          ? existentes.find((e) => normalizarRegistro(e.registro) === reg)?.id
-          : existentes.find((e) => e.sexo === sexoDe(l) && e.nome.trim().toLowerCase() === l.nome.trim().toLowerCase())?.id) ??
+        acharDuplicado(existentes, { nome: l.nome, sexo: sexoDe(l), registro: l.registro, microchip: l.microchip })?.cao.id ??
         idPorChave.get(chave) ??
         null;
       existenteId = achado;
