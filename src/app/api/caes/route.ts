@@ -72,6 +72,7 @@ export async function POST(request: Request) {
   }
 
   const { paiId: paiIdInformado, maeId: maeIdInformado, novoPai, novaMae, dataNascimento, ...resto } = parsed.data;
+  resto.nome = resto.nome.trim().toLocaleUpperCase("pt-BR");
   let paiId = paiIdInformado;
   let maeId = maeIdInformado;
 

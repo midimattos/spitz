@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { acharDuplicado } from "@/lib/duplicados";
 import { FichaCaoCampos } from "@/components/ficha-cao-campos";
 import { fichaAncestral } from "@/lib/ficha-cao";
+import { ATRIBUTOS_NOME, nomeMaiusculo } from "@/lib/texto";
 import { prepararImagem, mensagemDeErro } from "@/lib/imagem-cliente";
 import {
   MAX_GERACOES,
@@ -20,6 +21,57 @@ import {
 const borda = { borderColor: "var(--border-hairline)" };
 const NOVO = "__novo";
 const campo = "w-full px-2 py-1.5 rounded border bg-transparent text-sm";
+
+/** Corrige o nome de um ancestral já cadastrado, ali mesmo na caixa. */
+function NomeEditavel({ id, nome, onNome }: { id: string; nome: string; onNome: (n: string) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [valor, setValor] = useState(nome);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvar() {
+    const novo = valor.trim();
+    if (!novo || novo === nome) {
+      setAberto(false);
+      return;
+    }
+    setSalvando(true);
+    setErro(null);
+    const res = await fetch(`/api/caes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome: novo }),
+    }).catch(() => null);
+    setSalvando(false);
+    if (!res || !res.ok) {
+      setErro(res ? await mensagemDeErro(res, "Não foi possível corrigir") : "Sem conexão");
+      return;
+    }
+    onNome(nomeMaiusculo(novo));
+    setAberto(false);
+  }
+
+  if (!aberto)
+    return (
+      <button type="button" onClick={() => setAberto(true)} className="text-[11px] underline" style={{ color: "var(--pine)" }}>
+        Corrigir nome
+      </button>
+    );
+  return (
+    <div className="space-y-1">
+      <input value={valor} onChange={(e) => setValor(nomeMaiusculo(e.target.value))} className={campo} {...ATRIBUTOS_NOME} style={{ ...borda, ...ATRIBUTOS_NOME.style }} />
+      <div className="flex gap-2 text-[11px]">
+        <button type="button" onClick={salvar} disabled={salvando} className="underline" style={{ color: "var(--pine)" }}>
+          {salvando ? "salvando…" : "Salvar nome"}
+        </button>
+        <button type="button" onClick={() => { setValor(nome); setAberto(false); }} className="underline" style={{ color: "var(--ink-muted)" }}>
+          cancelar
+        </button>
+      </div>
+      {erro && <p className="text-[11px]" style={{ color: "#a32d2d" }}>{erro}</p>}
+    </div>
+  );
+}
 
 function FotoMini({ id, foto, onFoto }: { id: string; foto?: string | null; onFoto: (url: string) => void }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -142,6 +194,7 @@ export function ArvoreEditor({
         ) : (
           <select value={valor} onChange={(e) => escolher(caminho, e.target.value)} className={campo} style={borda}>
             <option value="">— não informar —</option>
+            <option value={NOVO}>+ Cadastrar novo…</option>
             {doPlantel.length > 0 && (
               <optgroup label="Do meu plantel">
                 {doPlantel.map((c) => (
@@ -160,7 +213,6 @@ export function ArvoreEditor({
                 ))}
               </optgroup>
             )}
-            <option value={NOVO}>+ Cadastrar novo…</option>
           </select>
         )}
 
@@ -168,10 +220,11 @@ export function ArvoreEditor({
           <>
             <input
               value={slot.ficha.nome}
-              onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, ficha: { ...slot.ficha, nome: e.target.value } } })}
+              onChange={(e) => onChange({ ...mapa, [caminho]: { ...slot, ficha: { ...slot.ficha, nome: nomeMaiusculo(e.target.value) } } })}
               placeholder="Nome"
               className={campo}
-              style={borda}
+              {...ATRIBUTOS_NOME}
+              style={{ ...borda, ...ATRIBUTOS_NOME.style }}
             />
             <input
               value={slot.ficha.corPelagem}
@@ -214,6 +267,14 @@ export function ArvoreEditor({
                 {existente.corBase ?? existente.corPelagem}
                 {existente.externo ? " · outro canil" : ""}
               </p>
+            )}
+            {modoEdicao && (
+              <NomeEditavel
+                key={existente.id + existente.nome}
+                id={existente.id}
+                nome={existente.nome}
+                onNome={(n) => setLista((l) => l.map((c) => (c.id === existente.id ? { ...c, nome: n } : c)))}
+              />
             )}
             {modoEdicao && (
               <a href={`/dashboard/criador/plantel/${existente.id}`} className="text-[11px] underline" style={{ color: "var(--pine)" }}>

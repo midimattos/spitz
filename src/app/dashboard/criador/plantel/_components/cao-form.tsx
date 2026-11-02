@@ -1,4 +1,5 @@
 "use client";
+import { nomeMaiusculo } from "@/lib/texto";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -196,7 +197,17 @@ export function CaoForm({
             required
             defaultValue={valoresIniciais?.nome}
             className={campoClasse}
-            style={campoEstilo}
+            autoCapitalize="characters"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              const pos = el.selectionStart;
+              el.value = nomeMaiusculo(el.value);
+              if (pos !== null) el.setSelectionRange(pos, pos);
+            }}
+            style={{ ...campoEstilo, textTransform: "uppercase" }}
           />
         </div>
         <div>

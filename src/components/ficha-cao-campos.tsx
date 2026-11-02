@@ -10,6 +10,7 @@ import {
   OPCOES_CORES_PRODUZIDAS,
   LABEL_LOCUS,
 } from "@/lib/genetica-cor";
+import { ATRIBUTOS_NOME, nomeMaiusculo } from "@/lib/texto";
 import { LOCI_DNA, type FichaCao } from "@/lib/ficha-cao";
 
 const campo = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
@@ -93,7 +94,7 @@ export function FichaCaoCampos({
           <label className="text-sm" style={rotulo}>
             Nome
           </label>
-          <input value={ficha.nome} onChange={(e) => set("nome", e.target.value)} className={campo} style={borda} />
+          <input value={ficha.nome} onChange={(e) => set("nome", nomeMaiusculo(e.target.value))} className={campo} {...ATRIBUTOS_NOME} style={{ ...borda, ...ATRIBUTOS_NOME.style }} />
         </div>
         {mostrarSexo && sexo && onSexo ? (
           <div>

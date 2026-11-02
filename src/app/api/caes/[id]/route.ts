@@ -90,6 +90,7 @@ export async function PATCH(
   }
 
   const { paiId: paiIdInformado, maeId: maeIdInformado, novoPai, novaMae, dataNascimento, dataFalecimento, ...resto } = parsed.data;
+  if (resto.nome) resto.nome = resto.nome.trim().toLocaleUpperCase("pt-BR");
   let paiId = paiIdInformado;
   let maeId = maeIdInformado;
   if (novoPai?.nome?.trim()) {

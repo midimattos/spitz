@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         const principal = l.caminho === "";
         const criado = await tx.cao.create({
           data: {
-            nome: l.nome.trim(),
+            nome: l.nome.trim().toLocaleUpperCase("pt-BR"),
             sexo,
             canilId: canil.id,
             externo,

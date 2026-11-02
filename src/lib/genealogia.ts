@@ -83,7 +83,7 @@ export async function resolverAncestral(
   const cor = dados.cor?.trim() || null;
   const criado = await prisma.cao.create({
     data: {
-      nome,
+      nome: nome.toLocaleUpperCase("pt-BR"),
       sexo,
       canilId,
       externo: true,

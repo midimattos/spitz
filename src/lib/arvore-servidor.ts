@@ -139,7 +139,7 @@ export function dadosDaFicha(f: Ficha, sexo: "MACHO" | "FEMEA", canilId: string,
   for (const l of LOCI_DNA) dna[`dnaLocus${l}`] = f.temExameCorDNA ? (f[`dnaLocus${l}` as keyof Ficha] as string).trim() || null : null;
   const vazio = (s: string) => s.trim() || null;
   return {
-    nome: f.nome.trim(),
+    nome: f.nome.trim().toLocaleUpperCase("pt-BR"),
     sexo,
     canilId,
     externo: f.externo,
