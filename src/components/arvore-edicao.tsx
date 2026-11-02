@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArvoreEditor, arvoreParaEnvio } from "@/components/arvore-editor";
 import { mensagemDeErro } from "@/lib/imagem-cliente";
 import { arvoreDoCao, type CaoNaArvore, type MapaArvore } from "@/lib/arvore-nos";
 
 /** Aba "Árvore genealógica" da edição de um cão que já existe. */
 export function ArvoreEdicao({ caoId, caes }: { caoId: string; caes: CaoNaArvore[] }) {
-  const router = useRouter();
   const [mapa, setMapa] = useState<MapaArvore>(() => arvoreDoCao(caoId, new Map(caes.map((c) => [c.id, c]))));
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -26,8 +24,9 @@ export function ArvoreEdicao({ caoId, caes }: { caoId: string; caes: CaoNaArvore
       setMsg({ ok: false, texto: res ? await mensagemDeErro(res, "Não foi possível salvar a árvore") : "Sem conexão. Tente novamente." });
       return;
     }
-    setMsg({ ok: true, texto: "Árvore salva." });
-    router.refresh();
+    setMsg({ ok: true, texto: "Árvore salva. Atualizando…" });
+    // recarrega para a pirâmide mostrar os ancestrais recém-criados (e permitir enviar a foto de cada um)
+    window.location.reload();
   }
 
   return (

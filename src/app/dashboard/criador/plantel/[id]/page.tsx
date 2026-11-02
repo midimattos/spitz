@@ -212,6 +212,12 @@ export default async function FichaCaoPage({
 
   const abaGenealogia = (
     <div>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <Link href={`/dashboard/criador/plantel/${cao.id}/mapa`} className="px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>
+          Visualizar árvore genealógica (imprimir)
+        </Link>
+        <span className="text-xs" style={{ color: "var(--ink-muted)" }}>Abre como um pedigree, com fotos, pronto para imprimir ou salvar em PDF.</span>
+      </div>
       <ArvoreEdicao caoId={cao.id} caes={todosCaes} />
 
       {filhos.length > 0 && (
