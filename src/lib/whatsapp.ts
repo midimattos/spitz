@@ -92,3 +92,16 @@ export function mensagemContatoPendente(s: SituacaoContato): string {
   const falta = [!s.emailOk && "e-mail", s.exigeWhatsapp && !s.whatsappOk && "WhatsApp"].filter(Boolean).join(" e ");
   return `Para publicar anúncios, confirme seu ${falta} em "Minha conta".`;
 }
+
+/**
+ * Comprador com e-mail (e WhatsApp, quando exigido) confirmados tem o desejo aprovado automaticamente:
+ * sem fila manual. A equipe ainda pode REJEITAR um caso de abuso; isso nunca é revertido aqui.
+ */
+export async function aprovarDesejoSeContatoOk(userId: string): Promise<void> {
+  const s = await situacaoDoContato(userId);
+  if (!s.liberado) return;
+  await prisma.desejoComprador.updateMany({
+    where: { userId, validacao: "PENDENTE" },
+    data: { validacao: "APROVADO", validadoEm: new Date() },
+  });
+}

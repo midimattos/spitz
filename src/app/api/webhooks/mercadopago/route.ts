@@ -63,7 +63,16 @@ export async function POST(request: Request) {
   // efeito se o Mercado Pago reenviar a mesma notificação (o que é comum).
   if (novoStatus === "APROVADO" && !eraAprovadoAntes) {
     if (pagamento.tipo === "ASSINATURA_PRO") {
-      await prisma.canil.update({ where: { id: pagamento.canilId }, data: { assinaturaPro: true } });
+      // Cada mensalidade paga soma 30 dias de PRO (a partir do fim do período atual, se ainda ativo).
+      const c = await prisma.canil.findUnique({ where: { id: pagamento.canilId }, select: { proGratisAte: true } });
+      const inicio = Math.max(Date.now(), c?.proGratisAte?.getTime() ?? 0);
+      await prisma.canil.update({
+        where: { id: pagamento.canilId },
+        data: {
+          proGratisAte: new Date(inicio + 30 * 24 * 60 * 60 * 1000),
+          ...(pagamento.usouDescontoIndicacao ? { descontosIndicacao: { decrement: 1 } } : {}),
+        },
+      });
     }
     if (pagamento.tipo === "ANUNCIO_PREMIUM" && pagamento.anuncioId) {
       await prisma.anuncio.update({ where: { id: pagamento.anuncioId }, data: { tipo: "PREMIUM" } });

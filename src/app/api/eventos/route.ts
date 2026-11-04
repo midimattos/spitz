@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { verificarLimite, ipDe } from "@/lib/limite-taxa";
 import { registrarEvento } from "@/lib/eventos";
 import { corDoCao, normalizarCor } from "@/lib/cores";
 
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 });
+
+  // Teto por rede (IP): o identificador de visitante vem do navegador e pode ser trocado à vontade.
+  const lim = await verificarLimite(`eventos:${ipDe(request.headers)}`, 300, 60 * 60);
+  if (!lim.ok) return NextResponse.json({ ok: false }, { status: 429 });
 
   const { tipo, anuncioId, canilSlug, visitante, filtros, origem } = parsed.data;
   const session = await auth();

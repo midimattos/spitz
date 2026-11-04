@@ -1,3 +1,4 @@
+import { aprovarDesejoSeContatoOk } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -36,5 +37,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Este número já está vinculado a outra conta." }, { status: 409 });
   }
   await prisma.verificationToken.deleteMany({ where: { identifier: identificadorWhatsapp(userId) } });
+  await aprovarDesejoSeContatoOk(userId).catch(() => null);
   return NextResponse.json({ ok: true });
 }

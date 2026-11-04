@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { validarCPF } from "@/lib/cpf";
 import { normalizarCor } from "@/lib/cores";
-import { notificar } from "@/lib/notificacoes";
+import { aprovarDesejoSeContatoOk } from "@/lib/whatsapp";
 
 const desejoSchema = z.object({
   porte: z.string().optional(),
@@ -90,20 +90,8 @@ export async function POST(request: Request) {
     },
   });
 
-  // Primeira vez deste comprador: avisa os admins que há alguém na fila de validação.
-  if (!anterior) {
-    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
-    for (const admin of admins) {
-      await notificar({
-        userId: admin.id,
-        tipo: "SISTEMA",
-        titulo: "Novo comprador aguardando validação",
-        mensagem: `${session.user.name ?? "Um comprador"} cadastrou um desejo no radar.`,
-        link: "/admin",
-        chave: `desejo-pendente:${desejo.id}`,
-      });
-    }
-  }
+  // Sem fila manual: o desejo é aprovado assim que o e-mail (e o WhatsApp, quando exigido) estiverem confirmados.
+  await aprovarDesejoSeContatoOk(session.user.id).catch(() => null);
 
   return NextResponse.json(desejo, { status: 201 });
 }

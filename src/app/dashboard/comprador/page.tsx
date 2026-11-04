@@ -22,8 +22,8 @@ export default async function DashboardCompradorPage() {
 
       {desejo?.validacao === "PENDENTE" && (
         <p className="mt-6 text-sm card p-4" style={{ color: "var(--brass)" }}>
-          Seu cadastro no radar está em validação pela equipe (proteção contra golpes para os criadores). Você já
-          pode navegar e favoritar; o contato com criadores é liberado assim que for aprovado.
+          Confirme seu e-mail (e o WhatsApp, quando pedido) em &quot;Minha conta&quot;. É a proteção contra contas falsas: seu
+          desejo só passa a valer e o contato com criadores só é liberado depois disso. Você já pode navegar e favoritar.
         </p>
       )}
       {desejo?.validacao === "REJEITADO" && (

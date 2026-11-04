@@ -71,8 +71,8 @@ export default async function RadarDemandaPage() {
 
       {desejo?.validacao === "PENDENTE" && (
         <p className="mt-4 text-sm card p-4" style={{ color: "var(--brass)" }}>
-          Cadastro em validação pela equipe. Você já pode registrar interesse; o criador só vê o seu contato depois
-          da aprovação.
+          Confirme seu e-mail (e o WhatsApp, quando pedido) em &quot;Minha conta&quot; para o seu desejo valer. O criador só vê o seu
+          contato depois dessa confirmação.
         </p>
       )}
       {desejo?.validacao === "REJEITADO" && (

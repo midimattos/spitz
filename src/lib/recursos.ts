@@ -23,4 +23,4 @@ export function podeVerInteligenciaMercado(canil: { assinaturaPro: boolean; proG
 
 // Quantidade mínima de dados para um número ser exibido como "tendência"
 // (abaixo disso a tela avisa que a amostra é pequena).
-export const AMOSTRA_MINIMA_TENDENCIA = 5;
+export const AMOSTRA_MINIMA_TENDENCIA = 10;

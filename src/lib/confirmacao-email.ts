@@ -1,3 +1,4 @@
+import { aprovarDesejoSeContatoOk } from "@/lib/whatsapp";
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { enviarEmail } from "@/lib/notificacoes";
@@ -31,6 +32,7 @@ export async function confirmarEmailComToken(token: string): Promise<boolean> {
   if (!registro || !registro.identifier.startsWith("email:") || registro.expires < new Date()) return false;
   const userId = registro.identifier.slice("email:".length);
   await prisma.user.update({ where: { id: userId }, data: { emailVerified: new Date() } });
+  await aprovarDesejoSeContatoOk(userId).catch(() => null);
   await prisma.verificationToken.deleteMany({ where: { identifier: registro.identifier } });
   return true;
 }

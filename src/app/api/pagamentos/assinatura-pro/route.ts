@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { criarPreferenciaPagamento, mercadoPagoConfigurado } from "@/lib/mercadopago";
-import { PRECO_ASSINATURA_PRO_MENSAL } from "@/lib/precos-plataforma";
+import { precoCheioMensal, situacaoAssinatura } from "@/lib/assinatura";
 
 export async function POST() {
   const canil = await getCanilDoCriadorLogado();
@@ -14,12 +14,20 @@ export async function POST() {
       { status: 503 }
     );
   }
+  if (precoCheioMensal() === null) {
+    return NextResponse.json({ error: "A cobrança ainda não começou: o valor da assinatura não foi definido." }, { status: 503 });
+  }
+
+  const sit = situacaoAssinatura(canil);
+  if (sit.valor === null || sit.preco === null) return NextResponse.json({ error: "Valor indisponível." }, { status: 503 });
 
   const pagamento = await prisma.pagamento.create({
     data: {
       canilId: canil.id,
       tipo: "ASSINATURA_PRO",
-      valor: PRECO_ASSINATURA_PRO_MENSAL,
+      valor: sit.valor,
+      valorCheio: sit.preco,
+      usouDescontoIndicacao: sit.usaDesconto,
     },
   });
 
@@ -27,10 +35,10 @@ export async function POST() {
 
   try {
     const preferencia = await criarPreferenciaPagamento({
-      item: { titulo: "Assinatura PRO — Inteligência de Mercado (mensal)", valor: PRECO_ASSINATURA_PRO_MENSAL },
+      item: { titulo: "Assinatura mensal — Plataforma Spitz Alemão", valor: sit.valor },
       referenciaExterna: pagamento.id,
-      urlRetornoSucesso: `${baseUrl}/dashboard/criador/mercado?pagamento=processando`,
-      urlRetornoFalha: `${baseUrl}/dashboard/criador/mercado?pagamento=falhou`,
+      urlRetornoSucesso: `${baseUrl}/dashboard/criador/assinatura?pagamento=processando`,
+      urlRetornoFalha: `${baseUrl}/dashboard/criador/assinatura?pagamento=falhou`,
     });
 
     await prisma.pagamento.update({

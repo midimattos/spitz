@@ -105,7 +105,8 @@ export default async function DashboardCriadorPage() {
   const marca: Item[] = [
     { href: "/dashboard/criador/perfil", titulo: "Página pública do canil", texto: "Seu endereço próprio, história, fotos e avaliações." },
     { href: "/dashboard/criador/lista-espera", titulo: "Lista de espera", texto: "Interessados avisados dos seus próximos filhotes.", badge: fila ? `${fila} na fila` : null },
-    { href: "/dashboard/criador/convites", titulo: "Convites", texto: "Convide canis: 30 dias de PRO para vocês dois." },
+    { href: "/dashboard/criador/convites", titulo: "Convites", texto: "Convide canis e ganhe desconto na mensalidade seguinte por indicação." },
+    { href: "/dashboard/criador/assinatura", titulo: "Minha assinatura", texto: "Seu período grátis e descontos por indicação." },
   ];
 
   const ferramentas: Item[] = [

@@ -1,3 +1,4 @@
+import { AMOSTRA_MINIMA_TENDENCIA } from "@/lib/recursos";
 import { filtroVendasDeMercado, limitarPorCanil, medianaPorCanil } from "@/lib/integridade";
 import { prisma } from "@/lib/prisma";
 import { corDoCao, normalizarCor, CORES_MERCADO } from "@/lib/cores";
@@ -48,6 +49,35 @@ export type ContextoMercado = {
   carregadoEm: Date;
 };
 
+/**
+ * Anti-distorção: cada pessoa (conta ou visitante) conta no máximo uma vez por busca/favorito
+ * idêntico e no máximo MAX_POR_PESSOA registros no período. Registros sem identidade são ignorados.
+ * Assim, repetir a mesma busca mil vezes (ou trocar o filtro mil vezes) não move o radar.
+ */
+const MAX_POR_PESSOA = 3;
+function limitarPorPessoa<T extends { userId: string | null; visitante: string | null }>(linhas: T[], chave: (l: T) => string): T[] {
+  const porPessoa = new Map<string, Set<string>>();
+  const out: T[] = [];
+  for (const l of linhas) {
+    const quem = l.userId ?? l.visitante;
+    if (!quem) continue;
+    const vistos = porPessoa.get(quem) ?? new Set<string>();
+    const k = chave(l);
+    if (vistos.has(k) || vistos.size >= MAX_POR_PESSOA) continue;
+    vistos.add(k);
+    porPessoa.set(quem, vistos);
+    out.push(l);
+  }
+  return out;
+}
+
+function medianaArredondada(valores: number[], passo = 50): number | null {
+  if (!valores.length) return null;
+  const v = [...valores].sort((a, b) => a - b);
+  const m = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
+  return Math.round(m / passo) * passo;
+}
+
 export async function carregarContextoMercado(): Promise<ContextoMercado> {
   const agora = new Date();
   const ha30d = new Date(agora.getTime() - 30 * DIA_MS);
@@ -68,16 +98,16 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       },
     }),
     prisma.desejoComprador.findMany({
-      where: { ativo: true, validacao: { not: "REJEITADO" } },
+      where: { ativo: true, validacao: "APROVADO" },
       select: { porte: true, sexo: true, corPelagem: true, estado: true, corBase: true, marcacao: true, diluicao: true, merle: true, precoMin: true, precoMax: true, cidade: true },
     }),
     prisma.eventoMercado.findMany({
       where: { tipo: "BUSCA", criadoEm: { gte: ha30d } },
-      select: { porte: true, cor: true, estado: true, filtros: true },
+      select: { porte: true, cor: true, estado: true, filtros: true, userId: true, visitante: true },
     }),
     prisma.eventoMercado.findMany({
       where: { tipo: "FAVORITO", criadoEm: { gte: ha30d } },
-      select: { porte: true, cor: true },
+      select: { porte: true, cor: true, userId: true, visitante: true },
     }),
   ]);
 
@@ -150,7 +180,7 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
       precoMax: d.precoMax ? Number(d.precoMax) : null,
       cidade: d.cidade,
     })),
-    buscas30d: buscasDb.map((b) => {
+    buscas30d: limitarPorPessoa(buscasDb, (b) => JSON.stringify([b.porte, b.cor, b.estado, b.filtros ?? null])).map((b) => {
       const f = (b.filtros && typeof b.filtros === "object" && !Array.isArray(b.filtros) ? b.filtros : {}) as Record<string, unknown>;
       const t = (k: string) => (typeof f[k] === "string" ? (f[k] as string) : null);
       const n = (k: string) => (typeof f[k] === "number" ? (f[k] as number) : null);
@@ -160,7 +190,7 @@ export async function carregarContextoMercado(): Promise<ContextoMercado> {
         precoMin: n("precoMin"), precoMax: n("precoMax"), cidade: t("cidade"),
       };
     }),
-    favoritos30d: favoritosDb.map((f) => ({ ...f, porte: normalizarPorte(f.porte) })),
+    favoritos30d: limitarPorPessoa(favoritosDb, (f) => JSON.stringify([f.porte, f.cor])).map((f) => ({ porte: normalizarPorte(f.porte), cor: f.cor })),
     carregadoEm: agora,
   };
 }
@@ -342,7 +372,7 @@ export type TendenciaDemandaPorte = {
 
 export async function calcularTendenciasDemanda(): Promise<TendenciaDemandaPorte[]> {
   const [desejos, anuncios] = await Promise.all([
-    prisma.desejoComprador.findMany({ where: { ativo: true, validacao: { not: "REJEITADO" } } }),
+    prisma.desejoComprador.findMany({ where: { ativo: true, validacao: "APROVADO" } }),
     prisma.anuncio.findMany({
       where: { status: "PUBLICADO", canil: { verificado: true } },
       select: { cao: { select: { porte: true } } },
@@ -373,7 +403,8 @@ export async function calcularTendenciasDemanda(): Promise<TendenciaDemandaPorte
     return {
       porte,
       desejosAtivos: d.count,
-      precoMedioDesejado: d.precos.length ? d.precos.reduce((a, b) => a + b, 0) / d.precos.length : null,
+      // mediana arredondada: um valor extremo digitado de propósito não move o número
+      precoMedioDesejado: medianaArredondada(d.precos),
       anunciosPublicados: oferta,
       fatorMercado: (d.count - oferta) / (d.count + oferta + 4),
     };
@@ -399,7 +430,7 @@ export type LinhaRadarCor = {
 };
 
 export function classificarSituacao(pressao: number, sinais: number): SituacaoMercado {
-  if (sinais < 5) return "POUCOS_DADOS";
+  if (sinais < AMOSTRA_MINIMA_TENDENCIA) return "POUCOS_DADOS";
   if (pressao > 0.2) return "FALTA_OFERTA";
   if (pressao < -0.2) return "EXCESSO_OFERTA";
   return "EQUILIBRADO";

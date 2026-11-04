@@ -1,3 +1,4 @@
+import { aprovarDesejoSeContatoOk } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -30,5 +31,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Esse número já está em outra conta." }, { status: 409 });
     }
   }
+  await aprovarDesejoSeContatoOk(id).catch(() => null);
   return NextResponse.json({ ok: true });
 }

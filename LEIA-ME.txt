@@ -1,0 +1,30 @@
+PILOTO 90 DIAS + ASSINATURA + PROTECAO DOS NUMEROS  (tem 1 migration)
+
+ASSINATURA
+- Canis que entram pelo convite: 90 dias sem cobranca (PILOTO_DIAS). Canis que ja existem tambem ganham 90 dias a partir do deploy.
+- Depois do piloto todos pagam a MESMA mensalidade. Nao existe preco de fundador.
+- Quem indica um canil ganha desconto na mensalidade seguinte (1 desconto por indicacao). Tela nova: "Minha assinatura" no painel do criador.
+- A cobranca esta DESLIGADA. Para ligar, na Vercel (Environment Variables) defina:
+    PRECO_ASSINATURA_MENSAL   ex.: 149.90
+    DESCONTO_INDICACAO_PERCENT  ex.: 50
+  e faca redeploy. Enquanto PRECO_ASSINATURA_MENSAL estiver vazio, ninguem e cobrado.
+- Cada mensalidade paga soma 30 dias de acesso.
+
+COMPRADORES / DESEJOS
+- Sem aprovacao manual: o desejo e aprovado sozinho quando o comprador confirma o e-mail (e o WhatsApp, se a plataforma exigir). Cada conta tem 1 desejo. Voce ainda pode rejeitar um caso de abuso no painel admin.
+- O radar so conta desejos aprovados.
+
+PROTECAO DOS NUMEROS
+- Limite de 300 eventos/hora por IP no marketplace, alem do limite por visitante.
+- Cada pessoa conta no maximo 3 buscas/favoritos distintos (identicos contam 1 so).
+- Preco desejado = mediana arredondada (valor extremo nao move).
+- Numero so aparece como tendencia com pelo menos 10 sinais (antes eram 5).
+
+COMO INSTALAR
+1. Copie "src", "prisma" e ".env.example" para dentro da pasta spitz, escolhendo "Substituir" (NAO cole a pasta piloto-e-protecoes inteira).
+2. cmd, uma linha por vez:
+   git add .
+   git commit -m "piloto, assinatura e protecoes"
+   git push
+3. Depois de Ready, no cmd (na pasta spitz, com o .env que voce ja criou):
+   npx prisma migrate deploy
