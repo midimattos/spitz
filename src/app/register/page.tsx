@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 
 function RegisterForm() {
   const router = useRouter();
@@ -11,7 +12,7 @@ function RegisterForm() {
   const [role, setRole] = useState<"CRIADOR" | "COMPRADOR">("CRIADOR");
   const tipo = searchParams.get("tipo");
   useEffect(() => {
-    if (tipo === "comprador") setRole("COMPRADOR");
+    if (tipo === "comprador" && MARKETPLACE_ATIVO) setRole("COMPRADOR");
     else if (tipo === "criador") setRole("CRIADOR");
   }, [tipo]);
   const [erro, setErro] = useState<string | null>(null);
@@ -62,6 +63,7 @@ function RegisterForm() {
           Criar conta
         </h1>
 
+        {MARKETPLACE_ATIVO && (
         <div className="mt-6 flex gap-2 text-sm">
           <button
             type="button"
@@ -88,6 +90,7 @@ function RegisterForm() {
             Quero um filhote
           </button>
         </div>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, overflow: "hidden" }}>

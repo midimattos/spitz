@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 
 type Props = {
   usuario: { nome: string; papel: string } | null;
@@ -25,9 +26,11 @@ export function Cabecalho({ usuario, sair }: Props) {
           Spitz Alemão
         </Link>
         <nav className="flex items-center gap-5 text-sm">
-          <Link href="/marketplace" className="hover:underline" style={{ color: "var(--ink)" }}>
-            Marketplace
-          </Link>
+          {MARKETPLACE_ATIVO && (
+            <Link href="/marketplace" className="hover:underline" style={{ color: "var(--ink)" }}>
+              Marketplace
+            </Link>
+          )}
           {usuario ? (
             <>
               <Link href={painel} className="hover:underline" style={{ color: "var(--ink)" }}>

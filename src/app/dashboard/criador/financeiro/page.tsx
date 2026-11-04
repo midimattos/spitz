@@ -85,6 +85,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
     caoId: l.caoId,
     caoNome: l.cao?.nome,
     descricao: l.descricao,
+    automatico: !!l.chaveAuto,
   }));
   const caoFiltro = sp.cao && (sp.cao === "geral" || caes.some((c) => c.id === sp.cao)) ? sp.cao : undefined;
   const lista = filtrarLancamentos(todos, { de, ate, caoId: caoFiltro });
@@ -266,7 +267,13 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
                   <span style={{ color: l.tipo === "RECEITA" ? "var(--pine)" : ehInvestimento(l) ? "var(--brass)" : vermelho }}>
                     {l.tipo === "RECEITA" ? "+" : "−"} {formatarMoeda(l.valor)}
                   </span>
-                  <ExcluirButton endpoint={`/api/financeiro/${l.id}`} />
+                  {(l as { automatico?: boolean }).automatico ? (
+                    <span className="text-[11px]" style={{ color: "var(--ink-muted)" }} title="Vem da compra ou venda de um cão. Para mudar, abra a ficha do cão.">
+                      da ficha do cão
+                    </span>
+                  ) : (
+                    <ExcluirButton endpoint={`/api/financeiro/${l.id}`} />
+                  )}
                 </div>
               </div>
             ))}

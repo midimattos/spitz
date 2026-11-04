@@ -1,4 +1,5 @@
 import { PILOTO_DIAS, DIA_MS } from "@/lib/assinatura";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -43,6 +44,9 @@ export async function POST(request: Request) {
   }
 
   const { name, password, role, codigoConvite } = parsed.data;
+  if (role === "COMPRADOR" && !MARKETPLACE_ATIVO) {
+    return NextResponse.json({ error: "No momento só estamos abrindo contas para criadores." }, { status: 403 });
+  }
   const email = parsed.data.email.trim().toLowerCase();
 
   const existente = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });

@@ -238,9 +238,25 @@ model Cao {
   criopreservacoes       Criopreservacao[]
   descendentes           Descendente[]
 
+  // ---- Ninhada de origem (cães nascidos no canil) ----
+  ninhadaId String?
+  ninhada   Ninhada? @relation("FilhotesDaNinhada", fields: [ninhadaId], references: [id], onDelete: SetNull)
+
+  // ---- Venda registrada pelo criador (o cão sai do plantel ativo, mas fica no histórico e na árvore) ----
+  vendidoEm        DateTime?
+  valorVenda       Decimal?  @db.Decimal(10, 2)
+  compradorNome    String? // privado: só o criador vê
+  compradorContato String? // privado
+
+  // ---- Compra: quanto o criador pagou por este cão ----
+  valorCompra Decimal?  @db.Decimal(10, 2)
+  dataCompra  DateTime?
+  compradoDe  String?
+
   @@index([canilId])
   @@index([papel])
   @@index([registro])
+  @@index([ninhadaId])
 }
 
 // "Gaveta Digital": documentos anexados à ficha do cão.
@@ -324,6 +340,10 @@ model LancamentoFinanceiro {
   // Receita criada automaticamente quando uma venda é registrada (evita duplicar).
   vendaId String? @unique
 
+  // Lançamento gerado pela venda/compra de um cão ("VENDA:<caoId>" / "COMPRA:<caoId>").
+  // Só muda pela ficha do cão, para o financeiro e a ficha nunca ficarem diferentes.
+  chaveAuto String? @unique
+
   // Custo atribuído a uma ninhada específica (opcional): alimenta o custo real por filhote.
   ninhadaId String?
   ninhada   Ninhada? @relation(fields: [ninhadaId], references: [id], onDelete: SetNull)
@@ -363,9 +383,13 @@ model Ninhada {
   observacoes        String?
   criadoEm           DateTime  @default(now())
 
+  // Verdadeiro quando a ninhada foi cadastrada depois de nascida, sem a data real da cobertura.
+  coberturaEstimada Boolean @default(false)
+
   lancamentos LancamentoFinanceiro[]
   tokenAlbum  String?                @unique // link público do álbum de fotos dos filhotes
   fotosAlbum  FotoNinhada[]
+  filhotes    Cao[]                  @relation("FilhotesDaNinhada")
 
   @@index([caoMaeId])
 }

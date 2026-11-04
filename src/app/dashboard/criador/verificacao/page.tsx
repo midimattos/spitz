@@ -15,8 +15,8 @@ export default async function VerificacaoPage() {
       {canil.verificado ? (
         <div className="card mt-8 p-6">
           <p className="text-sm" style={{ color: "var(--pine)" }}>
-            Seu canil já está verificado — seus anúncios publicados
-            aparecem no marketplace.
+            Seu canil já está verificado — sua página pública mostra o selo
+            de canil verificado.
           </p>
         </div>
       ) : (

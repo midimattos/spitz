@@ -1,0 +1,151 @@
+"use client";
+
+import { OPCOES_COR_BASE } from "@/lib/genetica-cor";
+import { ATRIBUTOS_NOME, nomeMaiusculo } from "@/lib/texto";
+import { dataParaIso, lerValor } from "@/lib/moeda";
+
+export type FilhoteLinha = {
+  nome: string;
+  sexo: "" | "MACHO" | "FEMEA";
+  cor: string;
+  vendido: boolean;
+  valorVenda: string;
+  dataVenda: string; // yyyy-mm-dd
+  compradorNome: string;
+  compradorContato: string;
+};
+
+export const linhaVazia = (): FilhoteLinha => ({
+  nome: "",
+  sexo: "",
+  cor: "",
+  vendido: false,
+  valorVenda: "",
+  dataVenda: "",
+  compradorNome: "",
+  compradorContato: "",
+});
+
+/** Converte as linhas da tela no formato da API. Linhas totalmente em branco são ignoradas. */
+export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[] } | { erro: string } {
+  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.vendido);
+  const nomes = new Set<string>();
+  const filhotes: unknown[] = [];
+  for (const [i, l] of preenchidas.entries()) {
+    const n = i + 1;
+    if (!l.nome.trim()) return { erro: `Filhote ${n}: dê um nome.` };
+    if (!l.sexo) return { erro: `Filhote ${n}: escolha o sexo.` };
+    const chave = `${nomeMaiusculo(l.nome.trim())}|${l.sexo}`;
+    if (nomes.has(chave)) return { erro: `Dois filhotes com o nome ${nomeMaiusculo(l.nome.trim())} e o mesmo sexo. Dê um nome diferente a cada um.` };
+    nomes.add(chave);
+    let valorVenda: number | undefined;
+    if (l.vendido) {
+      valorVenda = lerValor(l.valorVenda);
+      if (valorVenda === undefined) return { erro: `Filhote ${n} (${nomeMaiusculo(l.nome.trim())}): informe o valor da venda.` };
+    }
+    filhotes.push({
+      nome: l.nome.trim(),
+      sexo: l.sexo,
+      cor: l.cor || undefined,
+      vendido: l.vendido,
+      valorVenda,
+      dataVenda: l.vendido && l.dataVenda ? dataParaIso(l.dataVenda) : undefined,
+      compradorNome: l.vendido ? l.compradorNome.trim() || undefined : undefined,
+      compradorContato: l.vendido ? l.compradorContato.trim() || undefined : undefined,
+    });
+  }
+  return { filhotes };
+}
+
+const borda = { borderColor: "var(--border-hairline)" };
+const campo = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
+const rot = { color: "var(--ink-muted)" };
+
+/** Lista de filhotes de uma ninhada: nome, sexo, cor, se fica no plantel ou foi vendido (valor e cliente). */
+export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; onChange: (l: FilhoteLinha[]) => void }) {
+  function mudar(i: number, parcial: Partial<FilhoteLinha>) {
+    onChange(linhas.map((l, j) => (j === i ? { ...l, ...parcial } : l)));
+  }
+
+  return (
+    <div className="space-y-3">
+      {linhas.map((l, i) => (
+        <div key={i} className="rounded-lg border p-4" style={borda}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium" style={{ color: "var(--pine)" }}>Filhote {i + 1}</p>
+            {linhas.length > 1 && (
+              <button type="button" onClick={() => onChange(linhas.filter((_, j) => j !== i))} className="text-xs underline" style={{ color: "#a32d2d" }}>
+                remover
+              </button>
+            )}
+          </div>
+          <div className="mt-2 grid sm:grid-cols-4 gap-3">
+            <div className="sm:col-span-2">
+              <label className="text-xs" style={rot}>Nome</label>
+              <input
+                value={l.nome}
+                onChange={(e) => mudar(i, { nome: nomeMaiusculo(e.target.value) })}
+                className={campo}
+                {...ATRIBUTOS_NOME}
+                style={{ ...borda, ...ATRIBUTOS_NOME.style }}
+              />
+            </div>
+            <div>
+              <label className="text-xs" style={rot}>Sexo</label>
+              <select value={l.sexo} onChange={(e) => mudar(i, { sexo: e.target.value as FilhoteLinha["sexo"] })} className={campo} style={borda}>
+                <option value="">— escolha —</option>
+                <option value="MACHO">Macho</option>
+                <option value="FEMEA">Fêmea</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs" style={rot}>Cor</label>
+              <select value={l.cor} onChange={(e) => mudar(i, { cor: e.target.value })} className={campo} style={borda}>
+                <option value="">— não sei —</option>
+                {OPCOES_COR_BASE.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="radio" name={`situacao-${i}`} checked={!l.vendido} onChange={() => mudar(i, { vendido: false })} /> Fica no meu plantel
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name={`situacao-${i}`} checked={l.vendido} onChange={() => mudar(i, { vendido: true })} /> Já foi vendido
+            </label>
+          </div>
+
+          {l.vendido && (
+            <div className="mt-3 grid sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs" style={rot}>Valor da venda (R$)</label>
+                <input value={l.valorVenda} onChange={(e) => mudar(i, { valorVenda: e.target.value })} inputMode="decimal" placeholder="Ex.: 3500" className={campo} style={borda} />
+              </div>
+              <div>
+                <label className="text-xs" style={rot}>Data da venda</label>
+                <input type="date" value={l.dataVenda} onChange={(e) => mudar(i, { dataVenda: e.target.value })} className={campo} style={borda} />
+              </div>
+              <div>
+                <label className="text-xs" style={rot}>Cliente (opcional)</label>
+                <input value={l.compradorNome} onChange={(e) => mudar(i, { compradorNome: e.target.value })} className={campo} style={borda} />
+              </div>
+              <div>
+                <label className="text-xs" style={rot}>Contato do cliente (opcional)</label>
+                <input value={l.compradorContato} onChange={(e) => mudar(i, { compradorContato: e.target.value })} className={campo} style={borda} />
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...linhas, linhaVazia()])} className="text-sm underline" style={{ color: "var(--brass)" }}>
+        + Adicionar outro filhote
+      </button>
+      <p className="text-xs" style={rot}>
+        O nome do cliente e o contato ficam só para você. Cada filhote vai para o seu Plantel com o pai e a mãe já ligados, e a venda entra no Financeiro.
+      </p>
+    </div>
+  );
+}

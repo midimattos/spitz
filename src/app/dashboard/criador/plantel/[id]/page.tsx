@@ -20,6 +20,7 @@ import { LancamentoForm } from "@/components/lancamento-form";
 import { CicloCioForm } from "@/components/ciclo-cio-form";
 import { NinhadaForm } from "@/components/ninhada-form";
 import { RegistrarPartoForm } from "@/components/registrar-parto-form";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 import { carregarContextoMercado, carregarFaixasDoCanil, sugerirPreco } from "@/lib/mercado";
 import { PainelPreco } from "@/components/painel-preco";
 import { DossieGeneticoPanel } from "@/components/dossie-genetico-panel";
@@ -29,6 +30,9 @@ import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
 import { ArvoreEdicao } from "@/components/arvore-edicao";
 import { DescendentesPainel } from "@/components/descendentes-painel";
+import { VendaCao } from "@/components/venda-cao";
+import { CompraCao } from "@/components/compra-cao";
+import { LABEL_SEXO as ROTULO_SEXO } from "@/lib/labels";
 
 export default async function FichaCaoPage({
   params,
@@ -44,8 +48,9 @@ export default async function FichaCaoPage({
     include: {
       pai: true,
       mae: true,
-      filhosComoPai: true,
-      filhosComoMae: true,
+      filhosComoPai: { include: { mae: { select: { nome: true } } } },
+      filhosComoMae: { include: { pai: { select: { nome: true } } } },
+      ninhada: { select: { id: true, dataParto: true } },
       documentos: { orderBy: { criadoEm: "desc" } },
       laudosGeneticos: { include: { resultados: true }, orderBy: { criadoEm: "desc" } },
       lancamentosFinanceiros: { orderBy: { data: "desc" } },
@@ -63,7 +68,7 @@ export default async function FichaCaoPage({
   const machosDisponiveis =
     cao.sexo === "FEMEA"
       ? await prisma.cao.findMany({
-          where: { canilId: canil.id, sexo: "MACHO" },
+          where: { canilId: canil.id, sexo: "MACHO", vendidoEm: null },
           select: { id: true, nome: true },
           orderBy: { nome: "asc" },
         })
@@ -77,8 +82,6 @@ export default async function FichaCaoPage({
 
   const proximoCio = preverProximoCio(cao.ciclosCio);
   const resumoFinanceiro = resumirLancamentos(cao.lancamentosFinanceiros);
-
-  const filhos = [...cao.filhosComoPai, ...cao.filhosComoMae];
 
   const [laudosPai, laudosMae] = await Promise.all([
     cao.paiId
@@ -100,11 +103,14 @@ export default async function FichaCaoPage({
 
   // Preço sugerido: guiado pelo que o marketplace registra (vendas reais,
   // anúncios ativos, desejos, buscas e favoritos para cães como este).
-  const [contextoMercado, faixasDoCanil] = await Promise.all([
-    carregarContextoMercado(),
-    carregarFaixasDoCanil(canil.id),
-  ]);
-  const precoMercado = sugerirPreco(cao, canil.estado, contextoMercado, faixasDoCanil);
+  let precoMercado: ReturnType<typeof sugerirPreco> = null;
+  if (MARKETPLACE_ATIVO) {
+    const [contextoMercado, faixasDoCanil] = await Promise.all([
+      carregarContextoMercado(),
+      carregarFaixasDoCanil(canil.id),
+    ]);
+    precoMercado = sugerirPreco(cao, canil.estado, contextoMercado, faixasDoCanil);
+  }
 
   const idade = calcularIdade(cao.dataNascimento);
 
@@ -142,6 +148,44 @@ export default async function FichaCaoPage({
           )}
         </div>
       </div>
+
+      {!cao.externo && (
+        <div>
+          <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>Origem, compra e venda</h2>
+          <div className="card mt-3 p-6 space-y-5">
+            <p className="text-sm">
+              <span style={{ color: "var(--ink-muted)" }}>Origem: </span>
+              {cao.ninhada ? (
+                <>
+                  Nasceu no seu canil
+                  {cao.ninhada.dataParto ? ` (ninhada de ${formatarData(cao.ninhada.dataParto)})` : ""}{" "}
+                  <Link href="/dashboard/criador/ninhadas" className="underline" style={{ color: "var(--brass)" }}>ver ninhadas</Link>
+                </>
+              ) : (
+                "Não está ligado a uma ninhada do seu canil"
+              )}
+            </p>
+            {!cao.ninhada && (
+              <CompraCao
+                caoId={cao.id}
+                compra={cao.valorCompra !== null ? { valor: Number(cao.valorCompra), data: cao.dataCompra ? cao.dataCompra.toISOString() : null, de: cao.compradoDe } : null}
+              />
+            )}
+            <VendaCao
+              caoId={cao.id}
+              caoNome={cao.nome}
+              venda={
+                cao.vendidoEm
+                  ? { valor: Number(cao.valorVenda ?? 0), data: cao.vendidoEm.toISOString(), compradorNome: cao.compradorNome, compradorContato: cao.compradorContato }
+                  : null
+              }
+            />
+            <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+              Compra e venda entram sozinhas no Financeiro. O nome e o contato do cliente ficam só para você.
+            </p>
+          </div>
+        </div>
+      )}
 
       <EmitirCertificado caoId={cao.id} codigoAtual={certificadoAtual?.codigo ?? null} />
 
@@ -206,6 +250,11 @@ export default async function FichaCaoPage({
             )}
 
             <NinhadaForm caoMaeId={cao.id} machosDisponiveis={machosDisponiveis} />
+            <p className="mt-4 text-sm">
+              <Link href="/dashboard/criador/ninhadas/nova" className="underline" style={{ color: "var(--brass)" }}>
+                Cadastrar uma ninhada que já nasceu (com os filhotes)
+              </Link>
+            </p>
           </div>
         </div>
       )}
@@ -222,6 +271,60 @@ export default async function FichaCaoPage({
       </div>
       <ArvoreEdicao caoId={cao.id} caes={todosCaes} />
 
+    </div>
+  );
+
+  const descendentesSistema = [
+    ...cao.filhosComoPai.map((f) => ({ f, outro: f.mae?.nome ?? null })),
+    ...cao.filhosComoMae.map((f) => ({ f, outro: f.pai?.nome ?? null })),
+  ].sort((a, b) => (b.f.dataNascimento?.getTime() ?? 0) - (a.f.dataNascimento?.getTime() ?? 0));
+
+  const abaDescendentes = (
+    <div>
+      <div>
+        <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+          Descendentes ({descendentesSistema.length})
+        </h2>
+        <p className="text-sm mt-1 max-w-2xl" style={{ color: "var(--ink-muted)" }}>
+          Os filhos deste cão aparecem aqui sozinhos, conforme você cadastra as ninhadas. Quem foi vendido continua na lista, para você acompanhar a linhagem.
+        </p>
+      </div>
+      {descendentesSistema.length === 0 ? (
+        <div className="card mt-4 p-6 text-sm" style={{ color: "var(--ink-muted)" }}>
+          Nenhum filho registrado ainda.{" "}
+          <Link href="/dashboard/criador/ninhadas/nova" className="underline" style={{ color: "var(--brass)" }}>
+            Cadastrar uma ninhada que já nasceu
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {descendentesSistema.map(({ f, outro }) => (
+            <Link key={f.id} href={`/dashboard/criador/plantel/${f.id}`} className="card overflow-hidden block text-sm hover:opacity-90">
+              {f.fotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={f.fotoUrl} alt={f.nome} className="w-full aspect-square object-cover" />
+              ) : (
+                <div className="w-full aspect-square flex items-center justify-center text-xs" style={{ color: "var(--ink-muted)", background: "var(--parchment)" }}>sem foto</div>
+              )}
+              <div className="p-3 space-y-0.5">
+                <p className="font-medium" style={{ color: "var(--pine)" }}>{f.nome}</p>
+                <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                  {[ROTULO_SEXO[f.sexo], f.corBase ?? f.corPelagem, f.dataNascimento ? `nasc. ${formatarData(f.dataNascimento)}` : null].filter(Boolean).join(" · ")}
+                </p>
+                {outro && <p className="text-xs" style={{ color: "var(--ink-muted)" }}>com {outro}</p>}
+                <p className="text-xs pt-1" style={{ color: f.vendidoEm ? "var(--brass)" : "var(--pine)" }}>
+                  {f.vendidoEm
+                    ? `Vendido${f.valorVenda !== null ? ` por ${formatarMoeda(Number(f.valorVenda))}` : ""}${f.compradorNome ? ` · ${f.compradorNome}` : ""}`
+                    : f.dataFalecimento
+                      ? "Falecido"
+                      : "No plantel"}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
       <DescendentesPainel
         caoId={cao.id}
         itens={cao.descendentes.map((d) => ({
@@ -236,25 +339,6 @@ export default async function FichaCaoPage({
           exibirPublico: d.exibirPublico,
         }))}
       />
-
-      {filhos.length > 0 && (
-        <div className="mt-6">
-          <p className="text-sm mb-2" style={{ color: "var(--ink-muted)" }}>
-            Filhos registrados no sistema
-          </p>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {filhos.map((filho) => (
-              <Link
-                key={filho.id}
-                href={`/dashboard/criador/plantel/${filho.id}`}
-                className="card px-4 py-2 text-sm hover:opacity-90"
-              >
-                {filho.nome}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -497,9 +581,14 @@ export default async function FichaCaoPage({
             {cao.porte ? ` · Porte ${cao.porte}` : ""}
             {cao.registro ? ` · Registro ${cao.registro}` : ""}
           </p>
+          {cao.vendidoEm && (
+            <p className="mt-1 text-xs inline-block px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--brass)", color: "var(--brass)" }}>
+              Vendido em {formatarData(cao.vendidoEm)}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
-          {!cao.externo && (
+          {MARKETPLACE_ATIVO && !cao.externo && (
             <Link
               href="/dashboard/criador/anuncios/novo"
               className="px-4 py-2 rounded text-white text-sm"
@@ -523,10 +612,11 @@ export default async function FichaCaoPage({
           abas={[
             { id: "gerais", label: "Dados Gerais", conteudo: abaDadosGerais },
             { id: "genealogia", label: "Árvore Genealógica", conteudo: abaGenealogia },
+            { id: "descendentes", label: "Descendentes", conteudo: abaDescendentes },
             { id: "genetica", label: "Genética", conteudo: abaGenetica },
             { id: "financeiro", label: "Financeiro", conteudo: abaFinanceiro },
             { id: "dossie", label: "Dossiê", conteudo: abaDossie },
-            { id: "precificacao", label: "Precificação", conteudo: abaPrecificacao },
+            ...(MARKETPLACE_ATIVO ? [{ id: "precificacao", label: "Precificação", conteudo: abaPrecificacao }] : []),
             { id: "gaveta", label: "Gaveta Digital", conteudo: abaGavetaDigital },
           ]}
         />

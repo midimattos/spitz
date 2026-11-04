@@ -1,3 +1,5 @@
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
+
 // Lógica de navegação da barra "Voltar / Painel" (src/components/barra-navegacao.tsx).
 // Fica separada do componente para poder ser testada sem React nem Next.
 
@@ -33,6 +35,7 @@ export function resolverContexto(pathname: string): ContextoNavegacao {
   }
   if (dentroDe(p, "/canil") || dentroDe(p, "/dossie")) {
     // Páginas públicas de um canil / dossiê: normalmente se chega nelas pela vitrine.
+    if (!MARKETPLACE_ATIVO) return { homeHref: "/", homeLabel: "Início", ehHome: false };
     return { homeHref: "/marketplace", homeLabel: "Marketplace", ehHome: false };
   }
   return { homeHref: "/", homeLabel: "Início", ehHome: p === "/" };

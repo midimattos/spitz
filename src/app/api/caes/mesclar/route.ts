@@ -56,6 +56,13 @@ export async function POST(request: Request) {
       await tx.documento.updateMany(w);
       await tx.laudoGenetico.updateMany(w);
       await tx.lancamentoFinanceiro.updateMany(w);
+      // Lançamentos automáticos de venda/compra: ficam com a chave do cão mantido; se o mantido já tinha
+      // a sua própria venda/compra, vale a dele e o lançamento do removido é descartado (sem duplicar receita).
+      for (const [tipo, mantidoTem] of [["VENDA", manter.vendidoEm !== null], ["COMPRA", manter.valorCompra !== null]] as const) {
+        const velha = `${tipo}:${removerId}`;
+        if (mantidoTem) await tx.lancamentoFinanceiro.deleteMany({ where: { chaveAuto: velha } });
+        else await tx.lancamentoFinanceiro.updateMany({ where: { chaveAuto: velha }, data: { chaveAuto: `${tipo}:${manterId}` } });
+      }
       await tx.cicloCio.updateMany(w);
       await tx.dossieGenetico.updateMany(w);
       await tx.anuncio.updateMany(w);

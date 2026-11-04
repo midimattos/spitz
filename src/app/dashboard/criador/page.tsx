@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { podeVerInteligenciaMercado, temPro } from "@/lib/recursos";
 import { formatarData } from "@/lib/labels";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 
 type Item = { href: string; titulo: string; texto: string; badge?: number | string | null; trava?: boolean };
 
@@ -17,7 +18,7 @@ function Destaque({ item }: { item: Item }) {
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[10px] uppercase tracking-[0.2em]" style={{ color: "#e3c999" }}>
-          {item.trava ? "Em breve para você" : "Diferencial da assinatura"}
+          {item.trava ? "Em breve para você" : MARKETPLACE_ATIVO ? "Diferencial da assinatura" : "Para o seu canil"}
         </p>
         {item.badge ? (
           <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#e3c999", color: "#12241d" }}>{item.badge}</span>
@@ -72,45 +73,60 @@ export default async function DashboardCriadorPage() {
   const canil = await getCanilDoCriadorLogado();
   const radarLiberado = podeVerInteligenciaMercado(canil);
 
-  const [naoLidas, caes, anunciosAtivos, semResposta, fila] = canil
+  const [naoLidas, caes, anunciosAtivos, semResposta, fila, ninhadasAtivas] = canil
     ? await Promise.all([
         session?.user ? prisma.notificacao.count({ where: { userId: session.user.id, lida: false } }) : 0,
-        prisma.cao.count({ where: { canilId: canil.id, externo: false, dataFalecimento: null } }),
-        prisma.anuncio.count({ where: { canilId: canil.id, status: "PUBLICADO" } }),
-        prisma.mensagemContato.count({ where: { anuncio: { canilId: canil.id }, respondidaEm: null } }),
-        prisma.listaEspera.count({ where: { canilId: canil.id } }),
+        prisma.cao.count({ where: { canilId: canil.id, externo: false, dataFalecimento: null, vendidoEm: null } }),
+        MARKETPLACE_ATIVO ? prisma.anuncio.count({ where: { canilId: canil.id, status: "PUBLICADO" } }) : 0,
+        MARKETPLACE_ATIVO ? prisma.mensagemContato.count({ where: { anuncio: { canilId: canil.id }, respondidaEm: null } }) : 0,
+        MARKETPLACE_ATIVO ? prisma.listaEspera.count({ where: { canilId: canil.id } }) : 0,
+        prisma.ninhada.count({ where: { caoMae: { canilId: canil.id }, dataParto: null } }),
       ])
-    : [0, 0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0];
 
   const contato = session?.user ? await situacaoDoContato(session.user.id) : null;
   const pro = temPro(canil);
   const gratisAte = canil?.proGratisAte && canil.proGratisAte.getTime() > Date.now() && !canil.assinaturaPro ? canil.proGratisAte : null;
 
-  const destaques: Item[] = [
-    { href: "/dashboard/criador/mercado", titulo: "Inteligência de Mercado", texto: "O que os compradores procuram agora: cores em alta, regiões, faixas de valor e tempo médio de venda.", trava: !radarLiberado },
-    { href: "/dashboard/criador/precificacao", titulo: "Precificação", texto: "Quanto cobrar por cada cão, guiado por vendas e procura reais do marketplace." },
-    { href: "/dashboard/criador/desempenho", titulo: "Desempenho", texto: "Seu canil comparado ao mercado, melhor época para cobrir e o perfil de quem compra." },
-    { href: "/dashboard/criador/saude", titulo: "Saúde da carteira", texto: "Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail." },
-  ];
+  const destaques: Item[] = MARKETPLACE_ATIVO
+    ? [
+        { href: "/dashboard/criador/mercado", titulo: "Inteligência de Mercado", texto: "O que os compradores procuram agora: cores em alta, regiões, faixas de valor e tempo médio de venda.", trava: !radarLiberado },
+        { href: "/dashboard/criador/precificacao", titulo: "Precificação", texto: "Quanto cobrar por cada cão, guiado por vendas e procura reais do marketplace." },
+        { href: "/dashboard/criador/desempenho", titulo: "Desempenho", texto: "Seu canil comparado ao mercado, melhor época para cobrir e o perfil de quem compra." },
+        { href: "/dashboard/criador/saude", titulo: "Saúde da carteira", texto: "Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail." },
+      ]
+    : [
+        { href: "/dashboard/criador/plantel", titulo: "Plantel e pedigree", texto: "Cadastre seus cães, monte a árvore genealógica até 5 gerações e imprima o mapa do pedigree." },
+        { href: "/dashboard/criador/ninhadas", titulo: "Ninhadas", texto: "Cobertura, parto, filhotes, custos e margem de cada ninhada." },
+        { href: "/dashboard/criador/financeiro", titulo: "Financeiro", texto: "Receitas, despesas, quanto cada cão custou e lucro, com relatório anual." },
+        { href: "/dashboard/criador/saude", titulo: "Saúde da carteira", texto: "Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail." },
+      ];
 
   const diaADia: Item[] = [
     { href: "/dashboard/criador/plantel", titulo: "Plantel", texto: "Cães, árvore genealógica, dossiê genético e documentos." },
-    { href: "/dashboard/criador/anuncios", titulo: "Anúncios", texto: "Publique filhotes no marketplace, com fotos e preço.", badge: anunciosAtivos ? `${anunciosAtivos} no ar` : null },
-    { href: "/dashboard/criador/mensagens", titulo: "Mensagens", texto: "Interessados nos seus anúncios.", badge: semResposta ? `${semResposta} sem resposta` : null },
+    ...(MARKETPLACE_ATIVO
+      ? [
+          { href: "/dashboard/criador/anuncios", titulo: "Anúncios", texto: "Publique filhotes no marketplace, com fotos e preço.", badge: anunciosAtivos ? `${anunciosAtivos} no ar` : null },
+          { href: "/dashboard/criador/mensagens", titulo: "Mensagens", texto: "Interessados nos seus anúncios.", badge: semResposta ? `${semResposta} sem resposta` : null },
+        ]
+      : []),
     { href: "/dashboard/criador/ninhadas", titulo: "Ninhadas", texto: "Coberturas, partos, custos, álbum e cartaz." },
     { href: "/dashboard/criador/financeiro", titulo: "Financeiro", texto: "Receitas, despesas, lucro e relatório anual." },
     { href: "/dashboard/criador/cuidados", titulo: "Cuidados", texto: "Vacinas, vermífugo e antipulgas, com aviso antes de vencer." },
+    ...(MARKETPLACE_ATIVO ? [] : [{ href: "/dashboard/criador/cruzamentos", titulo: "Simulador de cruzamento", texto: "Risco genético estimado antes de cruzar." }]),
   ];
 
   const marca: Item[] = [
     { href: "/dashboard/criador/perfil", titulo: "Página pública do canil", texto: "Seu endereço próprio, história, fotos e avaliações." },
-    { href: "/dashboard/criador/lista-espera", titulo: "Lista de espera", texto: "Interessados avisados dos seus próximos filhotes.", badge: fila ? `${fila} na fila` : null },
+    ...(MARKETPLACE_ATIVO
+      ? [{ href: "/dashboard/criador/lista-espera", titulo: "Lista de espera", texto: "Interessados avisados dos seus próximos filhotes.", badge: fila ? `${fila} na fila` : null }]
+      : []),
     { href: "/dashboard/criador/convites", titulo: "Convites", texto: "Convide canis e ganhe desconto na mensalidade seguinte por indicação." },
     { href: "/dashboard/criador/assinatura", titulo: "Minha assinatura", texto: "Seu período grátis e descontos por indicação." },
   ];
 
   const ferramentas: Item[] = [
-    { href: "/dashboard/criador/cruzamentos", titulo: "Simulador de cruzamento", texto: "Risco genético estimado e sugestões guiadas pela demanda." },
+    ...(MARKETPLACE_ATIVO ? [{ href: "/dashboard/criador/cruzamentos", titulo: "Simulador de cruzamento", texto: "Risco genético estimado e sugestões guiadas pela demanda." }] : []),
     { href: "/dashboard/criador/criopreservacao", titulo: "Criopreservação", texto: "Inventário de sêmen, embriões e óvulos." },
     { href: "/dashboard/criador/notificacoes", titulo: "Avisos", texto: "Cio, partos, mensagens e anúncios parados.", badge: naoLidas || null },
     { href: "/dashboard/criador/verificacao", titulo: "Dados e verificação", texto: canil?.verificado ? "Seu canil é verificado. Edite seus dados." : "Complete os dados e entre na fila de aprovação." },
@@ -143,25 +159,31 @@ export default async function DashboardCriadorPage() {
       {contato && !contato.liberado && (
         <Link href="/conta" className="block mt-6 rounded-lg p-4 text-sm border" style={{ borderColor: "var(--brass)", background: "#f7ecd9", color: "var(--ink)" }}>
           <strong>Confirme seu contato:</strong>{" "}
-          {[!contato.emailOk && "e-mail", contato.exigeWhatsapp && !contato.whatsappOk && "WhatsApp"].filter(Boolean).join(" e ")} pendente. É necessário para publicar anúncios.{" "}
+          {[!contato.emailOk && "e-mail", contato.exigeWhatsapp && !contato.whatsappOk && "WhatsApp"].filter(Boolean).join(" e ")} pendente. {MARKETPLACE_ATIVO ? "É necessário para publicar anúncios." : "Isso protege a sua conta."}{" "}
           <span style={{ color: "var(--brass)" }}>Confirmar agora →</span>
         </Link>
       )}
 
       {canil && !canil.verificado && (
         <Link href="/dashboard/criador/verificacao" className="block mt-6 rounded-lg p-4 text-sm border" style={{ borderColor: "var(--brass)", background: "#f7ecd9", color: "var(--ink)" }}>
-          <strong>Falta pouco:</strong> complete os dados do canil e solicite a verificação para anunciar no marketplace e ter sua página pública. <span style={{ color: "var(--brass)" }}>Completar agora →</span>
+          <strong>Falta pouco:</strong> complete os dados do canil e {MARKETPLACE_ATIVO ? "solicite a verificação para anunciar no marketplace e ter sua página pública." : "solicite a verificação para ter sua página pública e o selo de canil verificado."} <span style={{ color: "var(--brass)" }}>Completar agora →</span>
         </Link>
       )}
 
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Numero valor={caes} rotulo="cães no plantel" href="/dashboard/criador/plantel" />
-        <Numero valor={anunciosAtivos} rotulo="anúncios no ar" href="/dashboard/criador/anuncios" />
-        <Numero valor={semResposta} rotulo="mensagens sem resposta" href="/dashboard/criador/mensagens" />
+        {MARKETPLACE_ATIVO ? (
+          <>
+            <Numero valor={anunciosAtivos} rotulo="anúncios no ar" href="/dashboard/criador/anuncios" />
+            <Numero valor={semResposta} rotulo="mensagens sem resposta" href="/dashboard/criador/mensagens" />
+          </>
+        ) : (
+          <Numero valor={ninhadasAtivas} rotulo="ninhadas em andamento" href="/dashboard/criador/ninhadas" />
+        )}
         <Numero valor={naoLidas} rotulo="avisos novos" href="/dashboard/criador/notificacoes" />
       </div>
 
-      <Secao titulo="Inteligência para vender melhor" subtitulo="O que só a plataforma entrega">
+      <Secao titulo={MARKETPLACE_ATIVO ? "Inteligência para vender melhor" : "O essencial do seu canil"} subtitulo={MARKETPLACE_ATIVO ? "O que só a plataforma entrega" : "Gestão completa em um só lugar"}>
         <div className="mt-4 grid sm:grid-cols-2 gap-4">
           {destaques.map((i) => <Destaque key={i.href} item={i} />)}
         </div>

@@ -22,7 +22,7 @@ export type RelatorioSaude = {
 
 export async function montarRelatorioSaude(canilId: string, agora = new Date()): Promise<RelatorioSaude> {
   const caes = await prisma.cao.findMany({
-    where: { canilId, externo: false, dataFalecimento: null, papel: { not: "APOSENTADO" } },
+    where: { canilId, externo: false, dataFalecimento: null, vendidoEm: null, papel: { not: "APOSENTADO" } },
     include: { cuidados: true, ciclosCio: true },
   });
 

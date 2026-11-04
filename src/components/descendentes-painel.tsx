@@ -79,10 +79,10 @@ export function DescendentesPainel({ caoId, itens }: { caoId: string; itens: Des
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-display text-xl" style={{ color: "var(--pine)" }}>
-            Descendentes
+            Outros filhotes (cadastro manual)
           </h3>
           <p className="text-xs" style={rot}>
-            Filhotes que este cão já teve. Quem procura filhote vê como os descendentes são bonitos.
+            Para filhotes que não estão no sistema, como os de ninhadas antigas: foto, nome, nascimento e cliente.
           </p>
         </div>
         <button type="button" onClick={() => setAberto(!aberto)} className="px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>

@@ -5,6 +5,8 @@ import { formatarData, LABEL_SEXO } from "@/lib/labels";
 import { formatarMoeda } from "@/lib/financeiro";
 import { AlbumNinhada } from "@/components/album-ninhada";
 import { RegistrarPartoForm } from "@/components/registrar-parto-form";
+import { AdicionarFilhotes } from "@/components/adicionar-filhotes";
+import { VendaCao } from "@/components/venda-cao";
 import { diasEntre, estadoDaNinhada, montarMarcos, ROTULO_ESTADO } from "@/lib/ninhadas";
 import { calcularMargemNinhada } from "@/lib/margem-ninhada";
 
@@ -33,7 +35,7 @@ export default async function NinhadasPage() {
   // Filhotes: cães da mesma mãe nascidos perto do parto registrado.
   const filhotes = canil
     ? await prisma.cao.findMany({
-        where: { canilId: canil.id, maeId: { in: ninhadas.map((n) => n.caoMaeId) }, dataNascimento: { not: null } },
+        where: { canilId: canil.id, maeId: { in: ninhadas.map((n) => n.caoMaeId) } },
         include: { anuncios: { include: { venda: true }, orderBy: { criadoEm: "desc" } } },
       })
     : [];
@@ -50,16 +52,24 @@ export default async function NinhadasPage() {
     : [];
 
   const dadosNinhadas = ninhadas.map((n) => {
-    const cria = n.dataParto
-      ? filhotes.filter(
-          (f) => f.maeId === n.caoMaeId && f.dataNascimento && Math.abs(diasEntre(n.dataParto!, f.dataNascimento)) <= 7
-        )
-      : [];
-    const vendas = cria.flatMap((f) => f.anuncios.map((a) => a.venda).filter((v): v is NonNullable<typeof v> => !!v));
-    const receita = vendas.reduce((t, v) => t + Number(v.precoFinal), 0);
-    const nascidos = n.quantidadeFilhotes ?? cria.length;
+    // Filhotes ligados à ninhada; cadastros antigos sem vínculo entram pela mesma mãe e data do parto.
+    const cria = filhotes.filter(
+      (f) =>
+        f.ninhadaId === n.id ||
+        (!f.ninhadaId && n.dataParto && f.maeId === n.caoMaeId && f.dataNascimento && Math.abs(diasEntre(n.dataParto, f.dataNascimento)) <= 7)
+    );
+    // Valor de cada filhote vendido: o registrado pelo criador ou, nos anúncios antigos, o preço final.
+    const valorDe = (f: (typeof cria)[number]): number | null => {
+      if (f.vendidoEm) return Number(f.valorVenda ?? 0);
+      const v = f.anuncios.map((a) => a.venda).find((x) => !!x);
+      return v ? Number(v.precoFinal) : null;
+    };
+    const valores = cria.map(valorDe).filter((v): v is number => v !== null);
+    const receita = valores.reduce((t, v) => t + v, 0);
+    const vendas = valores;
+    const nascidos = Math.max(n.quantidadeFilhotes ?? 0, cria.length);
     const estado = estadoDaNinhada(n, vendas.length, nascidos, agora);
-    return { n, cria, vendas, receita, nascidos, estado, marcos: montarMarcos(n, agora), margem: calcularMargemNinhada(n, lancamentos, receita, nascidos) };
+    return { n, cria, vendas, receita, nascidos, estado, valorDe, marcos: montarMarcos(n, agora), margem: calcularMargemNinhada(n, lancamentos, receita, nascidos) };
   });
 
   const emGestacao = dadosNinhadas.filter((d) => d.estado === "GESTACAO" || d.estado === "ATRASADA");
@@ -82,11 +92,14 @@ export default async function NinhadasPage() {
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
         Cronograma, filhotes e resultado de cada ninhada. Para registrar uma cobertura, abra a ficha da matriz no Plantel.
       </p>
+      <Link href="/dashboard/criador/ninhadas/nova" className="inline-block mt-4 px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>
+        Cadastrar ninhada que já nasceu
+      </Link>
 
       {ninhadas.length === 0 ? (
         <div className="card mt-8 p-8 text-center">
           <p style={{ color: "var(--ink-muted)" }}>Nenhuma ninhada registrada ainda.</p>
-          <Link href="/dashboard/criador/plantel" className="inline-block mt-4 px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>
+          <Link href="/dashboard/criador/plantel" className="inline-block mt-4 px-4 py-2 rounded border text-sm" style={{ borderColor: "var(--border-hairline)" }}>
             Ir para o Plantel
           </Link>
         </div>
@@ -124,7 +137,7 @@ export default async function NinhadasPage() {
           )}
 
           <div className="mt-8 space-y-5">
-            {dadosNinhadas.map(({ n, cria, vendas, receita, nascidos, estado, marcos, margem }) => (
+            {dadosNinhadas.map(({ n, cria, vendas, receita, nascidos, estado, marcos, margem, valorDe }) => (
               <article key={n.id} className="card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -133,8 +146,8 @@ export default async function NinhadasPage() {
                       <span style={{ color: "var(--ink-muted)" }}> × {n.caoPai?.nome ?? n.padreadorExterno ?? "padreador não informado"}</span>
                     </Link>
                     <p className="text-sm mt-1" style={{ color: "var(--ink-muted)" }}>
-                      Cobertura em {formatarData(n.dataCobertura)}
-                      {n.dataParto ? ` · parto em ${formatarData(n.dataParto)}` : ` · parto previsto ${formatarData(n.dataPrevistaParto)}`}
+                      {n.coberturaEstimada ? "Cobertura estimada em " : "Cobertura em "}{formatarData(n.dataCobertura)}
+                      {n.dataParto ? ` · nasceram em ${formatarData(n.dataParto)}` : ` · parto previsto ${formatarData(n.dataPrevistaParto)}`}
                     </p>
                   </div>
                   <span
@@ -187,26 +200,53 @@ export default async function NinhadasPage() {
                       </p>
                     )}
                     {cria.length > 0 ? (
-                      <ul className="mt-3 grid sm:grid-cols-2 gap-2 text-sm">
+                      <ul className="mt-4 space-y-2 text-sm">
                         {cria.map((f) => {
+                          const valor = valorDe(f);
                           const anuncio = f.anuncios[0];
-                          const situacao = anuncio?.venda ? `Vendido por ${formatarMoeda(Number(anuncio.venda.precoFinal))}` : anuncio ? `Anúncio ${anuncio.status.toLowerCase()}` : "Sem anúncio";
                           return (
-                            <li key={f.id} className="flex justify-between gap-3 rounded border px-3 py-2" style={{ borderColor: "var(--border-hairline)" }}>
-                              <Link href={`/dashboard/criador/plantel/${f.id}`} className="underline">{f.nome}</Link>
-                              <span style={{ color: "var(--ink-muted)" }}>{LABEL_SEXO[f.sexo]} · {situacao}</span>
+                            <li key={f.id} className="rounded border px-3 py-2.5" style={{ borderColor: "var(--border-hairline)" }}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="flex items-center gap-3">
+                                  {f.fotoUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={f.fotoUrl} alt={f.nome} className="w-10 h-10 rounded object-cover" />
+                                  ) : null}
+                                  <Link href={`/dashboard/criador/plantel/${f.id}`} className="underline font-medium">{f.nome}</Link>
+                                </span>
+                                <span style={{ color: "var(--ink-muted)" }}>
+                                  {LABEL_SEXO[f.sexo]}
+                                  {f.corBase ? ` · ${f.corBase}` : ""}
+                                  {" · "}
+                                  {f.vendidoEm ? "Vendido" : valor !== null ? "Vendido (anúncio)" : anuncio ? `Anúncio ${anuncio.status.toLowerCase()}` : "No plantel"}
+                                </span>
+                              </div>
+                              {valor !== null && !f.vendidoEm ? (
+                                <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>Vendido por {formatarMoeda(valor)}</p>
+                              ) : (
+                                <div className="mt-1">
+                                  <VendaCao
+                                    caoId={f.id}
+                                    caoNome={f.nome}
+                                    compacto
+                                    venda={
+                                      f.vendidoEm
+                                        ? { valor: Number(f.valorVenda ?? 0), data: f.vendidoEm.toISOString(), compradorNome: f.compradorNome, compradorContato: f.compradorContato }
+                                        : null
+                                    }
+                                  />
+                                </div>
+                              )}
                             </li>
                           );
                         })}
                       </ul>
                     ) : (
                       <p className="text-xs mt-2" style={{ color: "var(--ink-muted)" }}>
-                        Cadastre cada filhote no Plantel, com a mesma mãe e a data de nascimento do parto, para acompanhar anúncios e vendas aqui.
+                        Nenhum filhote cadastrado nesta ninhada ainda.
                       </p>
                     )}
-                    <Link href="/dashboard/criador/plantel/novo" className="inline-block mt-4 text-sm underline" style={{ color: "var(--brass)" }}>
-                      Cadastrar filhote
-                    </Link>
+                    <AdicionarFilhotes ninhadaId={n.id} />
                     <AlbumNinhada ninhadaId={n.id} fotos={n.fotosAlbum.map((f) => ({ id: f.id, url: f.url }))} token={n.tokenAlbum} canilNome={canil?.nome ?? ""} />
                   </div>
                 ) : (

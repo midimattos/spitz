@@ -1,11 +1,49 @@
-NOVA TELA INICIAL
-- Botao grande "Ver filhotes no marketplace" em destaque.
-- Dois blocos claros logo abaixo: "Sou criador" (Criar conta de criador / Entrar como criador) e "Quero comprar um filhote" (Criar conta para comprar / Entrar para buscar filhotes). Os botoes de criar conta ja abrem o cadastro no perfil certo (criador ou comprador).
-- Menu do topo: so "Marketplace" (quem esta logado ve tambem "Meu painel"). Entrar e criar conta ficam nos dois blocos abaixo.
-- Card de destaque: mostra automaticamente a FOTO do anuncio publicado mais recente que tenha foto (clicavel, leva ao anuncio). Se ainda nao houver anuncio com foto, mostra o card ilustrativo; para trocar o fundo dele por uma foto bonita, salve o arquivo em public/home/cao-destaque.jpg e envie.
-- Sem migration.
+GESTAO DO CANIL + NINHADAS COM FILHOTES, VENDAS E COMPRAS
+(pacote completo: inclui o marketplace em pausa e tudo que foi feito antes)
 
-Instalar: copie "src" e "public" sobre a pasta spitz com "Substituir" (nao cole a pasta "home" inteira). cmd, uma linha por vez:
-git add .
-git commit -m "nova tela inicial"
-git push
+O QUE HA DE NOVO
+1) Cadastrar ninhada que ja nasceu
+   Ninhadas > "Cadastrar ninhada que ja nasceu": mae, pai, data do nascimento e
+   cada filhote (nome, sexo, cor). Para cada filhote voce marca se FICA no
+   plantel ou se JA FOI VENDIDO (valor, data, cliente e contato do cliente).
+   Os filhotes entram no Plantel ja ligados ao pai, a mae e a ninhada.
+2) Registrar parto com filhotes
+   Numa ninhada em gestacao, "Registrar parto e filhotes" faz o mesmo.
+   Em ninhada que ja nasceu, "+ Adicionar filhote" acrescenta mais.
+3) Vendas
+   Em cada filhote (tela de Ninhadas) e na ficha de qualquer cao:
+   "Registrar venda", "Corrigir venda" e "Desfazer venda".
+   O valor entra sozinho no Financeiro (Venda de filhote / Venda de adulto).
+   Cao vendido sai do plantel ativo, dos alertas e das contagens, mas aparece em
+   "Vendidos" e continua na arvore e nos Descendentes dos pais.
+   O nome e o contato do cliente sao so seus.
+4) Compras
+   Na ficha do cao (aba Dados Gerais, "Origem, compra e venda"): "Comprei este
+   cao: registrar quanto paguei". Entra no Financeiro como Investimento.
+5) Aba Descendentes na ficha do cao
+   Os filhos aparecem sozinhos, vindos das ninhadas (com foto, cor, nascimento,
+   outro genitor e situacao). O cadastro manual antigo continua, como "Outros
+   filhotes", para quem nao esta no sistema.
+6) Margem da ninhada usa as vendas registradas (receita, custo, lucro por filhote).
+7) No Financeiro, lancamentos que vem de compra/venda mostram "da ficha do cao"
+   e so mudam pela ficha (assim os numeros nunca ficam diferentes).
+
+COMO INSTALAR (Prompt de Comando, na pasta do projeto)
+1) Copie o CONTEUDO das pastas src, prisma e public (e o arquivo .env.example)
+   para dentro do projeto, escolhendo "Substituir". Nao cole a pasta do zip inteira.
+2) Rode, uma linha por vez:
+   git add .
+   git commit -m "ninhadas com filhotes, vendas e compras"
+   git push
+   npx prisma migrate deploy
+3) A migracao (20261105120000_ninhadas_vendas_compras) e necessaria: ela cria os
+   campos novos e liga os filhotes que voce ja cadastrou as suas ninhadas
+   (mesma mae e nascimento ate 7 dias do parto).
+4) Aguarde o "Ready" na Vercel.
+
+DICA DE USO
+Nomes de filhotes nao podem repetir no mesmo sexo (regra anti-duplicidade).
+Use nomes diferentes, por exemplo "DUDU", "LUNA" ou "MACHO PRETO 2026".
+
+MARKETPLACE
+Continua em pausa. Para religar: NEXT_PUBLIC_MARKETPLACE_ATIVO = true na Vercel + redeploy.

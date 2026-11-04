@@ -31,7 +31,7 @@ export async function gerarAlertasDoCanil(canil: { id: string; ownerId: string; 
 
   // ---- cio das matrizes ----
   const matrizes = await prisma.cao.findMany({
-    where: { canilId: canil.id, externo: false, sexo: "FEMEA", dataFalecimento: null, papel: { not: "APOSENTADO" } },
+    where: { canilId: canil.id, externo: false, sexo: "FEMEA", dataFalecimento: null, vendidoEm: null, papel: { not: "APOSENTADO" } },
     include: { ciclosCio: true },
   });
   for (const m of matrizes) {
@@ -73,7 +73,7 @@ export async function gerarAlertasDoCanil(canil: { id: string; ownerId: string; 
   // ---- vacinas / vermífugo / antipulgas vencendo ----
   const cuidados = await prisma.registroCuidado.findMany({
     where: {
-      cao: { canilId: canil.id, dataFalecimento: null },
+      cao: { canilId: canil.id, dataFalecimento: null, vendidoEm: null },
       proximaData: { gte: ha30d, lte: ate15d },
     },
     include: { cao: true },

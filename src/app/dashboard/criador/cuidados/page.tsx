@@ -18,7 +18,7 @@ export default async function CuidadosPage() {
   const [caes, registros] = canil
     ? await Promise.all([
         prisma.cao.findMany({
-          where: { canilId: canil.id, externo: false, dataFalecimento: null },
+          where: { canilId: canil.id, externo: false, dataFalecimento: null, vendidoEm: null },
           select: { id: true, nome: true },
           orderBy: { nome: "asc" },
         }),

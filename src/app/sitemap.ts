@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { urlBase } from "@/lib/url-base";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 
 export const dynamic = "force-dynamic";
 
@@ -8,13 +9,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = await urlBase();
   const fixas: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "weekly", priority: 1 },
-    { url: `${base}/marketplace`, changeFrequency: "daily", priority: 0.9 },
+    ...(MARKETPLACE_ATIVO ? [{ url: `${base}/marketplace`, changeFrequency: "daily" as const, priority: 0.9 }] : []),
     { url: `${base}/termos`, priority: 0.2 },
     { url: `${base}/privacidade`, priority: 0.2 },
   ];
   try {
     const [anuncios, canis] = await Promise.all([
-      prisma.anuncio.findMany({
+      !MARKETPLACE_ATIVO ? Promise.resolve([]) : prisma.anuncio.findMany({
         where: { status: "PUBLICADO", canil: { verificado: true } },
         select: { id: true, atualizadoEm: true },
         take: 2000,

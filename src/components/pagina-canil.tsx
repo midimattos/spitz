@@ -10,6 +10,7 @@ import { calcularConquistas } from "@/lib/conquistas";
 import { RastreadorEvento } from "@/components/rastreador-evento";
 import { Selos } from "@/components/selos";
 import { ListaEsperaForm } from "@/components/lista-espera-form";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 import { CopiarTextoButton } from "@/components/copiar-texto-button";
 
 export async function carregarCanilPublico(slug: string) {
@@ -19,7 +20,7 @@ export async function carregarCanilPublico(slug: string) {
       anuncios: { where: { status: "PUBLICADO" }, include: { cao: { include: { documentos: { select: { tipo: true } } } } }, orderBy: { criadoEm: "desc" } },
       avaliacoes: { where: { oculta: false }, orderBy: { criadoEm: "desc" } },
       caes: {
-        where: { externo: false, exibirNoCanil: true, dataFalecimento: null, papel: { in: ["MATRIZ", "PADREADOR"] } },
+        where: { externo: false, exibirNoCanil: true, dataFalecimento: null, vendidoEm: null, papel: { in: ["MATRIZ", "PADREADOR"] } },
         orderBy: { nome: "asc" },
       },
     },
@@ -70,7 +71,7 @@ export async function PaginaCanil({ slug }: { slug: string }) {
               .join(" · ")}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            {canil.anuncios.length > 0 && (
+            {MARKETPLACE_ATIVO && canil.anuncios.length > 0 && (
               <a href="#filhotes" className="px-5 py-2.5 rounded text-sm" style={{ background: "#e3c999", color: "#12241d" }}>Ver filhotes disponíveis</a>
             )}
             {instagram && (
@@ -105,6 +106,7 @@ export async function PaginaCanil({ slug }: { slug: string }) {
           </section>
         )}
 
+        {MARKETPLACE_ATIVO && (
         <section id="filhotes" className="mt-12 scroll-mt-8">
           <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Filhotes disponíveis</h2>
           {canil.anuncios.length === 0 ? (
@@ -133,6 +135,7 @@ export async function PaginaCanil({ slug }: { slug: string }) {
             </div>
           )}
         </section>
+        )}
 
         {canil.caes.length > 0 && (
           <section className="mt-12">
@@ -156,11 +159,13 @@ export async function PaginaCanil({ slug }: { slug: string }) {
           </section>
         )}
 
-        <section className="mt-12">
-          <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Lista de espera</h2>
-          <p className="text-sm mt-1 mb-4" style={{ color: "var(--ink-muted)" }}>Quer ser avisado quando sair um novo filhote? Deixe seu e-mail.</p>
-          <ListaEsperaForm slug={canil.slug} canilNome={canil.nome} />
-        </section>
+        {MARKETPLACE_ATIVO && (
+          <section className="mt-12">
+            <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Lista de espera</h2>
+            <p className="text-sm mt-1 mb-4" style={{ color: "var(--ink-muted)" }}>Quer ser avisado quando sair um novo filhote? Deixe seu e-mail.</p>
+            <ListaEsperaForm slug={canil.slug} canilNome={canil.nome} />
+          </section>
+        )}
 
         <section className="mt-12">
           <h2 className="font-display text-2xl" style={{ color: "var(--pine)" }}>Avaliações de quem comprou</h2>

@@ -6,9 +6,9 @@ import { Cabecalho } from "@/components/cabecalho";
 import { auth, signOut } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Plataforma Spitz Alemão | Marketplace e gestão de canil",
+  title: "Spitz Alemão | Gestão completa do seu canil",
   description:
-    "Marketplace do Spitz Alemão e SaaS de gestão de canil: genética, precificação e dossiê digital.",
+    "Gestão de canil: plantel, pedigree, genética de cor, ninhadas, financeiro e saúde em um só lugar.",
 };
 
 export default async function RootLayout({

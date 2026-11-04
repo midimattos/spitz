@@ -7,7 +7,7 @@ export default async function PerfilPublicoPage() {
   const canil = await getCanilDoCriadorLogado();
   if (!canil) notFound();
   const caes = await prisma.cao.findMany({
-    where: { canilId: canil.id, externo: false, papel: { in: ["MATRIZ", "PADREADOR"] }, dataFalecimento: null },
+    where: { canilId: canil.id, externo: false, papel: { in: ["MATRIZ", "PADREADOR"] }, dataFalecimento: null, vendidoEm: null },
     orderBy: { nome: "asc" },
     select: { id: true, nome: true, exibirNoCanil: true },
   });
