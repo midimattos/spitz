@@ -1,7 +1,7 @@
 NOVA TELA INICIAL
 - Botao grande "Ver filhotes no marketplace" em destaque.
 - Dois blocos claros logo abaixo: "Sou criador" (Criar conta de criador / Entrar como criador) e "Quero comprar um filhote" (Criar conta para comprar / Entrar para buscar filhotes). Os botoes de criar conta ja abrem o cadastro no perfil certo (criador ou comprador).
-- Menu simplificado: Marketplace, Entrar, Criar conta.
+- Menu do topo: so "Marketplace" (quem esta logado ve tambem "Meu painel"). Entrar e criar conta ficam nos dois blocos abaixo.
 - Card de destaque: mostra automaticamente a FOTO do anuncio publicado mais recente que tenha foto (clicavel, leva ao anuncio). Se ainda nao houver anuncio com foto, mostra o card ilustrativo; para trocar o fundo dele por uma foto bonita, salve o arquivo em public/home/cao-destaque.jpg e envie.
 - Sem migration.
 

@@ -65,13 +65,8 @@ export default async function HomePage() {
           <span className="font-display text-xl tracking-wide whitespace-nowrap">Spitz Alemão</span>
           <nav className="flex items-center gap-3 sm:gap-6 text-sm">
             <Link href="/marketplace" className="font-medium hover:underline">Marketplace</Link>
-            {session?.user ? (
-              <Link href={painel} className="px-4 py-2 rounded" style={{ background: "#e3c999", color: "#12241d" }}>Meu painel</Link>
-            ) : (
-              <>
-                <Link href="/login" className="hover:underline">Entrar</Link>
-                <Link href="/register" className="px-4 py-2 rounded whitespace-nowrap" style={{ background: "#e3c999", color: "#12241d" }}>Criar conta</Link>
-              </>
+            {session?.user && (
+              <Link href={painel} className="px-4 py-2 rounded whitespace-nowrap" style={{ background: "#e3c999", color: "#12241d" }}>Meu painel</Link>
             )}
           </nav>
         </header>
