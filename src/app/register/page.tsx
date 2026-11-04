@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -9,6 +9,11 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [role, setRole] = useState<"CRIADOR" | "COMPRADOR">("CRIADOR");
+  const tipo = searchParams.get("tipo");
+  useEffect(() => {
+    if (tipo === "comprador") setRole("COMPRADOR");
+    else if (tipo === "criador") setRole("CRIADOR");
+  }, [tipo]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 

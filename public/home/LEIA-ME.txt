@@ -1,0 +1,1 @@
+Coloque aqui o arquivo cao-destaque.jpg (foto de um cao bonito, paisagem, ~1200x900). Ele aparece no card da tela inicial quando nao houver anuncio com foto.

@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { existsSync } from "fs";
+import { join } from "path";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { fotosDoAnuncio } from "@/lib/marketplace";
 
 const SELOS_EXEMPLO = ["Canil verificado", "Pedigree anexado", "Exame de DNA", "Vacinas em dia"];
 
@@ -25,7 +29,31 @@ const RECURSOS = [
   { titulo: "Marca do seu canil", texto: "Página própria, certificado digital com QR code, álbum e cartaz para Stories, lista de espera e avaliações verificadas." },
 ];
 
+/** Anúncio real mais recente que tenha foto: vira o card de destaque da home. */
+async function carregarDestaque() {
+  try {
+    const lista = await prisma.anuncio.findMany({
+      where: { status: "PUBLICADO", canil: { verificado: true } },
+      orderBy: { publicadoEm: "desc" },
+      take: 12,
+      include: {
+        canil: { select: { nome: true, cidade: true, estado: true } },
+        cao: { select: { fotoUrl: true, sexo: true, porte: true, corBase: true, corPelagem: true } },
+      },
+    });
+    for (const a of lista) {
+      const foto = fotosDoAnuncio(a, a.cao)[0];
+      if (foto) return { id: a.id, foto, cao: a.cao, canil: a.canil };
+    }
+  } catch {
+    // sem banco ou sem anúncios: usa o card ilustrativo
+  }
+  return null;
+}
+
 export default async function HomePage() {
+  const destaque = await carregarDestaque();
+  const fotoIlustrativa = existsSync(join(process.cwd(), "public", "home", "cao-destaque.jpg")) ? "/home/cao-destaque.jpg" : null;
   const session = await auth();
   const painel = session?.user?.role === "ADMIN" ? "/admin" : session?.user?.role === "COMPRADOR" ? "/dashboard/comprador" : "/dashboard/criador";
 
@@ -34,22 +62,21 @@ export default async function HomePage() {
       {/* ---------- topo + hero ---------- */}
       <section style={{ background: "radial-gradient(1200px 500px at 85% 10%, #2b5242 0%, transparent 60%), linear-gradient(160deg, var(--pine) 0%, var(--pine-dark) 100%)", color: "#f6efe0" }}>
         <header className="max-w-6xl mx-auto px-6 sm:px-8 py-6 flex items-center justify-between">
-          <span className="font-display text-xl tracking-wide">Spitz Alemão</span>
-          <nav className="flex items-center gap-4 sm:gap-6 text-sm">
-            <Link href="/marketplace" className="hover:underline">Marketplace</Link>
-            <a href="#criadores" className="hover:underline hidden sm:inline">Para criadores</a>
+          <span className="font-display text-xl tracking-wide whitespace-nowrap">Spitz Alemão</span>
+          <nav className="flex items-center gap-3 sm:gap-6 text-sm">
+            <Link href="/marketplace" className="font-medium hover:underline">Marketplace</Link>
             {session?.user ? (
               <Link href={painel} className="px-4 py-2 rounded" style={{ background: "#e3c999", color: "#12241d" }}>Meu painel</Link>
             ) : (
               <>
                 <Link href="/login" className="hover:underline">Entrar</Link>
-                <Link href="/register" className="px-4 py-2 rounded" style={{ background: "#e3c999", color: "#12241d" }}>Cadastrar canil</Link>
+                <Link href="/register" className="px-4 py-2 rounded whitespace-nowrap" style={{ background: "#e3c999", color: "#12241d" }}>Criar conta</Link>
               </>
             )}
           </nav>
         </header>
 
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 pt-10 pb-20 sm:pt-16 sm:pb-28 grid lg:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 pt-10 pb-24 sm:pt-14 sm:pb-32 grid lg:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
           <div>
             <p className="text-xs uppercase tracking-[0.25em]" style={{ color: "#e3c999" }}>Marketplace do Spitz Alemão</p>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl leading-[1.05] mt-4">
@@ -58,46 +85,96 @@ export default async function HomePage() {
             <p className="mt-6 text-lg max-w-xl leading-relaxed" style={{ color: "rgba(246,239,224,0.85)" }}>
               Pedigree, exames e histórico completos em cada anúncio. Canis verificados, contato protegido e avaliações de quem realmente comprou.
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <Link href="/marketplace" className="px-7 py-3.5 rounded font-medium" style={{ background: "#e3c999", color: "#12241d" }}>
-                Ver filhotes disponíveis
+            <div className="mt-9">
+              <Link href="/marketplace" className="inline-flex items-center gap-2 px-9 py-4 rounded-lg text-lg font-semibold shadow-lg hover:opacity-95" style={{ background: "#e3c999", color: "#12241d" }}>
+                Ver filhotes no marketplace <span aria-hidden>→</span>
               </Link>
-              <a href="#criadores" className="px-7 py-3.5 rounded border" style={{ borderColor: "rgba(246,239,224,0.45)" }}>
-                Sou criador
-              </a>
+              <p className="mt-3 text-sm" style={{ color: "rgba(246,239,224,0.7)" }}>
+                Aberto a todos, sem precisar de cadastro.
+              </p>
             </div>
-            <p className="mt-5 text-xs" style={{ color: "rgba(246,239,224,0.6)" }}>
-              O marketplace é aberto a todos, sem precisar de cadastro.
-            </p>
           </div>
 
-          {/* ficha de exemplo */}
+          {/* card de destaque: anúncio real com foto; senão, exemplo ilustrativo */}
           <div className="relative mx-auto w-full max-w-sm">
-            <div className="rounded-xl p-5 shadow-2xl" style={{ background: "var(--parchment-card)", color: "var(--ink)", transform: "rotate(1.5deg)" }}>
-              <div className="aspect-[4/3] rounded-lg flex items-end p-3" style={{ background: "linear-gradient(135deg, #e8d9b8 0%, #cfa56b 100%)" }}>
-                <span className="text-[10px] uppercase tracking-widest px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.8)", color: "var(--pine)" }}>
-                  Exemplo ilustrativo
-                </span>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {SELOS_EXEMPLO.map((s) => (
-                  <span key={s} className="text-[11px] px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--pine)", color: "var(--pine)" }}>✓ {s}</span>
-                ))}
-              </div>
-              <p className="font-display text-xl mt-3" style={{ color: "var(--pine)" }}>Filhote macho · Anão · Laranja</p>
-              <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Pais com exame de DNA · COI calculado · Dossiê genético publicado</p>
-              <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs" style={{ borderColor: "var(--border-hairline)", color: "var(--ink-muted)" }}>
-                <span>Certificado digital com QR code</span>
-                <span style={{ color: "var(--brass)" }}>★ avaliação verificada</span>
-              </div>
-            </div>
+            {(() => {
+              const conteudo = (
+                <div className="rounded-xl p-5 shadow-2xl" style={{ background: "var(--parchment-card)", color: "var(--ink)", transform: "rotate(1.5deg)" }}>
+                  <div
+                    className="aspect-[4/3] rounded-lg flex items-end p-3 bg-cover bg-center"
+                    style={{
+                      background: destaque
+                        ? `url(${destaque.foto}) center/cover`
+                        : fotoIlustrativa
+                          ? `url(${fotoIlustrativa}) center/cover`
+                          : "linear-gradient(135deg, #e8d9b8 0%, #cfa56b 100%)",
+                    }}
+                  >
+                    <span className="text-[10px] uppercase tracking-widest px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.85)", color: "var(--pine)" }}>
+                      {destaque ? "Em destaque agora" : "Exemplo ilustrativo"}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {SELOS_EXEMPLO.map((sel) => (
+                      <span key={sel} className="text-[11px] px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--pine)", color: "var(--pine)" }}>✓ {sel}</span>
+                    ))}
+                  </div>
+                  {destaque ? (
+                    <>
+                      <p className="font-display text-xl mt-3" style={{ color: "var(--pine)" }}>
+                        {[destaque.cao.sexo === "MACHO" ? "Filhote macho" : "Filhote fêmea", destaque.cao.porte, destaque.cao.corBase ?? destaque.cao.corPelagem].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
+                        {destaque.canil.nome}
+                        {destaque.canil.cidade ? ` · ${destaque.canil.cidade}${destaque.canil.estado ? `/${destaque.canil.estado}` : ""}` : ""}
+                      </p>
+                      <div className="mt-4 pt-3 border-t text-xs text-right" style={{ borderColor: "var(--border-hairline)", color: "var(--brass)" }}>Ver este anúncio →</div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-display text-xl mt-3" style={{ color: "var(--pine)" }}>Filhote macho · Anão · Laranja</p>
+                      <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Pais com exame de DNA · COI calculado · Dossiê genético publicado</p>
+                      <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs" style={{ borderColor: "var(--border-hairline)", color: "var(--ink-muted)" }}>
+                        <span>Certificado digital com QR code</span>
+                        <span style={{ color: "var(--brass)" }}>★ avaliação verificada</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+              return destaque ? <Link href={`/marketplace/${destaque.id}`} className="block">{conteudo}</Link> : conteudo;
+            })()}
             <div className="absolute -z-0 inset-0 rounded-xl border -rotate-3" style={{ borderColor: "rgba(227,201,153,0.4)" }} />
           </div>
         </div>
       </section>
 
+      {/* ---------- escolha como entrar ---------- */}
+      {!session?.user && (
+        <section className="max-w-6xl mx-auto px-6 sm:px-8 -mt-12 relative z-10">
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="card p-6 sm:p-7">
+              <p className="text-xs uppercase tracking-[0.2em]" style={{ color: "var(--brass)" }}>Sou criador</p>
+              <p className="font-display text-2xl mt-1" style={{ color: "var(--pine)" }}>Gerencie o canil e venda com segurança</p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/register?tipo=criador" className="px-5 py-2.5 rounded text-white" style={{ background: "var(--pine)" }}>Criar conta de criador</Link>
+                <Link href="/login" className="px-5 py-2.5 rounded border" style={{ borderColor: "var(--pine)", color: "var(--pine)" }}>Entrar como criador</Link>
+              </div>
+            </div>
+            <div className="card p-6 sm:p-7">
+              <p className="text-xs uppercase tracking-[0.2em]" style={{ color: "var(--brass)" }}>Quero comprar um filhote</p>
+              <p className="font-display text-2xl mt-1" style={{ color: "var(--pine)" }}>Encontre o filhote certo e seja avisado</p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/register?tipo=comprador" className="px-5 py-2.5 rounded text-white" style={{ background: "var(--pine)" }}>Criar conta para comprar</Link>
+                <Link href="/login" className="px-5 py-2.5 rounded border" style={{ borderColor: "var(--pine)", color: "var(--pine)" }}>Entrar para buscar filhotes</Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ---------- confiança ---------- */}
-      <section className="max-w-6xl mx-auto px-6 sm:px-8 -mt-10 relative z-10">
+      <section className="max-w-6xl mx-auto px-6 sm:px-8 mt-10">
         <div className="card p-6 sm:p-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {CONFIANCA.map((c) => (
             <div key={c.titulo}>
@@ -125,7 +202,7 @@ export default async function HomePage() {
         </div>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link href="/marketplace" className="px-6 py-3 rounded text-white" style={{ background: "var(--pine)" }}>Explorar o marketplace</Link>
-          <Link href="/register" className="text-sm underline" style={{ color: "var(--brass)" }}>
+          <Link href="/register?tipo=comprador" className="text-sm underline" style={{ color: "var(--brass)" }}>
             Criar conta para ser avisado quando surgir o filhote que você procura
           </Link>
         </div>
@@ -159,7 +236,7 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/register" className="px-6 py-3 rounded font-medium" style={{ background: "#e3c999", color: "#12241d" }}>Cadastrar meu canil</Link>
+              <Link href="/register?tipo=criador" className="px-6 py-3 rounded font-medium" style={{ background: "#e3c999", color: "#12241d" }}>Cadastrar meu canil</Link>
               <Link href="/login" className="px-6 py-3 rounded border" style={{ borderColor: "rgba(246,239,224,0.45)" }}>Já tenho conta</Link>
             </div>
           </div>
