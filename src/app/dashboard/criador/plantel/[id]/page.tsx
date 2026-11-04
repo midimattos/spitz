@@ -28,6 +28,7 @@ import { EmitirCertificado } from "@/components/emitir-certificado";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
 import { ArvoreEdicao } from "@/components/arvore-edicao";
+import { DescendentesPainel } from "@/components/descendentes-painel";
 
 export default async function FichaCaoPage({
   params,
@@ -51,6 +52,7 @@ export default async function FichaCaoPage({
       ciclosCio: { orderBy: { dataInicio: "desc" } },
       ninhadasComoMae: { include: { caoPai: true }, orderBy: { dataCobertura: "desc" } },
       dossieGenetico: true,
+      descendentes: { orderBy: { criadoEm: "desc" } },
       cuidados: { select: { tipo: true, data: true, proximaData: true } },
     },
   });
@@ -219,6 +221,21 @@ export default async function FichaCaoPage({
         <span className="text-xs" style={{ color: "var(--ink-muted)" }}>Abre como um pedigree, com fotos, pronto para imprimir ou salvar em PDF.</span>
       </div>
       <ArvoreEdicao caoId={cao.id} caes={todosCaes} />
+
+      <DescendentesPainel
+        caoId={cao.id}
+        itens={cao.descendentes.map((d) => ({
+          id: d.id,
+          nome: d.nome,
+          dataNascimento: d.dataNascimento ? d.dataNascimento.toISOString() : null,
+          cor: d.cor,
+          fotoUrl: d.fotoUrl,
+          outroGenitor: d.outroGenitor,
+          tutorNome: d.tutorNome,
+          mostrarTutor: d.mostrarTutor,
+          exibirPublico: d.exibirPublico,
+        }))}
+      />
 
       {filhos.length > 0 && (
         <div className="mt-6">

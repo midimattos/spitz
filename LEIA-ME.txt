@@ -1,7 +1,16 @@
-CORRECAO: Locus D (diluicao) agora considera o historico.
-Se o cao ja produziu filhote Lilas ou Azul/Cinza, o Locus D passa a D/d ("Portador - confirmado por historico") em vez de D/D presumido.
-Instalar: copie "src" sobre a pasta spitz com "Substituir" (nao cole a pasta correcao-locus-d inteira). No cmd, uma linha por vez:
-git add .
-git commit -m "locus D por historico"
-git push
-Sem migration.
+PACOTE ACUMULADO (06/11) - substitui todos os anteriores. Contem: cadastro completo (piramide, mapa genealogico, anti-duplicacao, nomes em maiusculas),
+piloto de 90 dias + assinatura (cobranca desligada) + protecoes do radar, correcao do Locus D e a NOVIDADE abaixo.
+
+NOVO: "Descendentes" (pedido do socio)
+- Na ficha do cao, aba Arvore Genealogica, secao "Descendentes": cadastre filhotes que o cao ja teve com FOTO, NOME, DATA DE NASCIMENTO, cor, outro pai/mae e, se quiser, o NOME DO CLIENTE que comprou.
+- O nome do cliente so aparece publicamente se voce marcar "o cliente autorizou" (privacidade/LGPD). Cada filhote tem "publico" ligado/desligado e "remover".
+- Nos anuncios publicos do marketplace aparece "Filhotes anteriores da linhagem" com os descendentes publicos do cao e dos pais.
+- TEM MIGRATION nova (tabela Descendente).
+
+COMO INSTALAR
+1. Abra esta pasta e copie o conteudo das pastas "src", "prisma" e o arquivo ".env.example" para dentro da pasta spitz, escolhendo "Substituir". NAO cole a pasta "tudo" inteira.
+2. cmd, uma linha por vez:
+   git add .
+   git commit -m "descendentes e acumulado"
+   git push
+3. Depois de Ready: npx prisma migrate deploy

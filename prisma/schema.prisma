@@ -236,6 +236,7 @@ model Cao {
   anuncios               Anuncio[]
   cuidados               RegistroCuidado[]
   criopreservacoes       Criopreservacao[]
+  descendentes           Descendente[]
 
   @@index([canilId])
   @@index([papel])
@@ -975,4 +976,23 @@ model PosVendaEnvio {
   enviadoEm DateTime      @default(now())
 
   @@unique([vendaId, marco])
+}
+
+// Filhotes que um cão já teve (vitrine "Descendentes"): foto, nome, nascimento e, se o criador quiser,
+// o nome do tutor. Aparece na ficha do cão e, quando marcado, na página pública dos anúncios dos pais/filhos.
+model Descendente {
+  id             String    @id @default(cuid())
+  caoId          String
+  cao            Cao       @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  nome           String
+  dataNascimento DateTime?
+  cor            String?
+  fotoUrl        String?
+  outroGenitor   String? // nome do outro pai/mãe, em texto livre
+  tutorNome      String?
+  mostrarTutor   Boolean   @default(false) // só aparece publicamente com esta autorização
+  exibirPublico  Boolean   @default(true)
+  criadoEm       DateTime  @default(now())
+
+  @@index([caoId])
 }

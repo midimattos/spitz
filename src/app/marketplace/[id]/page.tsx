@@ -8,6 +8,7 @@ import { RastreadorEvento } from "@/components/rastreador-evento";
 import { FavoritoButton } from "@/components/favorito-button";
 import { Selos } from "@/components/selos";
 import { ArvorePublica } from "@/components/arvore-publica";
+import { DescendentesPublicos } from "@/components/descendentes-publicos";
 import { formatarMoeda } from "@/lib/financeiro";
 import { LABEL_SEXO, LABEL_PAPEL, LABEL_STATUS_GENETICO, formatarData, calcularIdade } from "@/lib/labels";
 import { calcularSelos, fotosDoAnuncio } from "@/lib/marketplace";
@@ -51,6 +52,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: titulo, description: descricao, openGraph: { title: titulo, description: descricao, images: foto ? [foto] : [] } };
 }
 
+async function carregarDescendentes(caoId: string, paiId: string | null, maeId: string | null) {
+  const ids = [caoId, paiId, maeId].filter((x): x is string => !!x);
+  return prisma.descendente.findMany({
+    where: { caoId: { in: ids }, exibirPublico: true },
+    include: { cao: { select: { nome: true } } },
+    orderBy: { criadoEm: "desc" },
+    take: 24,
+  });
+}
+
 export default async function AnuncioPublicoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -77,6 +88,7 @@ export default async function AnuncioPublicoPage({ params }: { params: Promise<{
   if (!anuncio) notFound();
 
   const { cao, canil } = anuncio;
+  const descendentes = await carregarDescendentes(cao.id, cao.paiId, cao.maeId);
   const session = await auth();
   const ehComprador = session?.user?.role === "COMPRADOR";
   const jaFavoritou = ehComprador
@@ -200,6 +212,12 @@ export default async function AnuncioPublicoPage({ params }: { params: Promise<{
         />
         {cao.observacoes && <p className="text-sm mt-5 pt-5 border-t" style={{ borderColor: "var(--border-hairline)" }}>{cao.observacoes}</p>}
       </Secao>
+
+      {descendentes.length > 0 && (
+        <Secao titulo="Filhotes anteriores da linhagem">
+          <DescendentesPublicos itens={descendentes} />
+        </Secao>
+      )}
 
       <Secao titulo="Linhagem">
         <ArvorePublica pai={cao.pai} mae={cao.mae} />
