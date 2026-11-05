@@ -1,17 +1,14 @@
-AJUSTES DOS AUDIOS DE 05/11 (cumulativo: inclui tudo que ja foi entregue, inclusive cobranca pelo Asaas)
+MEDIDAS: PESO E CERNELHA (cumulativo: inclui tudo que ja foi entregue)
 
 O QUE MUDOU
-1. Ninhada que ja nasceu: o campo PAI agora lista so os caes do SEU canil (como a mae). Para pai emprestado ou de outro canil: botao "cadastrar cao emprestado" (nome, registro e canil de origem).
-2. Cada filhote tem "Foto do filhote (opcional)". A foto sobe junto com o salvamento (nas 3 telas: ninhada nascida, registrar parto e adicionar filhote).
-3. Pagina inicial e painel: sai a ideia de entregar o pedigree ao cliente. Agora: "Arvore genealogica ate 5 geracoes, com opcoes de impressao".
-4. Simulador de cruzamento: nao mostra mais caes ja vendidos (tambem na lista de pai da ninhada em andamento).
-5. Genetica: cao com trufa marrom (ou lilas) agora e b/b no Locus B (antes aparecia B/b). Trufa lilas ou azul tambem fixa d/d no Locus D.
+- Em cada cao (adulto ou filhote) ha uma nova aba "Medidas": registra a data, o peso (em gramas ou quilos, para filhotes e adultos) e a altura de cernelha (cm), com observacao opcional.
+- Mostra um grafico de evolucao do peso e da cernelha e a lista de medidas (da mais recente para a mais antiga), com opcao de apagar.
+- Serve para a pesagem diaria dos filhotes: registre um dia por vez na aba do filhote.
 
 COMO INSTALAR (Windows, cmd)
 1. Copie o CONTEUDO das pastas src, prisma, public e o .env.example sobre o projeto, escolhendo "Substituir".
 2. cd C:\Users\Midian\PROJETOS\spitz-saas\spitz
 3. git add .
-4. git commit -m "Ajustes de ninhadas, fotos, genetica e textos"
+4. git commit -m "Medidas: peso e cernelha"
 5. git push
 6. npx prisma migrate deploy
-(se ja rodou o migrate da cobranca automatica, o comando 6 nao muda nada)

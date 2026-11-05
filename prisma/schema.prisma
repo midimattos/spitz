@@ -233,6 +233,7 @@ model Cao {
   laudosGeneticos        LaudoGenetico[]
   lancamentosFinanceiros LancamentoFinanceiro[]
   ciclosCio              CicloCio[]
+  medidas                MedidaCao[]
   ninhadasComoMae        Ninhada[]              @relation("NinhadaMae")
   ninhadasComoPai        Ninhada[]              @relation("NinhadaPai")
   dossieGenetico         DossieGenetico?
@@ -1031,4 +1032,33 @@ model Descendente {
 model WebhookEvento {
   id       String   @id
   criadoEm DateTime @default(now())
+}
+
+// Caixa de sugestões: o que os criadores sentem falta no sistema (lida pelo admin).
+model Sugestao {
+  id         String   @id @default(cuid())
+  userId     String
+  autorNome  String
+  autorEmail String
+  canilNome  String?
+  texto      String
+  pagina     String? // tela em que o criador estava
+  lida       Boolean  @default(false)
+  criadoEm   DateTime @default(now())
+
+  @@index([lida, criadoEm])
+}
+
+// Peso e altura de cernelha de um cão ao longo do tempo (filhotes: pesagem diária).
+model MedidaCao {
+  id          String   @id @default(cuid())
+  caoId       String
+  cao         Cao      @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  data        DateTime
+  pesoKg      Decimal? @db.Decimal(7, 3)
+  cernelhaCm  Decimal? @db.Decimal(5, 1)
+  observacoes String?
+  criadoEm    DateTime @default(now())
+
+  @@index([caoId, data])
 }

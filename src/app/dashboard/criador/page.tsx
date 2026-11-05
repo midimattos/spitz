@@ -1,3 +1,4 @@
+import { CaixaSugestoes } from "@/components/caixa-sugestoes";
 import Link from "next/link";
 import { situacaoDoContato } from "@/lib/whatsapp";
 import { auth } from "@/lib/auth";
@@ -206,6 +207,10 @@ export default async function DashboardCriadorPage() {
           {ferramentas.map((i) => <Compacto key={i.href} item={i} />)}
         </div>
       </Secao>
+
+      <div className="mt-10">
+        <CaixaSugestoes />
+      </div>
 
       <p className="mt-10 text-xs" style={{ color: "var(--ink-muted)" }}>
         Conectado como {session?.user?.email}

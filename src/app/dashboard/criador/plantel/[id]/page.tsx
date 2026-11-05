@@ -28,6 +28,7 @@ import { FotoCaoUpload } from "@/components/foto-cao-upload";
 import { EmitirCertificado } from "@/components/emitir-certificado";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
+import { MedidasPainel } from "@/components/medidas-painel";
 import { ArvoreEdicao } from "@/components/arvore-edicao";
 import { DescendentesPainel } from "@/components/descendentes-painel";
 import { VendaCao } from "@/components/venda-cao";
@@ -63,6 +64,14 @@ export default async function FichaCaoPage({
   });
 
   if (!cao) notFound();
+  const medidasBrutas = await prisma.medidaCao.findMany({ where: { caoId: cao.id }, orderBy: { data: "asc" } });
+  const medidas = medidasBrutas.map((m) => ({
+    id: m.id,
+    data: m.data.toISOString(),
+    pesoKg: m.pesoKg === null ? null : Number(m.pesoKg),
+    cernelhaCm: m.cernelhaCm === null ? null : Number(m.cernelhaCm),
+    observacoes: m.observacoes,
+  }));
   const certificadoAtual = await prisma.certificado.findFirst({ where: { caoId: cao.id, revogado: false }, orderBy: { emitidoEm: "desc" } });
 
   const machosDisponiveis =
@@ -613,6 +622,7 @@ export default async function FichaCaoPage({
             { id: "gerais", label: "Dados Gerais", conteudo: abaDadosGerais },
             { id: "genealogia", label: "Árvore Genealógica", conteudo: abaGenealogia },
             { id: "descendentes", label: "Descendentes", conteudo: abaDescendentes },
+            { id: "medidas", label: "Medidas", conteudo: <MedidasPainel caoId={cao.id} medidas={medidas} /> },
             { id: "genetica", label: "Genética", conteudo: abaGenetica },
             { id: "financeiro", label: "Financeiro", conteudo: abaFinanceiro },
             { id: "dossie", label: "Dossiê", conteudo: abaDossie },
