@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { calcularDataPrevistaParto, DURACAO_GESTACAO_DIAS } from "@/lib/reproducao";
 import { validarGenealogia } from "@/lib/genealogia";
 import { ErroNegocio } from "@/lib/arvore-servidor";
@@ -26,7 +26,7 @@ const ninhadaSchema = z
 
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const body = await request.json().catch(() => null);
   const parsed = ninhadaSchema.safeParse(body);
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    let filhoteIds: string[] = [];
     const ninhada = await prisma.$transaction(
       async (tx) => {
         const erro = await validarGenealogia(canil.id, null, caoPaiId || undefined, caoMaeId, tx);
@@ -67,13 +68,13 @@ export async function POST(request: Request) {
           },
         });
         if (dataParto && filhotes.length > 0) {
-          await criarFilhotes(tx, canil.id, criada, mae, dataParto, filhotes);
+          filhoteIds = await criarFilhotes(tx, canil.id, criada, mae, dataParto, filhotes);
         }
         return criada;
       },
       { timeout: 30_000 }
     );
-    return NextResponse.json(ninhada, { status: 201 });
+    return NextResponse.json({ ...ninhada, filhoteIds }, { status: 201 });
   } catch (e) {
     if (e instanceof ErroNegocio) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;

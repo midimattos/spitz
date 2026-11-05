@@ -119,6 +119,9 @@ model Canil {
   instagram                String?
   proGratisAte             DateTime? // PRO ativo até esta data: piloto grátis (90 dias) e cada mensalidade paga somam 30 dias
   descontosIndicacao       Int           @default(0) // mensalidades com desconto ganhas por indicar canis
+  asaasCustomerId          String?       // cliente no Asaas (cobrança automática)
+  asaasSubscriptionId      String?       // assinatura recorrente ativa no Asaas
+  planoMeses               Int?          // meses de cada renovação automática
   listaEspera              ListaEspera[]
   avisoSemanal             Boolean       @default(true) // resumo semanal de saúde da carteira por e-mail
   fotos                    String[] // galeria da página pública do canil (a primeira é a capa)
@@ -630,6 +633,9 @@ model Pagamento {
   valor                   Decimal         @db.Decimal(10, 2)
   valorCheio              Decimal?        @db.Decimal(10, 2) // assinatura: preço antes do desconto de indicação
   usouDescontoIndicacao   Boolean         @default(false)
+  asaasCheckoutId         String?
+  asaasPaymentId          String?         @unique // cobrança do Asaas já aplicada (evita estender o acesso duas vezes)
+  meses                   Int? // meses de acesso que este pagamento compra (assinatura); vazio = 1
   status                  StatusPagamento @default(PENDENTE)
   mercadoPagoPreferenceId String?
   mercadoPagoPaymentId    String?         @unique
@@ -1019,4 +1025,10 @@ model Descendente {
   criadoEm       DateTime  @default(now())
 
   @@index([caoId])
+}
+
+// Eventos do Asaas já processados (o Asaas pode reenviar o mesmo evento).
+model WebhookEvento {
+  id       String   @id
+  criadoEm DateTime @default(now())
 }

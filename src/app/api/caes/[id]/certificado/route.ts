@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { codigoCurto } from "@/lib/codigo";
 
 const schema = z.object({ compradorNome: z.string().max(120).optional() });
@@ -9,7 +9,7 @@ const schema = z.object({ compradorNome: z.string().max(120).optional() });
 // Emite (ou reaproveita) o certificado digital de um cão do canil.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const { id } = await params;
   const cao = await prisma.cao.findFirst({ where: { id, canilId: canil.id } });
   if (!cao) return NextResponse.json({ error: "Cão não encontrado" }, { status: 404 });

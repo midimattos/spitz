@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { filtrarLancamentos, resolverPeriodo, ehInvestimento, type PeriodoId } from "@/lib/relatorio-financeiro";
 
 // CSV (abre no Excel) com os lançamentos do período/cão escolhidos.
 export async function GET(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return new Response("Não autorizado", { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const u = new URL(request.url).searchParams;
   const periodo = (u.get("periodo") ?? "tudo") as PeriodoId;

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const { id } = await params;
   const registro = await prisma.registroCuidado.findFirst({ where: { id, cao: { canilId: canil.id } } });

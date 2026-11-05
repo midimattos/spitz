@@ -2,12 +2,15 @@ import Link from "next/link";
 import { existsSync } from "fs";
 import { join } from "path";
 import { auth } from "@/lib/auth";
+import { planosDisponiveis, TESTE_DIAS } from "@/lib/assinatura";
+import { cadastroAberto } from "@/lib/cadastro";
+import { formatarMoeda } from "@/lib/financeiro";
 import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 
-const DESTAQUES_FICHA = ["Pedigree até 5 gerações", "Genética de cor", "Vacinas em dia", "Dossiê digital"];
+const DESTAQUES_FICHA = ["Árvore genealógica até 5 gerações", "Genética de cor", "Vacinas em dia", "Dossiê digital"];
 
 const RECURSOS = [
-  { titulo: "Plantel e pedigree", texto: "Cadastre cada cão com foto, registro e microchip. A árvore genealógica vai até 5 gerações e você imprime o mapa do pedigree para entregar ao cliente." },
+  { titulo: "Plantel e genealogia", texto: "Cadastre cada cão com foto, registro e microchip. A árvore genealógica vai até 5 gerações, com opções de impressão para o seu controle." },
   { titulo: "Genética de cor", texto: "Veja que cores cada cão carrega, simule cruzamentos e saiba antes o que pode nascer, com o risco genético estimado." },
   { titulo: "Ninhadas", texto: "Cobertura, data prevista do parto, filhotes, álbum de fotos e a margem de cada ninhada, do primeiro gasto à última venda." },
   { titulo: "Financeiro", texto: "Receitas, despesas, quanto cada cão custou e quanto rendeu, com relatório anual para o contador." },
@@ -25,6 +28,8 @@ export default async function HomePage() {
   const fotoIlustrativa = existsSync(join(process.cwd(), "public", "home", "cao-destaque.jpg")) ? "/home/cao-destaque.jpg" : null;
   const session = await auth();
   const logado = !!session?.user;
+  const planos = planosDisponiveis();
+  const aberto = cadastroAberto();
   const painel = session?.user?.role === "ADMIN" ? "/admin" : session?.user?.role === "COMPRADOR" ? "/dashboard/comprador" : "/dashboard/criador";
 
   return (
@@ -48,7 +53,7 @@ export default async function HomePage() {
               Todo o seu canil organizado em um só lugar.
             </h1>
             <p className="mt-6 text-lg max-w-xl leading-relaxed" style={{ color: "rgba(246,239,224,0.85)" }}>
-              Plantel, pedigree, genética de cor, ninhadas, financeiro e saúde. Tudo o que hoje fica no caderno e na memória, registrado e fácil de achar.
+              Plantel, genealogia, genética de cor, ninhadas, financeiro e saúde. Tudo o que hoje fica no caderno e na memória, registrado e fácil de achar.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               {logado ? (
@@ -93,7 +98,7 @@ export default async function HomePage() {
               </div>
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs" style={{ borderColor: "var(--border-hairline)", color: "var(--ink-muted)" }}>
                 <span>Certificado digital com QR code</span>
-                <span style={{ color: "var(--brass)" }}>Mapa do pedigree para imprimir</span>
+                <span style={{ color: "var(--brass)" }}>Árvore genealógica com opções de impressão</span>
               </div>
             </div>
             <div className="absolute -z-0 inset-0 rounded-xl border -rotate-3" style={{ borderColor: "rgba(227,201,153,0.4)" }} />
@@ -132,6 +137,33 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ---------- preços ---------- */}
+      <section className="max-w-6xl mx-auto px-6 sm:px-8 pt-24">
+        <p className="text-xs uppercase tracking-[0.25em]" style={{ color: "var(--brass)" }}>Quanto custa</p>
+        <h2 className="font-display text-3xl sm:text-4xl mt-2 max-w-3xl" style={{ color: "var(--pine)" }}>
+          {TESTE_DIAS} dias grátis, com todas as funções.
+        </h2>
+        <p className="mt-3 text-sm max-w-2xl" style={{ color: "var(--ink-muted)" }}>
+          Sem cartão para começar. Depois, escolha o plano: quanto mais longo, menor o valor por mês.
+        </p>
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {planos.map((p) => (
+            <div key={p.id} className="card p-6">
+              <p className="font-display text-lg" style={{ color: "var(--pine)" }}>{p.rotulo}</p>
+              <p className="text-3xl mt-2">{formatarMoeda(p.preco)}</p>
+              {p.meses > 1 && (
+                <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
+                  {formatarMoeda(p.porMes)} por mês{p.economiaPercent > 0 ? ` · economia de ${p.economiaPercent}%` : ""}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-sm" style={{ color: "var(--ink-muted)" }}>
+          {aberto ? "Cadastro aberto." : "Cadastro por convite neste momento: peça o código a um canil parceiro."}
+        </p>
       </section>
 
       {/* ---------- convite ---------- */}

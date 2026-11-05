@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { ErroNegocio } from "@/lib/arvore-servidor";
 import { criarFilhotes, filhotesSchema } from "@/lib/ninhada-filhotes";
 
@@ -16,7 +16,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const { id } = await params;
 
@@ -40,18 +40,19 @@ export async function PATCH(
   const quantidade = Math.max(parsed.data.quantidadeFilhotes ?? 0, filhotes.length);
 
   try {
+    let filhoteIds: string[] = [];
     const atualizada = await prisma.$transaction(
       async (tx) => {
         const n = await tx.ninhada.update({
           where: { id },
           data: { dataParto, quantidadeFilhotes: quantidade },
         });
-        if (filhotes.length > 0) await criarFilhotes(tx, canil.id, n, ninhada.caoMae, dataParto, filhotes);
+        if (filhotes.length > 0) filhoteIds = await criarFilhotes(tx, canil.id, n, ninhada.caoMae, dataParto, filhotes);
         return n;
       },
       { timeout: 30_000 }
     );
-    return NextResponse.json(atualizada);
+    return NextResponse.json({ ...atualizada, filhoteIds });
   } catch (e) {
     if (e instanceof ErroNegocio) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;

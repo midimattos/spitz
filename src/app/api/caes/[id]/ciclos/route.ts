@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 
 const cicloSchema = z.object({
   dataInicio: z.string().datetime(),
@@ -13,7 +13,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const { id: caoId } = await params;
   const cao = await prisma.cao.findFirst({ where: { id: caoId, canilId: canil.id } });

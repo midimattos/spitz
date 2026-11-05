@@ -1,4 +1,5 @@
-import { PILOTO_DIAS, DIA_MS } from "@/lib/assinatura";
+import { TESTE_DIAS, DIA_MS } from "@/lib/assinatura";
+import { cadastroAberto, limiteCanis } from "@/lib/cadastro";
 import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -57,6 +58,22 @@ export async function POST(request: Request) {
     );
   }
 
+  // Enquanto o cadastro aberto não for liberado, só entra quem tem convite válido.
+  if (role === "CRIADOR" && !cadastroAberto() && !codigoConvite) {
+    return NextResponse.json(
+      { error: "No momento o cadastro é só por convite. Peça um código a um canil parceiro." },
+      { status: 403 }
+    );
+  }
+  // Teto opcional de canis (cadastros sem convite).
+  const teto = limiteCanis();
+  if (role === "CRIADOR" && teto !== null && !codigoConvite) {
+    const total = await prisma.canil.count();
+    if (total >= teto) {
+      return NextResponse.json({ error: "As vagas deste momento já foram preenchidas. Entre na lista de espera." }, { status: 403 });
+    }
+  }
+
   // Se um código de convite foi informado, ele precisa existir e ainda
   // não ter sido usado — senão a conta é criada normalmente, só que sem
   // o benefício de verificação automática.
@@ -88,6 +105,8 @@ export async function POST(request: Request) {
         ownerId: user.id,
         // Convite válido = pula a fila de aprovação manual.
         verificado: !!convite,
+        // Todos ganham o mesmo teste grátis.
+        proGratisAte: new Date(Date.now() + TESTE_DIAS * DIA_MS),
       },
     });
 
@@ -95,11 +114,6 @@ export async function POST(request: Request) {
       await prisma.convite.update({
         where: { id: convite.id },
         data: { usadoPorCanilId: canil.id, usadoEm: new Date() },
-      });
-      // Piloto: quem entra pelo convite não paga nada nos primeiros dias.
-      await prisma.canil.update({
-        where: { id: canil.id },
-        data: { proGratisAte: new Date(Date.now() + PILOTO_DIAS * DIA_MS) },
       });
       // Quem convidou ganha desconto na mensalidade seguinte (1 por canil indicado).
       if (convite.criadoPorCanilId) {

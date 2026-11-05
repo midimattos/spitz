@@ -34,8 +34,14 @@ export default auth((req) => {
     }
   }
 
+  // Repassa o método e o caminho aos handlers (sobrescrevendo o que o navegador mandar):
+  // é por eles que o sistema sabe se o pedido altera dados, para bloquear a edição de quem não assinou.
+  const repassar = new Headers(req.headers);
+  repassar.set("x-metodo", req.method);
+  repassar.set("x-caminho", nextUrl.pathname);
+
   const regra = REGRAS_DE_ACESSO.find((r) => nextUrl.pathname.startsWith(r.prefixo));
-  if (!regra) return NextResponse.next();
+  if (!regra) return NextResponse.next({ request: { headers: repassar } });
 
   if (!usuario) {
     const loginUrl = new URL("/login", nextUrl.origin);
@@ -47,29 +53,9 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", nextUrl.origin));
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: repassar } });
 });
 
 export const config = {
-  matcher: [
-    "/admin/:path*",
-    "/dashboard/:path*",
-    "/marketplace/:path*",
-    "/marketplace",
-    "/api/anuncios/:path*",
-    "/api/anuncios",
-    "/api/desejos/:path*",
-    "/api/desejos",
-    "/api/favoritos/:path*",
-    "/api/favoritos",
-    "/api/eventos/:path*",
-    "/api/eventos",
-    "/api/matches/:path*",
-    "/api/matches",
-    "/api/mensagens/:path*",
-    "/api/reservas/:path*",
-    "/api/precificacao/:path*",
-    "/api/precificacao",
-    "/api/canis/:path*",
-  ],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/marketplace/:path*", "/marketplace", "/api/:path*"],
 };

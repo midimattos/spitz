@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { calcularCOI } from "@/lib/pedigree";
 import { gerarSlugPublico } from "@/lib/dossie";
 
@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const { id: caoId } = await params;
   const cao = await buscarCaoDoCanil(caoId, canil.id);
@@ -40,7 +40,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const { id: caoId } = await params;
   const cao = await buscarCaoDoCanil(caoId, canil.id);

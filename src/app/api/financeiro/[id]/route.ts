@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const { id } = await params;
   const l = await prisma.lancamentoFinanceiro.findFirst({ where: { id, canilId: canil.id }, select: { chaveAuto: true } });
   if (!l) return NextResponse.json({ error: "Lançamento não encontrado" }, { status: 404 });

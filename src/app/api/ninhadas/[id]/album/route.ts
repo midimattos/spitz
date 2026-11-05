@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { salvarArquivo, descreverErroArmazenamento } from "@/lib/storage";
 import { tokenLongo } from "@/lib/codigo";
 
@@ -14,7 +14,7 @@ async function ninhadaDoCriador(id: string) {
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const n = await ninhadaDoCriador(id);
-  if (!n) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!n) return await respostaSemAcesso();
   const arquivo = (await request.formData()).get("arquivo");
   if (!(arquivo instanceof File) || arquivo.size === 0 || !arquivo.type.startsWith("image/")) {
     return NextResponse.json({ error: "Selecione uma imagem" }, { status: 400 });
@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const n = await ninhadaDoCriador(id);
-  if (!n) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!n) return await respostaSemAcesso();
   const parsed = z.object({ fotoId: z.string() }).safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
   await prisma.fotoNinhada.deleteMany({ where: { id: parsed.data.fotoId, ninhadaId: id } });

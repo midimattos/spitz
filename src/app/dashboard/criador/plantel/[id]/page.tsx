@@ -68,7 +68,7 @@ export default async function FichaCaoPage({
   const machosDisponiveis =
     cao.sexo === "FEMEA"
       ? await prisma.cao.findMany({
-          where: { canilId: canil.id, sexo: "MACHO", vendidoEm: null },
+          where: { canilId: canil.id, sexo: "MACHO", vendidoEm: null, externo: false },
           select: { id: true, nome: true },
           orderBy: { nome: "asc" },
         })

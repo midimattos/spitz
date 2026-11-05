@@ -2,11 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FilhotesEditor, filhotesParaEnvio, linhaVazia, type FilhoteLinha } from "@/components/filhotes-editor";
+import { FilhotesEditor, enviarFotosDosFilhotes, filhotesParaEnvio, linhaVazia, type FilhoteLinha } from "@/components/filhotes-editor";
 import { dataParaIso } from "@/lib/moeda";
 import { mensagemDeErro } from "@/lib/imagem-cliente";
+import { ATRIBUTOS_NOME, nomeMaiusculo } from "@/lib/texto";
 
 type Opcao = { id: string; nome: string };
+
+/** Junta nome, registro e canil do cão emprestado no texto guardado na ninhada. */
+function nomeDoEmprestado(nome: string, registro: string, canil: string): string | undefined {
+  const n = nome.trim();
+  if (!n) return undefined;
+  const extras = [registro.trim() && `reg. ${registro.trim()}`, canil.trim()].filter(Boolean).join(", ");
+  return (extras ? `${n} (${extras})` : n).slice(0, 160);
+}
 
 const borda = { borderColor: "var(--border-hairline)" };
 const campo = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
@@ -19,6 +28,8 @@ export function NinhadaNascidaForm({ femeas, machos }: { femeas: Opcao[]; machos
   const [paiId, setPaiId] = useState("");
   const [paiExterno, setPaiExterno] = useState(false);
   const [paiTexto, setPaiTexto] = useState("");
+  const [paiRegistro, setPaiRegistro] = useState("");
+  const [paiCanil, setPaiCanil] = useState("");
   const [dataParto, setDataParto] = useState("");
   const [total, setTotal] = useState("");
   const [obs, setObs] = useState("");
@@ -30,6 +41,7 @@ export function NinhadaNascidaForm({ femeas, machos }: { femeas: Opcao[]; machos
     e.preventDefault();
     setErro(null);
     if (!maeId) return setErro("Escolha a mãe.");
+    if (paiExterno && !paiTexto.trim()) return setErro("Digite o nome do cão emprestado ou volte para a lista do seu canil.");
     if (!dataParto) return setErro("Informe a data do nascimento.");
     const env = filhotesParaEnvio(linhas);
     if ("erro" in env) return setErro(env.erro);
@@ -44,15 +56,21 @@ export function NinhadaNascidaForm({ femeas, machos }: { femeas: Opcao[]; machos
       body: JSON.stringify({
         caoMaeId: maeId,
         caoPaiId: paiExterno ? "" : paiId,
-        padreadorExterno: paiExterno ? paiTexto.trim() || undefined : undefined,
+        padreadorExterno: paiExterno ? nomeDoEmprestado(paiTexto, paiRegistro, paiCanil) : undefined,
         dataParto: dataParaIso(dataParto),
         quantidadeFilhotes: totalNum,
         observacoes: obs.trim() || undefined,
         filhotes: env.filhotes,
       }),
     }).catch(() => null);
+    if (!res || !res.ok) {
+      setSalvando(false);
+      return setErro(res ? await mensagemDeErro(res, "Não foi possível cadastrar a ninhada") : "Sem conexão. Tente novamente.");
+    }
+    const dados = (await res.json().catch(() => null)) as { filhoteIds?: string[] } | null;
+    const falhas = await enviarFotosDosFilhotes(env.linhasUsadas, dados?.filhoteIds);
     setSalvando(false);
-    if (!res || !res.ok) return setErro(res ? await mensagemDeErro(res, "Não foi possível cadastrar a ninhada") : "Sem conexão. Tente novamente.");
+    if (falhas > 0) window.alert(`A ninhada foi salva, mas ${falhas} foto(s) não subiram. Envie de novo pela página de cada cão.`);
     router.push("/dashboard/criador/ninhadas");
     router.refresh();
   }
@@ -72,14 +90,18 @@ export function NinhadaNascidaForm({ femeas, machos }: { femeas: Opcao[]; machos
           <label className="text-sm flex items-center justify-between" style={rot}>
             Pai
             <button type="button" onClick={() => setPaiExterno((v) => !v)} className="underline text-xs" style={{ color: "var(--brass)" }}>
-              {paiExterno ? "escolher da lista" : "digitar o nome"}
+              {paiExterno ? "escolher do meu canil" : "cadastrar cão emprestado"}
             </button>
           </label>
           {paiExterno ? (
-            <input value={paiTexto} onChange={(e) => setPaiTexto(e.target.value)} placeholder="Nome do padreador e canil" className={campo} style={borda} />
+            <div className="space-y-2">
+              <input value={paiTexto} onChange={(e) => setPaiTexto(nomeMaiusculo(e.target.value))} placeholder="Nome do cão emprestado" className={campo} {...ATRIBUTOS_NOME} style={{ ...borda, ...ATRIBUTOS_NOME.style }} />
+              <input value={paiRegistro} onChange={(e) => setPaiRegistro(e.target.value)} placeholder="Registro (opcional)" className={campo} style={borda} />
+              <input value={paiCanil} onChange={(e) => setPaiCanil(e.target.value)} placeholder="Canil de origem (opcional)" className={campo} style={borda} />
+            </div>
           ) : (
             <select value={paiId} onChange={(e) => setPaiId(e.target.value)} className={campo} style={borda}>
-              <option value="">— escolha o pai —</option>
+              <option value="">— escolha o pai do meu canil —</option>
               {machos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           )}

@@ -96,7 +96,7 @@ export default async function DashboardCriadorPage() {
         { href: "/dashboard/criador/saude", titulo: "Saúde da carteira", texto: "Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail." },
       ]
     : [
-        { href: "/dashboard/criador/plantel", titulo: "Plantel e pedigree", texto: "Cadastre seus cães, monte a árvore genealógica até 5 gerações e imprima o mapa do pedigree." },
+        { href: "/dashboard/criador/plantel", titulo: "Plantel e genealogia", texto: "Cadastre seus cães e monte a árvore genealógica até 5 gerações, com opções de impressão." },
         { href: "/dashboard/criador/ninhadas", titulo: "Ninhadas", texto: "Cobertura, parto, filhotes, custos e margem de cada ninhada." },
         { href: "/dashboard/criador/financeiro", titulo: "Financeiro", texto: "Receitas, despesas, quanto cada cão custou e lucro, com relatório anual." },
         { href: "/dashboard/criador/saude", titulo: "Saúde da carteira", texto: "Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail." },
@@ -145,7 +145,7 @@ export default async function DashboardCriadorPage() {
               {canil.nome}
               {canil.verificado ? " · canil verificado" : " · aguardando verificação"}
               {pro && !gratisAte ? " · assinatura ativa" : ""}
-              {gratisAte ? ` · PRO grátis até ${formatarData(gratisAte)}` : ""}
+              {gratisAte ? ` · teste grátis até ${formatarData(gratisAte)}` : ""}
             </p>
           )}
         </div>

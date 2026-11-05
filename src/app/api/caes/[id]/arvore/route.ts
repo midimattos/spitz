@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { aplicarArvore, arvoreSchema, ErroNegocio } from "@/lib/arvore-servidor";
 
 const schema = z.object({ arvore: arvoreSchema });
@@ -9,7 +9,7 @@ const schema = z.object({ arvore: arvoreSchema });
 /** Salva a pirâmide de ancestrais de um cão que já existe. */
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const { id } = await params;
   const cao = await prisma.cao.findFirst({ where: { id, canilId: canil.id }, select: { id: true } });
   if (!cao) return NextResponse.json({ error: "Cão não encontrado" }, { status: 404 });

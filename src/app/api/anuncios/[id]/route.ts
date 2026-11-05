@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { calcularComissaoVenda } from "@/lib/precos-plataforma";
 import { registrarVenda } from "@/lib/vendas";
 import { processarMarcaDaVenda } from "@/lib/marca-venda";
@@ -43,7 +43,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const { id } = await params;
   const existente = await prisma.anuncio.findFirst({ where: { id, canilId: canil.id } });

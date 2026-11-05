@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 
 const schema = z.object({
   compradorNome: z.string().min(2, "Informe o nome do comprador").max(120),
@@ -12,7 +12,7 @@ const schema = z.object({
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const { id } = await params;
   const anuncio = await prisma.anuncio.findFirst({ where: { id, canilId: canil.id }, select: { id: true } });
   if (!anuncio) return NextResponse.json({ error: "Anúncio não encontrado" }, { status: 404 });

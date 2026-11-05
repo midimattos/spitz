@@ -3,6 +3,7 @@
 import { OPCOES_COR_BASE } from "@/lib/genetica-cor";
 import { ATRIBUTOS_NOME, nomeMaiusculo } from "@/lib/texto";
 import { dataParaIso, lerValor } from "@/lib/moeda";
+import { prepararImagem } from "@/lib/imagem-cliente";
 
 export type FilhoteLinha = {
   nome: string;
@@ -13,6 +14,7 @@ export type FilhoteLinha = {
   dataVenda: string; // yyyy-mm-dd
   compradorNome: string;
   compradorContato: string;
+  foto: File | null; // foto opcional do filhote, enviada depois que ele é salvo
 };
 
 export const linhaVazia = (): FilhoteLinha => ({
@@ -24,10 +26,11 @@ export const linhaVazia = (): FilhoteLinha => ({
   dataVenda: "",
   compradorNome: "",
   compradorContato: "",
+  foto: null,
 });
 
 /** Converte as linhas da tela no formato da API. Linhas totalmente em branco são ignoradas. */
-export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[] } | { erro: string } {
+export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]; linhasUsadas: FilhoteLinha[] } | { erro: string } {
   const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.vendido);
   const nomes = new Set<string>();
   const filhotes: unknown[] = [];
@@ -54,7 +57,22 @@ export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]
       compradorContato: l.vendido ? l.compradorContato.trim() || undefined : undefined,
     });
   }
-  return { filhotes };
+  return { filhotes, linhasUsadas: preenchidas };
+}
+
+/** Envia as fotos dos filhotes recém-salvos (a ordem dos ids é a mesma das linhas). Devolve quantas fotos falharam. */
+export async function enviarFotosDosFilhotes(linhas: FilhoteLinha[], ids: string[] | undefined): Promise<number> {
+  if (!ids) return 0;
+  let falhas = 0;
+  for (const [i, l] of linhas.entries()) {
+    const id = ids[i];
+    if (!l.foto || !id) continue;
+    const fd = new FormData();
+    fd.append("arquivo", await prepararImagem(l.foto));
+    const res = await fetch(`/api/caes/${id}/foto`, { method: "POST", body: fd }).catch(() => null);
+    if (!res || !res.ok) falhas++;
+  }
+  return falhas;
 }
 
 const borda = { borderColor: "var(--border-hairline)" };
@@ -116,6 +134,23 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
             <label className="flex items-center gap-2">
               <input type="radio" name={`situacao-${i}`} checked={l.vendido} onChange={() => mudar(i, { vendido: true })} /> Já foi vendido
             </label>
+          </div>
+
+          <div className="mt-3">
+            <label className="text-xs" style={rot}>Foto do filhote (opcional)</label>
+            <div className="mt-1 flex items-center gap-3 text-sm">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => mudar(i, { foto: e.target.files?.[0] ?? null })}
+                className="text-xs"
+              />
+              {l.foto && (
+                <button type="button" onClick={() => mudar(i, { foto: null })} className="text-xs underline" style={{ color: "#a32d2d" }}>
+                  tirar foto
+                </button>
+              )}
+            </div>
           </div>
 
           {l.vendido && (

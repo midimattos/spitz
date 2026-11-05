@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { lerPedigreeComIA } from "@/lib/ia";
 import { acharDuplicado } from "@/lib/duplicados";
 import { verificarLimite, mensagemLimite } from "@/lib/limite-taxa";
@@ -10,7 +10,7 @@ const TIPOS = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const lim = await verificarLimite(`pedigree-ler:${canil.id}`, 20, 24 * 60 * 60);
   if (!lim.ok) return NextResponse.json({ error: mensagemLimite(lim) }, { status: 429 });

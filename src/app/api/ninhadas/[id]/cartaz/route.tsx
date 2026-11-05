@@ -1,11 +1,11 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { urlBaseDaRequisicao } from "@/lib/url-base";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return new Response("Não autorizado", { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const { id } = await params;
   const n = await prisma.ninhada.findFirst({
     where: { id, caoMae: { canilId: canil.id } },

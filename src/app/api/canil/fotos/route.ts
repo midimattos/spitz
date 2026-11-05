@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { salvarArquivo, descreverErroArmazenamento } from "@/lib/storage";
 
 const MAX_FOTOS = 9;
 
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   if (canil.fotos.length >= MAX_FOTOS) return NextResponse.json({ error: `Limite de ${MAX_FOTOS} fotos.` }, { status: 400 });
 
   const arquivo = (await request.formData()).get("arquivo");
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const parsed = z.object({ url: z.string() }).safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
   await prisma.canil.update({ where: { id: canil.id }, data: { fotos: canil.fotos.filter((f) => f !== parsed.data.url) } });

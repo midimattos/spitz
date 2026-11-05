@@ -131,7 +131,10 @@ export function inferirGenotipo(fenotipo: FenotipoCao): GenotipoCompleto {
 
   // ---- Locus B (preto x chocolate) ----
   const produziuChocolate = cores.some((c) => /chocolate|lilás|lilas|beaver/i.test(c));
-  if (corBase === "Chocolate" || corBase === "Lilás" || corBase === "Beaver") {
+  // Trufa (nariz) marrom ou lilás só existe em cão b/b: vale mais que o histórico de filhotes.
+  const trufa = fenotipo.corTrufa ?? "";
+  const trufaMarrom = trufa === "Marrom" || trufa === "Lilás";
+  if (corBase === "Chocolate" || corBase === "Lilás" || corBase === "Beaver" || trufaMarrom) {
     definir("B", ["b", "b"], "FENOTIPO");
   } else if (produziuChocolate) {
     definir("B", ["B", "b"], "EVIDENCIA");
@@ -183,7 +186,7 @@ export function inferirGenotipo(fenotipo: FenotipoCao): GenotipoCompleto {
   // ---- Locus D (diluição) ----
   // Já produziu filhote diluído (Lilás, Azul/Cinza): se ele mesmo não é diluído, só pode ser portador (D/d).
   const produziuDiluido = cores.some((c) => /lil[aá]s|azul|cinza|blue|dilu[ií]d/i.test(c));
-  if (diluicao === "Diluída" || corBase === "Azul/Cinza" || corBase === "Lilás") {
+  if (diluicao === "Diluída" || corBase === "Azul/Cinza" || corBase === "Lilás" || trufa === "Lilás" || trufa === "Azul/Acinzentada") {
     definir("D", ["d", "d"], "FENOTIPO");
   } else if (produziuDiluido) {
     definir("D", ["D", "d"], "EVIDENCIA");

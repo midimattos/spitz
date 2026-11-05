@@ -1,4 +1,4 @@
-import { PILOTO_DIAS } from "@/lib/assinatura";
+import { TESTE_DIAS } from "@/lib/assinatura";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado } from "@/lib/canil";
 import { formatarData } from "@/lib/labels";
@@ -23,7 +23,7 @@ export default async function ConvitesPage() {
       </h1>
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
         Convide outros canis para a plataforma. Quem se cadastrar com o seu
-        código já entra verificado, sem esperar a fila de aprovação. Cada canil que entrar pelo seu convite dá a você um desconto na mensalidade seguinte, quando a cobrança começar. Quem entra tem {PILOTO_DIAS} dias grátis.
+        código já entra verificado, sem esperar a fila de aprovação. Cada canil que entrar pelo seu convite dá a você um desconto na mensalidade seguinte, quando a cobrança começar. Quem entra tem {TESTE_DIAS} dias grátis.
       </p>
 
       {!canil?.verificado ? (

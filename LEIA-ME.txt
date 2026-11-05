@@ -1,49 +1,17 @@
-GESTAO DO CANIL + NINHADAS COM FILHOTES, VENDAS E COMPRAS
-(pacote completo: inclui o marketplace em pausa e tudo que foi feito antes)
+AJUSTES DOS AUDIOS DE 05/11 (cumulativo: inclui tudo que ja foi entregue, inclusive cobranca pelo Asaas)
 
-O QUE HA DE NOVO
-1) Cadastrar ninhada que ja nasceu
-   Ninhadas > "Cadastrar ninhada que ja nasceu": mae, pai, data do nascimento e
-   cada filhote (nome, sexo, cor). Para cada filhote voce marca se FICA no
-   plantel ou se JA FOI VENDIDO (valor, data, cliente e contato do cliente).
-   Os filhotes entram no Plantel ja ligados ao pai, a mae e a ninhada.
-2) Registrar parto com filhotes
-   Numa ninhada em gestacao, "Registrar parto e filhotes" faz o mesmo.
-   Em ninhada que ja nasceu, "+ Adicionar filhote" acrescenta mais.
-3) Vendas
-   Em cada filhote (tela de Ninhadas) e na ficha de qualquer cao:
-   "Registrar venda", "Corrigir venda" e "Desfazer venda".
-   O valor entra sozinho no Financeiro (Venda de filhote / Venda de adulto).
-   Cao vendido sai do plantel ativo, dos alertas e das contagens, mas aparece em
-   "Vendidos" e continua na arvore e nos Descendentes dos pais.
-   O nome e o contato do cliente sao so seus.
-4) Compras
-   Na ficha do cao (aba Dados Gerais, "Origem, compra e venda"): "Comprei este
-   cao: registrar quanto paguei". Entra no Financeiro como Investimento.
-5) Aba Descendentes na ficha do cao
-   Os filhos aparecem sozinhos, vindos das ninhadas (com foto, cor, nascimento,
-   outro genitor e situacao). O cadastro manual antigo continua, como "Outros
-   filhotes", para quem nao esta no sistema.
-6) Margem da ninhada usa as vendas registradas (receita, custo, lucro por filhote).
-7) No Financeiro, lancamentos que vem de compra/venda mostram "da ficha do cao"
-   e so mudam pela ficha (assim os numeros nunca ficam diferentes).
+O QUE MUDOU
+1. Ninhada que ja nasceu: o campo PAI agora lista so os caes do SEU canil (como a mae). Para pai emprestado ou de outro canil: botao "cadastrar cao emprestado" (nome, registro e canil de origem).
+2. Cada filhote tem "Foto do filhote (opcional)". A foto sobe junto com o salvamento (nas 3 telas: ninhada nascida, registrar parto e adicionar filhote).
+3. Pagina inicial e painel: sai a ideia de entregar o pedigree ao cliente. Agora: "Arvore genealogica ate 5 geracoes, com opcoes de impressao".
+4. Simulador de cruzamento: nao mostra mais caes ja vendidos (tambem na lista de pai da ninhada em andamento).
+5. Genetica: cao com trufa marrom (ou lilas) agora e b/b no Locus B (antes aparecia B/b). Trufa lilas ou azul tambem fixa d/d no Locus D.
 
-COMO INSTALAR (Prompt de Comando, na pasta do projeto)
-1) Copie o CONTEUDO das pastas src, prisma e public (e o arquivo .env.example)
-   para dentro do projeto, escolhendo "Substituir". Nao cole a pasta do zip inteira.
-2) Rode, uma linha por vez:
-   git add .
-   git commit -m "ninhadas com filhotes, vendas e compras"
-   git push
-   npx prisma migrate deploy
-3) A migracao (20261105120000_ninhadas_vendas_compras) e necessaria: ela cria os
-   campos novos e liga os filhotes que voce ja cadastrou as suas ninhadas
-   (mesma mae e nascimento ate 7 dias do parto).
-4) Aguarde o "Ready" na Vercel.
-
-DICA DE USO
-Nomes de filhotes nao podem repetir no mesmo sexo (regra anti-duplicidade).
-Use nomes diferentes, por exemplo "DUDU", "LUNA" ou "MACHO PRETO 2026".
-
-MARKETPLACE
-Continua em pausa. Para religar: NEXT_PUBLIC_MARKETPLACE_ATIVO = true na Vercel + redeploy.
+COMO INSTALAR (Windows, cmd)
+1. Copie o CONTEUDO das pastas src, prisma, public e o .env.example sobre o projeto, escolhendo "Substituir".
+2. cd C:\Users\Midian\PROJETOS\spitz-saas\spitz
+3. git add .
+4. git commit -m "Ajustes de ninhadas, fotos, genetica e textos"
+5. git push
+6. npx prisma migrate deploy
+(se ja rodou o migrate da cobranca automatica, o comando 6 nao muda nada)

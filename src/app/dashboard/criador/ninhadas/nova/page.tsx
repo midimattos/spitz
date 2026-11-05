@@ -13,8 +13,9 @@ export default async function NovaNinhadaNascidaPage() {
       })
     : [];
   const femeas = caes.filter((c) => c.sexo === "FEMEA" && !c.externo).map((c) => ({ id: c.id, nome: c.nome }));
-  // O pai pode ser do plantel, vendido depois ou de outro canil (linhagem).
-  const machos = caes.filter((c) => c.sexo === "MACHO").map((c) => ({ id: c.id, nome: c.externo ? `${c.nome} (outro canil)` : c.vendidoEm ? `${c.nome} (vendido)` : c.nome }));
+  // Só cães do seu canil (os de outros canis que entraram só pela árvore genealógica não aparecem).
+  // Pai de fora ou emprestado: use "Cadastrar cão emprestado" no formulário.
+  const machos = caes.filter((c) => c.sexo === "MACHO" && !c.externo).map((c) => ({ id: c.id, nome: c.vendidoEm ? `${c.nome} (vendido)` : c.nome }));
 
   return (
     <main className="flex-1 max-w-4xl mx-auto w-full px-6 sm:px-8 py-10">

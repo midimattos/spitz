@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buscarPagamentoMP, validarAssinaturaWebhook } from "@/lib/mercadopago";
+import { novoFimDoAcesso } from "@/lib/assinatura";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -63,13 +64,13 @@ export async function POST(request: Request) {
   // efeito se o Mercado Pago reenviar a mesma notificação (o que é comum).
   if (novoStatus === "APROVADO" && !eraAprovadoAntes) {
     if (pagamento.tipo === "ASSINATURA_PRO") {
-      // Cada mensalidade paga soma 30 dias de PRO (a partir do fim do período atual, se ainda ativo).
-      const c = await prisma.canil.findUnique({ where: { id: pagamento.canilId }, select: { proGratisAte: true } });
-      const inicio = Math.max(Date.now(), c?.proGratisAte?.getTime() ?? 0);
+      // Cada pagamento soma os meses do plano escolhido (1, 3, 6 ou 12), a partir do fim do período atual, se ainda ativo.
+      const c = await prisma.canil.findUnique({ where: { id: pagamento.canilId }, select: { proGratisAte: true, criadoEm: true } });
+      const atual = c?.proGratisAte ?? null;
       await prisma.canil.update({
         where: { id: pagamento.canilId },
         data: {
-          proGratisAte: new Date(inicio + 30 * 24 * 60 * 60 * 1000),
+          proGratisAte: novoFimDoAcesso(atual, pagamento.meses ?? 1),
           ...(pagamento.usouDescontoIndicacao ? { descontosIndicacao: { decrement: 1 } } : {}),
         },
       });

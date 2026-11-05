@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { extrairLaudoComIA } from "@/lib/anthropic";
 
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
 
   const formData = await request.formData();
   const arquivo = formData.get("arquivo");

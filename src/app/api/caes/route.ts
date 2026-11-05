@@ -3,7 +3,7 @@ import { carregarChaves } from "@/lib/duplicados-db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { validarGenealogia, resolverAncestral } from "@/lib/genealogia";
 
 const caoSchema = z.object({
@@ -43,7 +43,7 @@ const caoSchema = z.object({
 export async function GET() {
   const canil = await getCanilDoCriadorLogado();
   if (!canil) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    return await respostaSemAcesso();
   }
 
   const caes = await prisma.cao.findMany({
@@ -58,7 +58,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
   if (!canil) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    return await respostaSemAcesso();
   }
 
   const body = await request.json();

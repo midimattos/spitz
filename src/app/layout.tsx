@@ -4,11 +4,12 @@ import { BarraNavegacao } from "@/components/barra-navegacao";
 import { RodapeLegal } from "@/components/rodape-legal";
 import { Cabecalho } from "@/components/cabecalho";
 import { auth, signOut } from "@/lib/auth";
+import { AvisoAssinatura } from "@/components/aviso-assinatura";
 
 export const metadata: Metadata = {
   title: "Spitz Alemão | Gestão completa do seu canil",
   description:
-    "Gestão de canil: plantel, pedigree, genética de cor, ninhadas, financeiro e saúde em um só lugar.",
+    "Gestão de canil: plantel, genealogia, genética de cor, ninhadas, financeiro e saúde em um só lugar.",
 };
 
 export default async function RootLayout({
@@ -28,6 +29,7 @@ export default async function RootLayout({
           usuario={session?.user ? { nome: session.user.name ?? session.user.email ?? "", papel: session.user.role } : null}
           sair={sair}
         />
+        <AvisoAssinatura />
         <BarraNavegacao />
         {children}
         <RodapeLegal />

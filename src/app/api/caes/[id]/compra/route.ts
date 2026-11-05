@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { aplicarCompra, compraSchema, removerCompra } from "@/lib/negocio-cao";
 
 async function carregar(id: string) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return { erro: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) } as const;
+  if (!canil) return { erro: await respostaSemAcesso() } as const;
   const cao = await prisma.cao.findFirst({ where: { id, canilId: canil.id }, select: { id: true, nome: true, externo: true, ninhadaId: true } });
   if (!cao) return { erro: NextResponse.json({ error: "Cão não encontrado" }, { status: 404 }) } as const;
   return { canil, cao } as const;

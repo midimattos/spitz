@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCanilDoCriadorLogado } from "@/lib/canil";
+import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { validarGenealogia } from "@/lib/genealogia";
 
 const schema = z.object({ manterId: z.string().min(1), removerId: z.string().min(1) });
@@ -13,7 +13,7 @@ const schema = z.object({ manterId: z.string().min(1), removerId: z.string().min
  */
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();
-  if (!canil) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!canil) return await respostaSemAcesso();
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success || parsed.data.manterId === parsed.data.removerId) return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
   const { manterId, removerId } = parsed.data;

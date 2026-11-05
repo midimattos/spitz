@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FilhotesEditor, filhotesParaEnvio, linhaVazia, type FilhoteLinha } from "@/components/filhotes-editor";
+import { FilhotesEditor, enviarFotosDosFilhotes, filhotesParaEnvio, linhaVazia, type FilhoteLinha } from "@/components/filhotes-editor";
 import { mensagemDeErro } from "@/lib/imagem-cliente";
 
 /** Acrescenta filhotes a uma ninhada que já nasceu. */
@@ -33,8 +33,14 @@ export function AdicionarFilhotes({ ninhadaId }: { ninhadaId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filhotes: env.filhotes }),
     }).catch(() => null);
+    if (!res || !res.ok) {
+      setSalvando(false);
+      return setErro(res ? await mensagemDeErro(res, "Não foi possível salvar os filhotes") : "Sem conexão. Tente novamente.");
+    }
+    const dados = (await res.json().catch(() => null)) as { filhoteIds?: string[] } | null;
+    const falhas = await enviarFotosDosFilhotes(env.linhasUsadas, dados?.filhoteIds);
     setSalvando(false);
-    if (!res || !res.ok) return setErro(res ? await mensagemDeErro(res, "Não foi possível salvar os filhotes") : "Sem conexão. Tente novamente.");
+    if (falhas > 0) window.alert(`Os filhotes foram salvos, mas ${falhas} foto(s) não subiram. Envie de novo pela página de cada cão.`);
     setLinhas([linhaVazia()]);
     setAberto(false);
     router.refresh();
