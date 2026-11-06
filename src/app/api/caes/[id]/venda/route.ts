@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
-import { aplicarVenda, desfazerVenda, vendaSchema } from "@/lib/negocio-cao";
+import { aplicarVenda, chaveCustoVenda, chaveTaxaVenda, desfazerVenda, vendaSchema } from "@/lib/negocio-cao";
 
 async function carregar(id: string) {
   const canil = await getCanilDoCriadorLogado();
@@ -9,6 +9,21 @@ async function carregar(id: string) {
   const cao = await prisma.cao.findFirst({ where: { id, canilId: canil.id }, select: { id: true, nome: true, externo: true, ninhadaId: true } });
   if (!cao) return { erro: NextResponse.json({ error: "Cão não encontrado" }, { status: 404 }) } as const;
   return { canil, cao } as const;
+}
+
+/** Cobrança e custo extras já lançados na entrega (para preencher o formulário ao corrigir). */
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const r = await carregar((await params).id);
+  if ("erro" in r) return r.erro;
+  const lanc = await prisma.lancamentoFinanceiro.findMany({
+    where: { chaveAuto: { in: [chaveTaxaVenda(r.cao.id), chaveCustoVenda(r.cao.id)] } },
+    select: { chaveAuto: true, valor: true, descricao: true },
+  });
+  const pegar = (chave: string) => {
+    const l = lanc.find((x) => x.chaveAuto === chave);
+    return l ? { descricao: l.descricao ?? "", valor: Number(l.valor) } : null;
+  };
+  return NextResponse.json({ taxa: pegar(chaveTaxaVenda(r.cao.id)), custo: pegar(chaveCustoVenda(r.cao.id)) });
 }
 
 /** Registra (ou corrige) a venda de um cão do plantel. */

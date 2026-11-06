@@ -58,3 +58,21 @@ export async function PATCH(
     throw e;
   }
 }
+
+/** Apaga uma cobertura/ninhada (ex.: cadastro de teste). Com filhotes cadastrados, não apaga. */
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const canil = await getCanilDoCriadorLogado();
+  if (!canil) return await respostaSemAcesso();
+  const { id } = await params;
+  const ninhada = await prisma.ninhada.findFirst({ where: { id, caoMae: { canilId: canil.id } }, select: { id: true } });
+  if (!ninhada) return NextResponse.json({ error: "Ninhada não encontrada" }, { status: 404 });
+  const filhotes = await prisma.cao.count({ where: { ninhadaId: id } });
+  if (filhotes > 0) {
+    return NextResponse.json(
+      { error: `Esta ninhada tem ${filhotes} filhote(s) cadastrado(s). Apague ou ajuste os filhotes antes de apagar a ninhada.` },
+      { status: 409 }
+    );
+  }
+  await prisma.ninhada.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

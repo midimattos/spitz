@@ -1,14 +1,17 @@
-MEDIDAS: PESO E CERNELHA (cumulativo: inclui tudo que ja foi entregue)
+AJUSTES DOS AUDIOS DE 05/11 (parte 2) - cumulativo: inclui tudo que ja foi entregue
 
 O QUE MUDOU
-- Em cada cao (adulto ou filhote) ha uma nova aba "Medidas": registra a data, o peso (em gramas ou quilos, para filhotes e adultos) e a altura de cernelha (cm), com observacao opcional.
-- Mostra um grafico de evolucao do peso e da cernelha e a lista de medidas (da mais recente para a mais antiga), com opcao de apagar.
-- Serve para a pesagem diaria dos filhotes: registre um dia por vez na aba do filhote.
+1. Lixeirinha para apagar ninhada/cobertura (pagina Ninhadas e ficha da matriz). So apaga se nao houver filhotes cadastrados; com filhotes, o sistema avisa.
+2. Pagina Ninhadas: novo bloco "Registrar uma cobertura (aguardando o parto)" - escolhe a femea, o padreador (do seu canil ou cao emprestado) e a data. Continua possivel pela ficha da matriz.
+3. Filhote que FALECEU: na ninhada, cada filhote tem a opcao "Faleceu" (data e o que aconteceu; nome opcional). Entra na contagem dos nascidos ("X nascidos, Y faleceram"), sai das listas ativas e aparece em "Falecidos" no Plantel. Tambem existe "Marcar falecimento" na ficha de qualquer cao e na lista de filhotes da ninhada.
+   Para corrigir um filhote lancado como vendido por engano: clique em "Desfazer" na venda e depois em "Marcar falecimento".
+4. Saida do cao: "Venda" ou "Doacao" (doacao nao gera receita), mais campos opcionais para o que voce cobrou junto (ex.: castracao) e o que voce pagou (custo). Tudo entra sozinho no Financeiro.
+5. Doacoes nao entram no calculo do ticket medio das ninhadas.
 
 COMO INSTALAR (Windows, cmd)
 1. Copie o CONTEUDO das pastas src, prisma, public e o .env.example sobre o projeto, escolhendo "Substituir".
 2. cd C:\Users\Midian\PROJETOS\spitz-saas\spitz
 3. git add .
-4. git commit -m "Medidas: peso e cernelha"
+4. git commit -m "Apagar ninhada, cobertura na pagina Ninhadas, falecidos e doacao"
 5. git push
 6. npx prisma migrate deploy

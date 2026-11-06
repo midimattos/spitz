@@ -7,6 +7,9 @@ import { AlbumNinhada } from "@/components/album-ninhada";
 import { RegistrarPartoForm } from "@/components/registrar-parto-form";
 import { AdicionarFilhotes } from "@/components/adicionar-filhotes";
 import { VendaCao } from "@/components/venda-cao";
+import { FalecimentoCao } from "@/components/falecimento-cao";
+import { ApagarNinhada } from "@/components/apagar-ninhada";
+import { NinhadaForm } from "@/components/ninhada-form";
 import { diasEntre, estadoDaNinhada, montarMarcos, ROTULO_ESTADO } from "@/lib/ninhadas";
 import { calcularMargemNinhada } from "@/lib/margem-ninhada";
 
@@ -51,6 +54,17 @@ export default async function NinhadasPage() {
       }))
     : [];
 
+  // Quem pode entrar numa cobertura nova: só cães do seu canil que continuam com você.
+  const ativos = canil
+    ? await prisma.cao.findMany({
+        where: { canilId: canil.id, externo: false, vendidoEm: null, dataFalecimento: null },
+        select: { id: true, nome: true, sexo: true },
+        orderBy: { nome: "asc" },
+      })
+    : [];
+  const femeasOpcoes = ativos.filter((c) => c.sexo === "FEMEA").map((c) => ({ id: c.id, nome: c.nome }));
+  const machosOpcoes = ativos.filter((c) => c.sexo === "MACHO").map((c) => ({ id: c.id, nome: c.nome }));
+
   const dadosNinhadas = ninhadas.map((n) => {
     // Filhotes ligados à ninhada; cadastros antigos sem vínculo entram pela mesma mãe e data do parto.
     const cria = filhotes.filter(
@@ -68,8 +82,10 @@ export default async function NinhadasPage() {
     const receita = valores.reduce((t, v) => t + v, 0);
     const vendas = valores;
     const nascidos = Math.max(n.quantidadeFilhotes ?? 0, cria.length);
-    const estado = estadoDaNinhada(n, vendas.length, nascidos, agora);
-    return { n, cria, vendas, receita, nascidos, estado, valorDe, marcos: montarMarcos(n, agora), margem: calcularMargemNinhada(n, lancamentos, receita, nascidos) };
+    const falecidos = cria.filter((f) => f.dataFalecimento).length;
+    // Filhote vendido ou falecido já não precisa de atenção: a ninhada fecha quando todos têm destino.
+    const estado = estadoDaNinhada(n, vendas.length + falecidos, nascidos, agora);
+    return { n, cria, vendas, receita, nascidos, falecidos, estado, valorDe, marcos: montarMarcos(n, agora), margem: calcularMargemNinhada(n, lancamentos, receita, nascidos) };
   });
 
   const emGestacao = dadosNinhadas.filter((d) => d.estado === "GESTACAO" || d.estado === "ATRASADA");
@@ -78,6 +94,7 @@ export default async function NinhadasPage() {
   const totalNascidos = comParto.reduce((t, d) => t + d.nascidos, 0);
   const totalVendidos = comParto.reduce((t, d) => t + d.vendas.length, 0);
   const totalReceita = comParto.reduce((t, d) => t + d.receita, 0);
+  const totalPagos = comParto.reduce((t, d) => t + d.vendas.filter((v) => v > 0).length, 0); // doações não entram no ticket médio
   const media = comParto.length ? totalNascidos / comParto.length : 0;
 
   // agenda: próximos marcos não realizados dos próximos 30 dias
@@ -90,11 +107,19 @@ export default async function NinhadasPage() {
     <main className="flex-1 max-w-5xl mx-auto w-full px-8 py-12">
       <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>Ninhadas</h1>
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-        Cronograma, filhotes e resultado de cada ninhada. Para registrar uma cobertura, abra a ficha da matriz no Plantel.
+        Cronograma, filhotes e resultado de cada ninhada. Registre aqui uma cobertura nova ou uma ninhada que já nasceu (também dá pelo Plantel, na ficha da matriz).
       </p>
-      <Link href="/dashboard/criador/ninhadas/nova" className="inline-block mt-4 px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>
-        Cadastrar ninhada que já nasceu
-      </Link>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link href="/dashboard/criador/ninhadas/nova" className="px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>
+          Cadastrar ninhada que já nasceu
+        </Link>
+      </div>
+      <details className="card mt-4 p-5">
+        <summary className="cursor-pointer text-sm font-medium" style={{ color: "var(--pine)" }}>Registrar uma cobertura (aguardando o parto)</summary>
+        <div className="mt-4">
+          <NinhadaForm femeas={femeasOpcoes} machosDisponiveis={machosOpcoes} />
+        </div>
+      </details>
 
       {ninhadas.length === 0 ? (
         <div className="card mt-8 p-8 text-center">
@@ -117,7 +142,7 @@ export default async function NinhadasPage() {
               valor={String(totalVendidos)}
               nota={totalNascidos ? `${Math.round((totalVendidos / totalNascidos) * 100)}% dos nascidos` : undefined}
             />
-            <Kpi titulo="Receita das ninhadas" valor={formatarMoeda(totalReceita)} nota={totalVendidos ? `Ticket médio ${formatarMoeda(totalReceita / totalVendidos)}` : undefined} />
+            <Kpi titulo="Receita das ninhadas" valor={formatarMoeda(totalReceita)} nota={totalPagos ? `Ticket médio ${formatarMoeda(totalReceita / totalPagos)}` : undefined} />
           </div>
 
           {agenda.length > 0 && (
@@ -137,7 +162,7 @@ export default async function NinhadasPage() {
           )}
 
           <div className="mt-8 space-y-5">
-            {dadosNinhadas.map(({ n, cria, vendas, receita, nascidos, estado, marcos, margem, valorDe }) => (
+            {dadosNinhadas.map(({ n, cria, vendas, receita, nascidos, falecidos, estado, marcos, margem, valorDe }) => (
               <article key={n.id} className="card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -150,15 +175,18 @@ export default async function NinhadasPage() {
                       {n.dataParto ? ` · nasceram em ${formatarData(n.dataParto)}` : ` · parto previsto ${formatarData(n.dataPrevistaParto)}`}
                     </p>
                   </div>
-                  <span
-                    className="text-xs px-3 py-1 rounded-full border"
-                    style={{
-                      borderColor: estado === "ATRASADA" ? "#a32d2d" : "var(--brass)",
-                      color: estado === "ATRASADA" ? "#a32d2d" : "var(--pine)",
-                    }}
-                  >
-                    {ROTULO_ESTADO[estado]}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-xs px-3 py-1 rounded-full border"
+                      style={{
+                        borderColor: estado === "ATRASADA" ? "#a32d2d" : "var(--brass)",
+                        color: estado === "ATRASADA" ? "#a32d2d" : "var(--pine)",
+                      }}
+                    >
+                      {ROTULO_ESTADO[estado]}
+                    </span>
+                    <ApagarNinhada ninhadaId={n.id} rotulo={`a ninhada de ${n.caoMae.nome} (cobertura em ${formatarData(n.dataCobertura)})`} />
+                  </div>
                 </div>
 
                 <ol className="mt-5 grid sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -176,7 +204,9 @@ export default async function NinhadasPage() {
                 {n.dataParto ? (
                   <div className="mt-5 pt-5 border-t" style={{ borderColor: "var(--border-hairline)" }}>
                     <p className="text-sm">
-                      <strong>{nascidos}</strong> nascido(s) · <strong>{vendas.length}</strong> vendido(s)
+                      <strong>{nascidos}</strong> nascido(s)
+                      {falecidos > 0 && <> · <strong>{falecidos}</strong> faleceu(ram)</>}
+                      {" · "}<strong>{vendas.length}</strong> vendido(s)/doado(s)
                       {receita > 0 && <> · receita <strong>{formatarMoeda(receita)}</strong></>}
                     </p>
                     {margem.custo > 0 || receita > 0 ? (
@@ -218,13 +248,22 @@ export default async function NinhadasPage() {
                                   {LABEL_SEXO[f.sexo]}
                                   {f.corBase ? ` · ${f.corBase}` : ""}
                                   {" · "}
-                                  {f.vendidoEm ? "Vendido" : valor !== null ? "Vendido (anúncio)" : anuncio ? `Anúncio ${anuncio.status.toLowerCase()}` : "No plantel"}
+                                  {f.dataFalecimento ? "Faleceu" : f.vendidoEm ? (Number(f.valorVenda ?? 0) === 0 ? "Doado" : "Vendido") : valor !== null ? "Vendido (anúncio)" : anuncio ? `Anúncio ${anuncio.status.toLowerCase()}` : "No plantel"}
                                 </span>
                               </div>
-                              {valor !== null && !f.vendidoEm ? (
+                              {f.dataFalecimento ? (
+                                <div className="mt-1">
+                                  <FalecimentoCao
+                                    caoId={f.id}
+                                    caoNome={f.nome}
+                                    compacto
+                                    falecimento={{ data: f.dataFalecimento.toISOString(), causa: f.observacoes }}
+                                  />
+                                </div>
+                              ) : valor !== null && !f.vendidoEm ? (
                                 <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>Vendido por {formatarMoeda(valor)}</p>
                               ) : (
-                                <div className="mt-1">
+                                <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
                                   <VendaCao
                                     caoId={f.id}
                                     caoNome={f.nome}
@@ -235,6 +274,7 @@ export default async function NinhadasPage() {
                                         : null
                                     }
                                   />
+                                  {!f.vendidoEm && <FalecimentoCao caoId={f.id} caoNome={f.nome} compacto falecimento={null} />}
                                 </div>
                               )}
                             </li>

@@ -10,6 +10,9 @@ export type FilhoteLinha = {
   sexo: "" | "MACHO" | "FEMEA";
   cor: string;
   vendido: boolean;
+  falecido: boolean;
+  causaFalecimento: string;
+  dataFalecimento: string; // yyyy-mm-dd; vazio = data do nascimento
   valorVenda: string;
   dataVenda: string; // yyyy-mm-dd
   compradorNome: string;
@@ -22,6 +25,9 @@ export const linhaVazia = (): FilhoteLinha => ({
   sexo: "",
   cor: "",
   vendido: false,
+  falecido: false,
+  causaFalecimento: "",
+  dataFalecimento: "",
   valorVenda: "",
   dataVenda: "",
   compradorNome: "",
@@ -31,16 +37,16 @@ export const linhaVazia = (): FilhoteLinha => ({
 
 /** Converte as linhas da tela no formato da API. Linhas totalmente em branco são ignoradas. */
 export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]; linhasUsadas: FilhoteLinha[] } | { erro: string } {
-  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.vendido);
+  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.vendido || l.falecido);
   const nomes = new Set<string>();
   const filhotes: unknown[] = [];
   for (const [i, l] of preenchidas.entries()) {
     const n = i + 1;
-    if (!l.nome.trim()) return { erro: `Filhote ${n}: dê um nome.` };
+    if (!l.nome.trim() && !l.falecido) return { erro: `Filhote ${n}: dê um nome.` };
     if (!l.sexo) return { erro: `Filhote ${n}: escolha o sexo.` };
     const chave = `${nomeMaiusculo(l.nome.trim())}|${l.sexo}`;
-    if (nomes.has(chave)) return { erro: `Dois filhotes com o nome ${nomeMaiusculo(l.nome.trim())} e o mesmo sexo. Dê um nome diferente a cada um.` };
-    nomes.add(chave);
+    if (l.nome.trim() && nomes.has(chave)) return { erro: `Dois filhotes com o nome ${nomeMaiusculo(l.nome.trim())} e o mesmo sexo. Dê um nome diferente a cada um.` };
+    if (l.nome.trim()) nomes.add(chave);
     let valorVenda: number | undefined;
     if (l.vendido) {
       valorVenda = lerValor(l.valorVenda);
@@ -51,6 +57,9 @@ export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]
       sexo: l.sexo,
       cor: l.cor || undefined,
       vendido: l.vendido,
+      falecido: l.falecido,
+      dataFalecimento: l.falecido && l.dataFalecimento ? dataParaIso(l.dataFalecimento) : undefined,
+      causa: l.falecido ? l.causaFalecimento.trim() || undefined : undefined,
       valorVenda,
       dataVenda: l.vendido && l.dataVenda ? dataParaIso(l.dataVenda) : undefined,
       compradorNome: l.vendido ? l.compradorNome.trim() || undefined : undefined,
@@ -129,12 +138,29 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
 
           <div className="mt-3 flex flex-wrap gap-4 text-sm">
             <label className="flex items-center gap-2">
-              <input type="radio" name={`situacao-${i}`} checked={!l.vendido} onChange={() => mudar(i, { vendido: false })} /> Fica no meu plantel
+              <input type="radio" name={`situacao-${i}`} checked={!l.vendido && !l.falecido} onChange={() => mudar(i, { vendido: false, falecido: false })} /> Fica no meu plantel
             </label>
             <label className="flex items-center gap-2">
-              <input type="radio" name={`situacao-${i}`} checked={l.vendido} onChange={() => mudar(i, { vendido: true })} /> Já foi vendido
+              <input type="radio" name={`situacao-${i}`} checked={l.vendido} onChange={() => mudar(i, { vendido: true, falecido: false })} /> Já foi vendido ou doado
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name={`situacao-${i}`} checked={l.falecido} onChange={() => mudar(i, { falecido: true, vendido: false })} /> Faleceu
             </label>
           </div>
+
+          {l.falecido && (
+            <div className="mt-3 grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs" style={rot}>Data (se vazia, vale a do nascimento)</label>
+                <input type="date" value={l.dataFalecimento} onChange={(e) => mudar(i, { dataFalecimento: e.target.value })} className={campo} style={borda} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs" style={rot}>O que aconteceu (opcional)</label>
+                <input value={l.causaFalecimento} onChange={(e) => mudar(i, { causaFalecimento: e.target.value })} maxLength={300} placeholder="Ex.: nasceu fraco, baixo peso, a mãe afastou do ninho" className={campo} style={borda} />
+              </div>
+              <p className="sm:col-span-3 text-xs" style={rot}>O nome é opcional: sem nome, o sistema chama de "Filhote falecido". Ele entra na contagem dos nascidos, mas não nas listas de cães ativos.</p>
+            </div>
+          )}
 
           <div className="mt-3">
             <label className="text-xs" style={rot}>Foto do filhote (opcional)</label>
@@ -156,7 +182,7 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
           {l.vendido && (
             <div className="mt-3 grid sm:grid-cols-4 gap-3">
               <div>
-                <label className="text-xs" style={rot}>Valor da venda (R$)</label>
+                <label className="text-xs" style={rot}>Valor (R$) — 0 se for doação</label>
                 <input value={l.valorVenda} onChange={(e) => mudar(i, { valorVenda: e.target.value })} inputMode="decimal" placeholder="Ex.: 3500" className={campo} style={borda} />
               </div>
               <div>

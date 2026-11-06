@@ -14,7 +14,8 @@ export default async function PlantelPage() {
         orderBy: { criadoEm: "desc" },
       })
     : [];
-  const caes = todos.filter((c) => !c.externo && !c.vendidoEm);
+  const caes = todos.filter((c) => !c.externo && !c.vendidoEm && !c.dataFalecimento);
+  const falecidos = todos.filter((c) => !c.externo && !c.vendidoEm && c.dataFalecimento).sort((a, b) => b.dataFalecimento!.getTime() - a.dataFalecimento!.getTime());
   const vendidos = todos.filter((c) => !c.externo && c.vendidoEm).sort((a, b) => b.vendidoEm!.getTime() - a.vendidoEm!.getTime());
   const linhagem = todos.filter((c) => c.externo);
   const duplicados = agruparDuplicados(todos);
@@ -111,7 +112,7 @@ export default async function PlantelPage() {
       {vendidos.length > 0 && (
         <section className="mt-12">
           <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
-            Vendidos ({vendidos.length})
+            Vendidos e doados ({vendidos.length})
           </h2>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
             Saíram do plantel ativo, mas continuam na árvore genealógica e nos Descendentes dos pais.
@@ -124,9 +125,33 @@ export default async function PlantelPage() {
                   <span className="text-sm" style={{ color: "var(--ink-muted)" }}> · {LABEL_SEXO[c.sexo]}{c.corBase ? ` · ${c.corBase}` : ""}</span>
                 </span>
                 <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
-                  Vendido em {formatarData(c.vendidoEm)}
-                  {c.valorVenda !== null ? ` · ${Number(c.valorVenda).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : ""}
+                  {Number(c.valorVenda ?? 0) === 0 ? "Doado" : "Vendido"} em {formatarData(c.vendidoEm)}
+                  {Number(c.valorVenda ?? 0) > 0 ? ` · ${Number(c.valorVenda).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : ""}
                   {c.compradorNome ? ` · ${c.compradorNome}` : ""}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {falecidos.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-xl" style={{ color: "var(--pine)" }}>
+            Falecidos ({falecidos.length})
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Saíram da lista ativa, mas continuam na árvore genealógica. Serve de controle para as próximas ninhadas.
+          </p>
+          <div className="mt-4 card divide-y" style={{ borderColor: "var(--border-hairline)" }}>
+            {falecidos.map((c) => (
+              <Link key={c.id} href={`/dashboard/criador/plantel/${c.id}`} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 hover:opacity-80">
+                <span>
+                  <span className="font-medium" style={{ color: "var(--pine)" }}>{c.nome}</span>
+                  <span className="text-sm" style={{ color: "var(--ink-muted)" }}> · {LABEL_SEXO[c.sexo]}{c.corBase ? ` · ${c.corBase}` : ""}</span>
+                </span>
+                <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                  Faleceu em {formatarData(c.dataFalecimento)}{c.observacoes ? ` · ${c.observacoes.split("\n")[0].slice(0, 80)}` : ""}
                 </span>
               </Link>
             ))}

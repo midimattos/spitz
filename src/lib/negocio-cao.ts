@@ -15,10 +15,22 @@ export const CATEGORIA_COMPRA = "Investimento - Compra de animal";
 
 export const chaveVenda = (caoId: string) => `VENDA:${caoId}`;
 export const chaveCompra = (caoId: string) => `COMPRA:${caoId}`;
+export const chaveTaxaVenda = (caoId: string) => `VENDAX:${caoId}`;
+export const chaveCustoVenda = (caoId: string) => `VENDAC:${caoId}`;
+export const CATEGORIA_TAXA_ENTREGA = "Serviço cobrado na entrega";
+export const CATEGORIA_CUSTO_ENTREGA = "Custo na entrega";
 
 const texto = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
 
+// Cobrança ou custo extra na entrega do cão (ex.: castração). Ausente = não mexe; null ou valor 0 = remove.
+const extraSchema = z
+  .object({ descricao: texto(120), valor: z.number().min(0, "O valor não pode ser negativo").max(10_000_000) })
+  .nullable()
+  .optional();
+
 export const vendaSchema = z.object({
+  taxa: extraSchema,
+  custo: extraSchema,
   valor: z.number({ message: "Informe o valor da venda" }).min(0, "O valor não pode ser negativo").max(10_000_000),
   data: z.string().datetime({ message: "Informe a data da venda" }),
   compradorNome: texto(160),
@@ -61,11 +73,33 @@ export async function aplicarVenda(tx: Tx, canilId: string, cao: CaoBasico, v: D
   } else {
     await tx.lancamentoFinanceiro.deleteMany({ where: { chaveAuto } });
   }
+  await aplicarExtra(tx, canilId, cao, data, v.taxa, chaveTaxaVenda(cao.id), "RECEITA", CATEGORIA_TAXA_ENTREGA, "Serviço cobrado na entrega");
+  await aplicarExtra(tx, canilId, cao, data, v.custo, chaveCustoVenda(cao.id), "DESPESA", CATEGORIA_CUSTO_ENTREGA, "Custo na entrega");
+}
+
+async function aplicarExtra(
+  tx: Tx,
+  canilId: string,
+  cao: CaoBasico,
+  data: Date,
+  extra: { descricao?: string; valor: number } | null | undefined,
+  chaveAuto: string,
+  tipo: "RECEITA" | "DESPESA",
+  categoria: string,
+  padrao: string
+): Promise<void> {
+  if (extra === undefined) return; // não mexe
+  if (extra === null || extra.valor <= 0) {
+    await tx.lancamentoFinanceiro.deleteMany({ where: { chaveAuto } });
+    return;
+  }
+  const campos = { tipo, categoria, valor: extra.valor, data, descricao: extra.descricao?.trim() || padrao, caoId: cao.id, ninhadaId: cao.ninhadaId };
+  await tx.lancamentoFinanceiro.upsert({ where: { chaveAuto }, create: { ...campos, canilId, chaveAuto }, update: campos });
 }
 
 export async function desfazerVenda(tx: Tx, caoId: string): Promise<void> {
   await tx.cao.update({ where: { id: caoId }, data: { vendidoEm: null, valorVenda: null, compradorNome: null, compradorContato: null } });
-  await tx.lancamentoFinanceiro.deleteMany({ where: { chaveAuto: chaveVenda(caoId) } });
+  await tx.lancamentoFinanceiro.deleteMany({ where: { chaveAuto: { in: [chaveVenda(caoId), chaveTaxaVenda(caoId), chaveCustoVenda(caoId)] } } });
 }
 
 export async function aplicarCompra(tx: Tx, canilId: string, cao: CaoBasico, c: DadosCompra): Promise<void> {

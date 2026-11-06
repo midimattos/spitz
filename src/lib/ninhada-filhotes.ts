@@ -17,7 +17,11 @@ const opcional = (max: number) => z.string().trim().max(max).optional().or(z.lit
 
 export const filhoteSchema = z
   .object({
-    nome: z.string().trim().min(1, "Dê um nome a cada filhote").max(160),
+    // Filhote falecido pode ficar sem nome: o sistema dá um nome automático.
+    nome: z.string().trim().max(160).default(""),
+    falecido: z.boolean().default(false),
+    dataFalecimento: z.string().datetime().optional().or(z.literal("")),
+    causa: opcional(300),
     sexo: z.enum(["MACHO", "FEMEA"], { message: "Escolha o sexo de cada filhote" }),
     cor: opcional(60),
     vendido: z.boolean().default(false),
@@ -26,7 +30,9 @@ export const filhoteSchema = z
     compradorNome: opcional(160),
     compradorContato: opcional(160),
   })
-  .refine((f) => !f.vendido || f.valorVenda !== undefined, { message: "Informe o valor da venda do filhote vendido", path: ["valorVenda"] });
+  .refine((f) => f.falecido || f.nome.length > 0, { message: "Dê um nome a cada filhote", path: ["nome"] })
+  .refine((f) => !(f.falecido && f.vendido), { message: "Um filhote não pode estar vendido e falecido ao mesmo tempo", path: ["falecido"] })
+  .refine((f) => !f.vendido || f.valorVenda !== undefined, { message: "Informe o valor da venda do filhote vendido (0 se foi doação)", path: ["valorVenda"] });
 
 export type Filhote = z.infer<typeof filhoteSchema>;
 
@@ -45,8 +51,16 @@ export async function criarFilhotes(
 ): Promise<string[]> {
   const chaves = await carregarChaves(canilId, tx);
   const ids: string[] = [];
+  let seqFalecido = 0;
   for (const f of filhotes) {
-    const nome = nomeMaiusculo(f.nome.trim());
+    let nome = nomeMaiusculo(f.nome.trim());
+    if (!nome) {
+      // Falecido sem nome: "FILHOTE FALECIDO 1", "2"… sem repetir os já cadastrados.
+      do {
+        seqFalecido++;
+        nome = `FILHOTE FALECIDO ${seqFalecido}`;
+      } while (acharDuplicado(chaves, { nome, sexo: f.sexo }));
+    }
     const dup = acharDuplicado(chaves, { nome, sexo: f.sexo });
     if (dup) {
       throw new ErroNegocio(
@@ -68,6 +82,9 @@ export async function criarFilhotes(
         paiId: ninhada.caoPaiId,
         maeId: ninhada.caoMaeId,
         ninhadaId: ninhada.id,
+        ...(f.falecido
+          ? { dataFalecimento: f.dataFalecimento ? new Date(f.dataFalecimento) : dataParto, observacoes: f.causa?.trim() || null }
+          : {}),
       },
       select: { id: true, nome: true, ninhadaId: true },
     });

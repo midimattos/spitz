@@ -32,6 +32,8 @@ import { MedidasPainel } from "@/components/medidas-painel";
 import { ArvoreEdicao } from "@/components/arvore-edicao";
 import { DescendentesPainel } from "@/components/descendentes-painel";
 import { VendaCao } from "@/components/venda-cao";
+import { ApagarNinhada } from "@/components/apagar-ninhada";
+import { FalecimentoCao } from "@/components/falecimento-cao";
 import { CompraCao } from "@/components/compra-cao";
 import { LABEL_SEXO as ROTULO_SEXO } from "@/lib/labels";
 
@@ -189,6 +191,11 @@ export default async function FichaCaoPage({
                   : null
               }
             />
+            <FalecimentoCao
+              caoId={cao.id}
+              caoNome={cao.nome}
+              falecimento={cao.dataFalecimento ? { data: cao.dataFalecimento.toISOString(), causa: cao.observacoes } : null}
+            />
             <p className="text-xs" style={{ color: "var(--ink-muted)" }}>
               Compra e venda entram sozinhas no Financeiro. O nome e o contato do cliente ficam só para você.
             </p>
@@ -241,10 +248,13 @@ export default async function FichaCaoPage({
               <ul className="space-y-3 mb-6">
                 {cao.ninhadasComoMae.map((n) => (
                   <li key={n.id} className="text-sm border-b pb-3" style={{ borderColor: "var(--border-hairline)" }}>
-                    <p>
-                      Cobertura: {formatarData(n.dataCobertura)} ·{" "}
-                      {n.caoPai?.nome ?? n.padreadorExterno ?? "padreador não informado"}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p>
+                        Cobertura: {formatarData(n.dataCobertura)} ·{" "}
+                        {n.caoPai?.nome ?? n.padreadorExterno ?? "padreador não informado"}
+                      </p>
+                      <ApagarNinhada ninhadaId={n.id} rotulo={`a ninhada com cobertura em ${formatarData(n.dataCobertura)}`} />
+                    </div>
                     <p style={{ color: "var(--ink-muted)" }}>
                       {n.dataParto ? (
                         <>Parto: {formatarData(n.dataParto)} · {n.quantidadeFilhotes} filhote(s)</>
