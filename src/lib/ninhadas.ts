@@ -39,5 +39,5 @@ export const ROTULO_ESTADO: Record<EstadoNinhada, string> = {
   GESTACAO: "Em gestação",
   ATRASADA: "Parto atrasado — registre o parto",
   FILHOTES: "Filhotes em criação",
-  ENTREGUE: "Todos vendidos",
+  ENTREGUE: "Ciclo finalizado — todos com destino",
 };

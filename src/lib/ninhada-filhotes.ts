@@ -24,6 +24,8 @@ export const filhoteSchema = z
     causa: opcional(300),
     sexo: z.enum(["MACHO", "FEMEA"], { message: "Escolha o sexo de cada filhote" }),
     cor: opcional(60),
+    marcacao: opcional(60),
+    merle: z.enum(["Merle", "Harlequin"]).optional().or(z.literal("")),
     vendido: z.boolean().default(false),
     valorVenda: z.number().min(0, "O valor não pode ser negativo").max(10_000_000).optional(),
     dataVenda: z.string().datetime().optional().or(z.literal("")),
@@ -69,6 +71,8 @@ export async function criarFilhotes(
       );
     }
     const cor = f.cor?.trim() || null;
+    const marcacao = f.marcacao?.trim() || null;
+    const merle = f.merle || null;
     const criado = await tx.cao.create({
       data: {
         canilId,
@@ -78,6 +82,8 @@ export async function criarFilhotes(
         porte: mae.porte,
         corBase: cor,
         corPelagem: cor,
+        marcacaoCor: marcacao,
+        merleCor: merle,
         dataNascimento: dataParto,
         paiId: ninhada.caoPaiId,
         maeId: ninhada.caoMaeId,

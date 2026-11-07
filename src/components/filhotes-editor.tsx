@@ -1,6 +1,15 @@
 "use client";
 
 import { OPCOES_COR_BASE } from "@/lib/genetica-cor";
+
+// No filhote a cor é só a cor do pelo; Tricolor/Parti-color e Merle são marcações à parte,
+// assim dá para registrar "Preto + Parti-color" ou "Chocolate + Tricolor + Merle".
+const CORES_FILHOTE = OPCOES_COR_BASE.filter((c) => c !== "Merle" && c !== "Tricolor");
+const MARCACOES_FILHOTE: { valor: string; rotulo: string }[] = [
+  { valor: "Particolor", rotulo: "Parti-color (manchas brancas)" },
+  { valor: "Tricolor", rotulo: "Tricolor" },
+  { valor: "Tan Points", rotulo: "Tan Points (marcas fogo)" },
+];
 import { ATRIBUTOS_NOME, nomeMaiusculo } from "@/lib/texto";
 import { dataParaIso, lerValor } from "@/lib/moeda";
 import { prepararImagem } from "@/lib/imagem-cliente";
@@ -9,6 +18,8 @@ export type FilhoteLinha = {
   nome: string;
   sexo: "" | "MACHO" | "FEMEA";
   cor: string;
+  marcacao: string;
+  merle: string;
   vendido: boolean;
   falecido: boolean;
   causaFalecimento: string;
@@ -24,6 +35,8 @@ export const linhaVazia = (): FilhoteLinha => ({
   nome: "",
   sexo: "",
   cor: "",
+  marcacao: "",
+  merle: "",
   vendido: false,
   falecido: false,
   causaFalecimento: "",
@@ -37,7 +50,7 @@ export const linhaVazia = (): FilhoteLinha => ({
 
 /** Converte as linhas da tela no formato da API. Linhas totalmente em branco são ignoradas. */
 export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]; linhasUsadas: FilhoteLinha[] } | { erro: string } {
-  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.vendido || l.falecido);
+  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.marcacao || l.merle || l.vendido || l.falecido);
   const nomes = new Set<string>();
   const filhotes: unknown[] = [];
   for (const [i, l] of preenchidas.entries()) {
@@ -56,6 +69,8 @@ export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]
       nome: l.nome.trim(),
       sexo: l.sexo,
       cor: l.cor || undefined,
+      marcacao: l.marcacao || undefined,
+      merle: l.merle || undefined,
       vendido: l.vendido,
       falecido: l.falecido,
       dataFalecimento: l.falecido && l.dataFalecimento ? dataParaIso(l.dataFalecimento) : undefined,
@@ -129,9 +144,26 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
               <label className="text-xs" style={rot}>Cor</label>
               <select value={l.cor} onChange={(e) => mudar(i, { cor: e.target.value })} className={campo} style={borda}>
                 <option value="">— não sei —</option>
-                {OPCOES_COR_BASE.map((c) => (
+                {CORES_FILHOTE.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs" style={rot}>Marcação (parti-color, tricolor…)</label>
+              <select value={l.marcacao} onChange={(e) => mudar(i, { marcacao: e.target.value })} className={campo} style={borda}>
+                <option value="">— nenhuma —</option>
+                {MARCACOES_FILHOTE.map((m) => (
+                  <option key={m.valor} value={m.valor}>{m.rotulo}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs" style={rot}>Merle</label>
+              <select value={l.merle} onChange={(e) => mudar(i, { merle: e.target.value })} className={campo} style={borda}>
+                <option value="">— não é merle —</option>
+                <option value="Merle">Merle</option>
+                <option value="Harlequin">Harlequin</option>
               </select>
             </div>
           </div>
