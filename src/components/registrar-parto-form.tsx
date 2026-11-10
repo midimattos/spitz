@@ -66,7 +66,7 @@ export function RegistrarPartoForm({ ninhadaId }: { ninhadaId: string }) {
           <input value={total} onChange={(e) => setTotal(e.target.value.replace(/\D/g, ""))} inputMode="numeric" className={`${campo} block w-28`} style={borda} />
         </div>
       </div>
-      <FilhotesEditor linhas={linhas} onChange={setLinhas} />
+      <FilhotesEditor linhas={linhas} onChange={setLinhas} ninhadaId={ninhadaId} />
       {erro && <p className="text-sm" style={{ color: "#a32d2d" }}>{erro}</p>}
       <div className="flex gap-3">
         <button type="submit" disabled={salvando} className="px-5 py-2 rounded text-white text-sm disabled:opacity-60" style={{ background: "var(--pine)" }}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { OPCOES_COR_BASE } from "@/lib/genetica-cor";
 
 // No filhote a cor é só a cor do pelo; Tricolor/Parti-color e Merle são marcações à parte,
@@ -28,7 +29,8 @@ export type FilhoteLinha = {
   dataVenda: string; // yyyy-mm-dd
   compradorNome: string;
   compradorContato: string;
-  foto: File | null; // foto opcional do filhote, enviada depois que ele é salvo
+  fotos: File[]; // fotos opcionais (várias fases), enviadas depois que o filhote é salvo
+  existenteId: string; // filhote que já está no plantel (vazio = cadastro novo)
 };
 
 export const linhaVazia = (): FilhoteLinha => ({
@@ -45,12 +47,13 @@ export const linhaVazia = (): FilhoteLinha => ({
   dataVenda: "",
   compradorNome: "",
   compradorContato: "",
-  foto: null,
+  fotos: [],
+  existenteId: "",
 });
 
 /** Converte as linhas da tela no formato da API. Linhas totalmente em branco são ignoradas. */
 export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]; linhasUsadas: FilhoteLinha[] } | { erro: string } {
-  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.cor || l.marcacao || l.merle || l.vendido || l.falecido);
+  const preenchidas = linhas.filter((l) => l.nome.trim() || l.sexo || l.existenteId || l.cor || l.marcacao || l.merle || l.vendido || l.falecido);
   const nomes = new Set<string>();
   const filhotes: unknown[] = [];
   for (const [i, l] of preenchidas.entries()) {
@@ -66,6 +69,7 @@ export function filhotesParaEnvio(linhas: FilhoteLinha[]): { filhotes: unknown[]
       if (valorVenda === undefined) return { erro: `Filhote ${n} (${nomeMaiusculo(l.nome.trim())}): informe o valor da venda.` };
     }
     filhotes.push({
+      caoExistenteId: l.existenteId || undefined,
       nome: l.nome.trim(),
       sexo: l.sexo,
       cor: l.cor || undefined,
@@ -90,11 +94,13 @@ export async function enviarFotosDosFilhotes(linhas: FilhoteLinha[], ids: string
   let falhas = 0;
   for (const [i, l] of linhas.entries()) {
     const id = ids[i];
-    if (!l.foto || !id) continue;
-    const fd = new FormData();
-    fd.append("arquivo", await prepararImagem(l.foto));
-    const res = await fetch(`/api/caes/${id}/foto`, { method: "POST", body: fd }).catch(() => null);
-    if (!res || !res.ok) falhas++;
+    if (l.fotos.length === 0 || !id) continue;
+    for (const foto of l.fotos) {
+      const fd = new FormData();
+      fd.append("arquivo", await prepararImagem(foto));
+      const res = await fetch(`/api/caes/${id}/fotos`, { method: "POST", body: fd }).catch(() => null);
+      if (!res || !res.ok) falhas++;
+    }
   }
   return falhas;
 }
@@ -104,7 +110,39 @@ const campo = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
 const rot = { color: "var(--ink-muted)" };
 
 /** Lista de filhotes de uma ninhada: nome, sexo, cor, se fica no plantel ou foi vendido (valor e cliente). */
-export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; onChange: (l: FilhoteLinha[]) => void }) {
+type Candidato = { id: string; nome: string; sexo: "MACHO" | "FEMEA"; corBase: string | null; marcacaoCor: string | null; merleCor: string | null };
+
+export function FilhotesEditor({
+  linhas,
+  onChange,
+  maeId,
+  ninhadaId,
+}: {
+  linhas: FilhoteLinha[];
+  onChange: (l: FilhoteLinha[]) => void;
+  maeId?: string;
+  ninhadaId?: string;
+}) {
+  const [candidatos, setCandidatos] = useState<Candidato[]>([]);
+  useEffect(() => {
+    const q = maeId ? `maeId=${encodeURIComponent(maeId)}` : ninhadaId ? `ninhadaId=${encodeURIComponent(ninhadaId)}` : "";
+    if (!q) return;
+    let ativo = true;
+    fetch(`/api/caes/candidatos-filhote?${q}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => ativo && setCandidatos(Array.isArray(d) ? d : []))
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, [maeId, ninhadaId]);
+
+  function escolherExistente(i: number, id: string) {
+    const c = candidatos.find((x) => x.id === id);
+    if (!c) return mudar(i, { existenteId: "", nome: "", sexo: "" });
+    mudar(i, { existenteId: id, nome: c.nome, sexo: c.sexo, cor: c.corBase ?? "", marcacao: c.marcacaoCor ?? "", merle: c.merleCor ?? "" });
+  }
+
   function mudar(i: number, parcial: Partial<FilhoteLinha>) {
     onChange(linhas.map((l, j) => (j === i ? { ...l, ...parcial } : l)));
   }
@@ -121,11 +159,30 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
               </button>
             )}
           </div>
+          {candidatos.length > 0 && (
+            <div className="mt-2">
+              <label className="text-xs" style={rot}>Este filhote já está cadastrado no meu plantel?</label>
+              <select value={l.existenteId} onChange={(e) => escolherExistente(i, e.target.value)} className={campo} style={borda}>
+                <option value="">— não, é um cadastro novo —</option>
+                {candidatos.map((c) => (
+                  <option key={c.id} value={c.id} disabled={linhas.some((o, j) => j !== i && o.existenteId === c.id)}>
+                    {c.nome} ({c.sexo === "MACHO" ? "macho" : "fêmea"})
+                  </option>
+                ))}
+              </select>
+              {l.existenteId && (
+                <p className="text-xs mt-1" style={rot}>
+                  Vamos ligar o cão que você já cadastrou a esta ninhada (pai, mãe e nascimento), sem criar outro.
+                </p>
+              )}
+            </div>
+          )}
           <div className="mt-2 grid sm:grid-cols-4 gap-3">
             <div className="sm:col-span-2">
               <label className="text-xs" style={rot}>Nome</label>
               <input
                 value={l.nome}
+                disabled={!!l.existenteId}
                 onChange={(e) => mudar(i, { nome: nomeMaiusculo(e.target.value) })}
                 className={campo}
                 {...ATRIBUTOS_NOME}
@@ -134,7 +191,7 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
             </div>
             <div>
               <label className="text-xs" style={rot}>Sexo</label>
-              <select value={l.sexo} onChange={(e) => mudar(i, { sexo: e.target.value as FilhoteLinha["sexo"] })} className={campo} style={borda}>
+              <select value={l.sexo} disabled={!!l.existenteId} onChange={(e) => mudar(i, { sexo: e.target.value as FilhoteLinha["sexo"] })} className={campo} style={borda}>
                 <option value="">— escolha —</option>
                 <option value="MACHO">Macho</option>
                 <option value="FEMEA">Fêmea</option>
@@ -195,18 +252,26 @@ export function FilhotesEditor({ linhas, onChange }: { linhas: FilhoteLinha[]; o
           )}
 
           <div className="mt-3">
-            <label className="text-xs" style={rot}>Foto do filhote (opcional)</label>
-            <div className="mt-1 flex items-center gap-3 text-sm">
+            <label className="text-xs" style={rot}>Fotos do filhote (opcional) — pode escolher várias; depois dá para acrescentar mais, em outras fases</label>
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm">
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => mudar(i, { foto: e.target.files?.[0] ?? null })}
+                multiple
+                onChange={(e) => {
+                  const novas = Array.from(e.target.files ?? []);
+                  if (novas.length) mudar(i, { fotos: [...l.fotos, ...novas] });
+                  e.target.value = "";
+                }}
                 className="text-xs"
               />
-              {l.foto && (
-                <button type="button" onClick={() => mudar(i, { foto: null })} className="text-xs underline" style={{ color: "#a32d2d" }}>
-                  tirar foto
-                </button>
+              {l.fotos.length > 0 && (
+                <>
+                  <span className="text-xs" style={rot}>{l.fotos.length} foto{l.fotos.length > 1 ? "s" : ""} escolhida{l.fotos.length > 1 ? "s" : ""}</span>
+                  <button type="button" onClick={() => mudar(i, { fotos: [] })} className="text-xs underline" style={{ color: "#a32d2d" }}>
+                    tirar fotos
+                  </button>
+                </>
               )}
             </div>
           </div>

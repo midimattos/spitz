@@ -1,16 +1,16 @@
-AJUSTES 3 - COR DO FILHOTE E ABAS DE CICLO DAS NINHADAS
+AJUSTES 4 - FILHOTE JA CADASTRADO E VARIAS FOTOS
 (inclui tudo o que ja foi entregue antes)
 
-O QUE MUDOU
-1) Cadastro de filhote: alem da Cor, agora ha "Marcacao" (Parti-color, Tricolor, Tan Points)
-   e "Merle" (Merle/Harlequin). Da para registrar Preto + Parti-color, Chocolate + Tricolor,
-   Preto + Tricolor + Merle etc. A lista de Cor ficou so com cores de pelo.
-2) Pagina Ninhadas: duas abas, "Ciclo em andamento" e "Ciclo finalizado" (ninhada fecha
-   quando todos os filhotes tem destino: vendido, doado ou falecido).
+1) Ao cadastrar nascimento (ninhada), cada filhote tem o campo "Este filhote ja esta cadastrado
+   no meu plantel?". Escolhendo o cao (ex.: DUO), o sistema liga ele a ninhada (pai, mae,
+   nascimento) em vez de criar outro. Vendido/doado/faleceu tambem funcionam.
+2) Varias fotos por filhote: no cadastro (escolha varias de uma vez) e, depois, na ficha do cao
+   ha uma secao "Fotos" para acrescentar mais, apagar e escolher a principal.
 
-COMO INSTALAR (Windows, na pasta do projeto)
-Copie o CONTEUDO das pastas src, prisma e public por cima do projeto ("Substituir"), depois:
+INSTALAR (Windows, na pasta do projeto)
+Copie o CONTEUDO de src, prisma e public por cima ("Substituir"), depois, um comando por vez:
 git add .
-git commit -m "ajustes 3 cor do filhote e abas de ciclo"
+git commit -m "ajustes 4 filhote existente e galeria de fotos"
 git push
-Nao ha migracao nova neste pacote.
+npx prisma migrate deploy
+(ha uma migracao nova: 20261110120000_fotos_cao)

@@ -125,7 +125,7 @@ export function NinhadaNascidaForm({ femeas, machos }: { femeas: Opcao[]; machos
         <p className="text-sm mt-1 mb-3" style={rot}>
           Para cada filhote, diga se ficou no seu plantel ou se já foi vendido. Se foi vendido, informe o valor e, se quiser, o cliente.
         </p>
-        <FilhotesEditor linhas={linhas} onChange={setLinhas} />
+        <FilhotesEditor linhas={linhas} onChange={setLinhas} maeId={maeId} />
       </div>
 
       {erro && <p className="text-sm" style={{ color: "#a32d2d" }}>{erro}</p>}

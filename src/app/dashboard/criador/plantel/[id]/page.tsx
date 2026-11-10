@@ -25,6 +25,7 @@ import { carregarContextoMercado, carregarFaixasDoCanil, sugerirPreco } from "@/
 import { PainelPreco } from "@/components/painel-preco";
 import { DossieGeneticoPanel } from "@/components/dossie-genetico-panel";
 import { FotoCaoUpload } from "@/components/foto-cao-upload";
+import { GaleriaCao } from "@/components/galeria-cao";
 import { EmitirCertificado } from "@/components/emitir-certificado";
 import { PedigreeUpload } from "@/components/pedigree-upload";
 import { Tabs } from "@/components/tabs";
@@ -49,6 +50,7 @@ export default async function FichaCaoPage({
   const cao = await prisma.cao.findFirst({
     where: { id, canilId: canil.id },
     include: {
+      fotos: { orderBy: { criadoEm: "asc" }, select: { id: true, url: true } },
       pai: true,
       mae: true,
       filhosComoPai: { include: { mae: { select: { nome: true } } } },
@@ -159,6 +161,8 @@ export default async function FichaCaoPage({
           )}
         </div>
       </div>
+
+      <GaleriaCao caoId={cao.id} fotos={cao.fotos} fotoPrincipal={cao.fotoUrl} />
 
       {!cao.externo && (
         <div>

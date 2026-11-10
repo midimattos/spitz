@@ -234,6 +234,7 @@ model Cao {
   lancamentosFinanceiros LancamentoFinanceiro[]
   ciclosCio              CicloCio[]
   medidas                MedidaCao[]
+  fotos                  FotoCao[]
   ninhadasComoMae        Ninhada[]              @relation("NinhadaMae")
   ninhadasComoPai        Ninhada[]              @relation("NinhadaPai")
   dossieGenetico         DossieGenetico?
@@ -1061,4 +1062,15 @@ model MedidaCao {
   criadoEm    DateTime @default(now())
 
   @@index([caoId, data])
+}
+
+// Galeria de fotos de um cão (filhotes em várias fases). Cao.fotoUrl continua sendo a foto principal.
+model FotoCao {
+  id       String   @id @default(cuid())
+  caoId    String
+  cao      Cao      @relation(fields: [caoId], references: [id], onDelete: Cascade)
+  url      String
+  criadoEm DateTime @default(now())
+
+  @@index([caoId, criadoEm])
 }
