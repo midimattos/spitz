@@ -1,16 +1,11 @@
-AJUSTES 5 - PAINEL REORGANIZADO E NOME DA PESSOA x NOME DO CANIL
+AJUSTE 6 - EDITAR DADOS DO CANIL (corrige: canil verificado nao via o formulario)
 (inclui tudo o que ja foi entregue antes; sem migracao nova)
 
-1) Painel do criador: 2 cartoes grandes (Plantel e genealogia, Ninhadas) e, abaixo, grade "Gestao do canil":
-   Financeiro, Simulador de cruzamento, Saude e cuidados, Pagina publica, Minha assinatura, Avisos,
-   Convites, Dados do canil, Criopreservacao. Caixa de sugestoes no fim.
-2) "Saude da carteira" e "Cuidados" viraram um cartao so (Saude e cuidados); dentro dele ha o botao para registrar vacinas.
-3) Cadastro de criador pede "Seu nome completo" e "Nome do canil" (campos separados).
-4) Minha conta: nova secao "Seus dados" para o criador mudar o proprio nome; o nome do canil muda em Dados do canil.
-5) O cabecalho e o "Ola" mostram o nome da pessoa; o nome do canil aparece abaixo do Ola.
+- "Dados do canil" agora mostra sempre o formulario (nome do canil, descricao, cidade, contato).
+- Canil ja verificado: botao "Salvar alterações" (nao pede nova verificacao).
+- Nome da pessoa: Minha conta (menu do topo) > Seus dados.
 
-INSTALAR (Windows, na pasta do projeto)
-Copie o CONTEUDO de src, prisma e public por cima ("Substituir"), depois, um comando por vez:
+INSTALAR: copie o CONTEUDO de src, prisma e public por cima ("Substituir"), depois:
 git add .
-git commit -m "ajustes 5 painel e nomes"
+git commit -m "ajuste 6 editar dados do canil"
 git push

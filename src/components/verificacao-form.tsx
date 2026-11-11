@@ -18,9 +18,11 @@ const campoEstilo = { borderColor: "var(--border-hairline)" };
 export function VerificacaoForm({
   canil,
   jaSolicitado,
+  verificado = false,
 }: {
   canil: CanilDados;
   jaSolicitado: boolean;
+  verificado?: boolean;
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export function VerificacaoForm({
         estado: formData.get("estado") || undefined,
         telefoneContato: formData.get("telefoneContato") || undefined,
         instagram: formData.get("instagram") || undefined,
-        solicitarVerificacao: true,
+        solicitarVerificacao: !verificado,
       }),
     });
 
@@ -113,7 +115,7 @@ export function VerificacaoForm({
       )}
       {enviado && (
         <p className="text-sm" style={{ color: "var(--pine)" }}>
-          Dados salvos e verificação solicitada. A equipe vai revisar em breve.
+          {verificado ? "Dados salvos." : "Dados salvos e verificação solicitada. A equipe vai revisar em breve."}
         </p>
       )}
 
@@ -123,7 +125,7 @@ export function VerificacaoForm({
         className="px-6 py-2 rounded text-white text-sm disabled:opacity-60"
         style={{ background: "var(--pine)" }}
       >
-        {salvando ? "Enviando…" : jaSolicitado ? "Atualizar e reenviar" : "Salvar e solicitar verificação"}
+        {salvando ? "Salvando…" : verificado ? "Salvar alterações" : jaSolicitado ? "Atualizar e reenviar" : "Salvar e solicitar verificação"}
       </button>
     </form>
   );
