@@ -10,7 +10,8 @@ import { verificarLimite, ipDe, mensagemLimite } from "@/lib/limite-taxa";
 import { enviarConfirmacaoEmail } from "@/lib/confirmacao-email";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Informe seu nome completo"),
+  name: z.string().trim().min(2, "Informe seu nome completo"),
+  nomeCanil: z.string().trim().max(120).optional(),
   email: z.string().email("E-mail inválido"),
   password: z.string().min(8, "A senha precisa ter no mínimo 8 caracteres"),
   role: z.enum(["CRIADOR", "COMPRADOR"]),
@@ -44,9 +45,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, password, role, codigoConvite } = parsed.data;
+  const { name, password, role, codigoConvite, nomeCanil } = parsed.data;
   if (role === "COMPRADOR" && !MARKETPLACE_ATIVO) {
     return NextResponse.json({ error: "No momento só estamos abrindo contas para criadores." }, { status: 403 });
+  }
+  if (role === "CRIADOR" && (!nomeCanil || nomeCanil.length < 2)) {
+    return NextResponse.json({ error: "Informe o nome do seu canil" }, { status: 400 });
   }
   const email = parsed.data.email.trim().toLowerCase();
 
@@ -92,15 +96,15 @@ export async function POST(request: Request) {
   });
 
   // Todo CRIADOR precisa de um canil para poder cadastrar o plantel.
-  // Criamos um com nome provisório baseado no nome informado; o criador
-  // pode renomear depois em "Configurações do canil".
+  // O nome do canil é informado no cadastro (é diferente do nome da pessoa)
+  // e pode ser alterado depois em "Dados do canil".
   if (role === "CRIADOR") {
-    const base = slugify(`canil-${name}`);
+    const base = slugify(nomeCanil || `canil-${name}`) || "canil";
     const slug = `${base}-${user.id.slice(-6)}`;
 
     const canil = await prisma.canil.create({
       data: {
-        nome: `Canil ${name}`,
+        nome: nomeCanil || `Canil ${name}`,
         slug,
         ownerId: user.id,
         // Convite válido = pula a fila de aprovação manual.

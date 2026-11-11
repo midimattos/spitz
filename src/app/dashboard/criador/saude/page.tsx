@@ -29,10 +29,13 @@ export default async function SaudeCarteiraPage() {
     <main className="flex-1 max-w-4xl mx-auto w-full px-8 py-12">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>Saúde da carteira</h1>
+          <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>Saúde e cuidados</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
             O que vence, quem entra no cio e quais partos se aproximam, para todos os cães do plantel.
           </p>
+          <Link href="/dashboard/criador/cuidados" className="inline-block mt-3 px-3 py-1.5 rounded border text-sm" style={{ borderColor: "var(--border-hairline)", color: "var(--pine)" }}>
+            Registrar vacina, vermífugo ou antipulgas →
+          </Link>
         </div>
         <a href={wa} target="_blank" rel="noreferrer" className="px-4 py-2 rounded text-white text-sm" style={{ background: "var(--pine)" }}>
           Enviar resumo no WhatsApp

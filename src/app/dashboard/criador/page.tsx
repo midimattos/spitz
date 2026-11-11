@@ -72,6 +72,7 @@ function Numero({ valor, rotulo, href }: { valor: number; rotulo: string; href: 
 export default async function DashboardCriadorPage() {
   const session = await auth();
   const canil = await getCanilDoCriadorLogado();
+  const nomePessoa = session?.user ? (await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } }))?.name ?? session.user.name : null;
   const radarLiberado = podeVerInteligenciaMercado(canil);
 
   const [naoLidas, caes, anunciosAtivos, semResposta, fila, ninhadasAtivas] = canil
@@ -99,9 +100,20 @@ export default async function DashboardCriadorPage() {
     : [
         { href: "/dashboard/criador/plantel", titulo: "Plantel e genealogia", texto: "Cadastre seus cães e monte a árvore genealógica até 5 gerações, com opções de impressão." },
         { href: "/dashboard/criador/ninhadas", titulo: "Ninhadas", texto: "Cobertura, parto, filhotes, custos e margem de cada ninhada." },
-        { href: "/dashboard/criador/financeiro", titulo: "Financeiro", texto: "Receitas, despesas, quanto cada cão custou e lucro, com relatório anual." },
-        { href: "/dashboard/criador/saude", titulo: "Saúde da carteira", texto: "Vacinas vencendo, cios e partos previstos, com resumo semanal por e-mail." },
       ];
+
+  // Gestão do canil (sem marketplace): tudo o que não é plantel/ninhadas, numa grade só.
+  const gestao: Item[] = [
+    { href: "/dashboard/criador/financeiro", titulo: "Financeiro", texto: "Receitas, despesas, quanto cada cão custou, lucro e relatório anual." },
+    { href: "/dashboard/criador/cruzamentos", titulo: "Simulador de cruzamento", texto: "Risco genético estimado antes de cruzar." },
+    { href: "/dashboard/criador/saude", titulo: "Saúde e cuidados", texto: "Vacinas, vermífugo e antipulgas, cios e partos previstos, com resumo semanal por e-mail." },
+    { href: "/dashboard/criador/perfil", titulo: "Página pública do canil", texto: "Seu endereço próprio, história, fotos e avaliações." },
+    { href: "/dashboard/criador/assinatura", titulo: "Minha assinatura", texto: "Seu período grátis, plano e descontos por indicação." },
+    { href: "/dashboard/criador/notificacoes", titulo: "Avisos", texto: "Cio, partos e lembretes do canil.", badge: naoLidas || null },
+    { href: "/dashboard/criador/convites", titulo: "Convites", texto: "Convide canis e ganhe desconto na mensalidade seguinte." },
+    { href: "/dashboard/criador/verificacao", titulo: "Dados do canil", texto: canil?.verificado ? "Nome do canil, cidade e contato. Seu canil é verificado." : "Nome do canil, cidade e contato. Complete e entre na fila de aprovação." },
+    { href: "/dashboard/criador/criopreservacao", titulo: "Criopreservação", texto: "Inventário de sêmen, embriões e óvulos." },
+  ];
 
   const diaADia: Item[] = [
     { href: "/dashboard/criador/plantel", titulo: "Plantel", texto: "Cães, árvore genealógica, dossiê genético e documentos." },
@@ -139,7 +151,7 @@ export default async function DashboardCriadorPage() {
         <div>
           <p className="text-xs uppercase tracking-[0.2em]" style={{ color: "var(--brass)" }}>Painel do criador</p>
           <h1 className="font-display text-3xl sm:text-4xl mt-1" style={{ color: "var(--pine)" }}>
-            Olá, {session?.user?.name?.split(" ")[0]}
+            Olá, {nomePessoa?.split(" ")[0]}
           </h1>
           {canil && (
             <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
@@ -184,12 +196,14 @@ export default async function DashboardCriadorPage() {
         <Numero valor={naoLidas} rotulo="avisos novos" href="/dashboard/criador/notificacoes" />
       </div>
 
-      <Secao titulo={MARKETPLACE_ATIVO ? "Inteligência para vender melhor" : "O essencial do seu canil"} subtitulo={MARKETPLACE_ATIVO ? "O que só a plataforma entrega" : "Gestão completa em um só lugar"}>
+      <Secao titulo={MARKETPLACE_ATIVO ? "Inteligência para vender melhor" : "O essencial do seu canil"} subtitulo={MARKETPLACE_ATIVO ? "O que só a plataforma entrega" : undefined}>
         <div className="mt-4 grid sm:grid-cols-2 gap-4">
           {destaques.map((i) => <Destaque key={i.href} item={i} />)}
         </div>
       </Secao>
 
+      {MARKETPLACE_ATIVO ? (
+        <>
       <Secao titulo="No dia a dia">
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {diaADia.map((i) => <Compacto key={i.href} item={i} />)}
@@ -207,6 +221,15 @@ export default async function DashboardCriadorPage() {
           {ferramentas.map((i) => <Compacto key={i.href} item={i} />)}
         </div>
       </Secao>
+
+        </>
+      ) : (
+        <Secao titulo="Gestão do canil">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {gestao.map((i) => <Compacto key={i.href} item={i} />)}
+          </div>
+        </Secao>
+      )}
 
       <div className="mt-10">
         <CaixaSugestoes />

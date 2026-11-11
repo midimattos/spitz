@@ -26,6 +26,7 @@ export function RegisterForm({ cadastroAberto }: { cadastroAberto: boolean }) {
     const formData = new FormData(e.currentTarget);
     const payload = {
       name: formData.get("name"),
+      nomeCanil: role === "CRIADOR" ? formData.get("nomeCanil") || undefined : undefined,
       email: formData.get("email"),
       password: formData.get("password"),
       role,
@@ -98,7 +99,7 @@ export function RegisterForm({ cadastroAberto }: { cadastroAberto: boolean }) {
           </div>
           <div>
             <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
-              Nome completo
+              {role === "CRIADOR" ? "Seu nome completo" : "Nome completo"}
             </label>
             <input
               name="name"
@@ -107,6 +108,25 @@ export function RegisterForm({ cadastroAberto }: { cadastroAberto: boolean }) {
               style={{ borderColor: "var(--border-hairline)" }}
             />
           </div>
+          {role === "CRIADOR" && (
+            <div>
+              <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
+                Nome do canil
+              </label>
+              <input
+                name="nomeCanil"
+                required
+                minLength={2}
+                maxLength={120}
+                placeholder="Ex.: Canil Estrela do Sul"
+                className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
+                style={{ borderColor: "var(--border-hairline)" }}
+              />
+              <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>
+                É o nome que aparece na sua página pública e nos documentos. Você pode mudar depois.
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
               E-mail

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { prisma } from "@/lib/prisma";
 import { BarraNavegacao } from "@/components/barra-navegacao";
 import { RodapeLegal } from "@/components/rodape-legal";
 import { Cabecalho } from "@/components/cabecalho";
@@ -18,6 +19,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
+  // O nome vem do banco (o da sessão fica desatualizado depois de uma alteração).
+  const nomeAtual = session?.user ? (await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } }).catch(() => null))?.name : null;
   async function sair() {
     "use server";
     await signOut({ redirectTo: "/" });
@@ -26,7 +29,7 @@ export default async function RootLayout({
     <html lang="pt-BR" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <Cabecalho
-          usuario={session?.user ? { nome: session.user.name ?? session.user.email ?? "", papel: session.user.role } : null}
+          usuario={session?.user ? { nome: nomeAtual ?? session.user.name ?? session.user.email ?? "", papel: session.user.role } : null}
           sair={sair}
         />
         <AvisoAssinatura />
