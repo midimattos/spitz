@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCanilDoCriadorLogado, respostaSemAcesso } from "@/lib/canil";
 import { salvarArquivo, descreverErroArmazenamento } from "@/lib/storage";
 
-const MAX_FOTOS = 9;
+const MAX_FOTOS = 60;
 
 export async function POST(request: Request) {
   const canil = await getCanilDoCriadorLogado();

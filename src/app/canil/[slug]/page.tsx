@@ -9,7 +9,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: `${canil.nome} | Spitz Alemão`, description: descricao, openGraph: { title: canil.nome, description: descricao, images: canil.fotos[0] ? [canil.fotos[0]] : [] } };
 }
 
-export default async function CanilPublicoPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CanilPublicoPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ aba?: string }> }) {
   const { slug } = await params;
-  return <PaginaCanil slug={slug} />;
+  const { aba } = await searchParams;
+  return <PaginaCanil slug={slug} aba={aba} />;
 }

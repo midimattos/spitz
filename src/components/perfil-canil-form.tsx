@@ -14,9 +14,13 @@ type Cao = { id: string; nome: string; exibir: boolean };
 export function PerfilCanilForm({
   canil,
   plantel,
+  filhotes,
+  temTelefone,
 }: {
   canil: { nome: string; slug: string; descricao: string | null; instagram: string | null; fotos: string[] };
   plantel: Cao[];
+  filhotes: Cao[];
+  temTelefone: boolean;
 }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -45,19 +49,25 @@ export function PerfilCanilForm({
   }
 
   async function enviarFoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const arq = e.target.files?.[0];
-    if (!arq) return;
+    const arquivos = Array.from(e.target.files ?? []);
+    if (arquivos.length === 0) return;
     setEnviando(true);
     setMsg(null);
-    const fd = new FormData();
-    fd.append("arquivo", await prepararImagem(arq));
-    const res = await fetch("/api/canil/fotos", { method: "POST", body: fd }).catch(() => null);
+    let falhas = 0;
+    let ultimoErro = "";
+    for (const arq of arquivos) {
+      const fd = new FormData();
+      fd.append("arquivo", await prepararImagem(arq));
+      const res = await fetch("/api/canil/fotos", { method: "POST", body: fd }).catch(() => null);
+      if (!res || !res.ok) {
+        falhas++;
+        ultimoErro = res ? await mensagemDeErro(res, "Não foi possível enviar a foto") : "Sem conexão.";
+        if (res && res.status === 400) break;
+      }
+    }
     setEnviando(false);
     if (input.current) input.current.value = "";
-    if (!res || !res.ok) {
-      setMsg({ ok: false, texto: res ? await mensagemDeErro(res, "Não foi possível enviar a foto") : "Sem conexão." });
-      return;
-    }
+    if (falhas > 0) setMsg({ ok: false, texto: `${falhas} foto(s) não enviada(s): ${ultimoErro}` });
     router.refresh();
   }
 
@@ -102,9 +112,9 @@ export function PerfilCanilForm({
       </form>
 
       <section className="card p-6">
-        <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Fotos do canil</h2>
-        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>A primeira foto vira a capa. Até 9 fotos.</p>
-        <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Galeria do canil</h2>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Aparecem na aba Galeria da sua página. A primeira foto também é a capa da Home. Até 60 fotos.</p>
+        <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-[28rem] overflow-y-auto">
           {canil.fotos.map((u, i) => (
             <div key={u} className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -114,9 +124,9 @@ export function PerfilCanilForm({
             </div>
           ))}
         </div>
-        <input ref={input} type="file" accept="image/*" className="hidden" onChange={enviarFoto} />
-        <button type="button" disabled={enviando || canil.fotos.length >= 9} onClick={() => input.current?.click()} className="mt-3 px-4 py-2 rounded border text-sm disabled:opacity-60" style={est}>
-          {enviando ? "Enviando…" : "Adicionar foto"}
+        <input ref={input} type="file" accept="image/*" multiple className="hidden" onChange={enviarFoto} />
+        <button type="button" disabled={enviando || canil.fotos.length >= 60} onClick={() => input.current?.click()} className="mt-3 px-4 py-2 rounded border text-sm disabled:opacity-60" style={est}>
+          {enviando ? "Enviando…" : "Adicionar fotos"}
         </button>
       </section>
 
@@ -138,6 +148,33 @@ export function PerfilCanilForm({
           </ul>
         )}
       </section>
+
+      <section className="card p-6">
+        <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Filhotes na página pública</h2>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
+          Filhotes de ninhadas (ainda não vendidos) aparecem na aba Filhotes. Desmarque para esconder algum. As fotos vêm da ficha de cada filhote.
+        </p>
+        {filhotes.length === 0 ? (
+          <p className="text-sm mt-3" style={{ color: "var(--ink-muted)" }}>Nenhum filhote disponível cadastrado.</p>
+        ) : (
+          <ul className="mt-3 divide-y text-sm" style={{ borderColor: "var(--border-hairline)" }}>
+            {filhotes.map((c) => (
+              <li key={c.id} className="py-2 flex items-center justify-between">
+                <span>{c.nome}</span>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={c.exibir} onChange={(e) => alternar(c.id, e.target.checked)} /> Exibir
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {!temTelefone && (
+        <p className="text-sm card p-4" style={{ color: "#a32d2d" }}>
+          Falta o telefone/WhatsApp do canil: sem ele os botões &ldquo;Tenho interesse&rdquo; e &ldquo;Chamar no WhatsApp&rdquo; não aparecem. Preencha em <a href="/dashboard/criador/verificacao" className="underline">Dados do canil</a>.
+        </p>
+      )}
     </div>
   );
 }

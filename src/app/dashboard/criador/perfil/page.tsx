@@ -11,6 +11,11 @@ export default async function PerfilPublicoPage() {
     orderBy: { nome: "asc" },
     select: { id: true, nome: true, exibirNoCanil: true },
   });
+  const filhotes = await prisma.cao.findMany({
+    where: { canilId: canil.id, externo: false, papel: "FILHOTE", ninhadaId: { not: null }, dataFalecimento: null, vendidoEm: null },
+    orderBy: [{ dataNascimento: "desc" }, { nome: "asc" }],
+    select: { id: true, nome: true, exibirNoCanil: true },
+  });
   return (
     <main className="flex-1 max-w-3xl mx-auto w-full px-6 sm:px-8 py-12">
       <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>Página pública do canil</h1>
@@ -22,6 +27,8 @@ export default async function PerfilPublicoPage() {
         <PerfilCanilForm
           canil={{ nome: canil.nome, slug: canil.slug, descricao: canil.descricao, instagram: canil.instagram, fotos: canil.fotos }}
           plantel={caes.map((c) => ({ id: c.id, nome: c.nome, exibir: c.exibirNoCanil }))}
+          filhotes={filhotes.map((c) => ({ id: c.id, nome: c.nome, exibir: c.exibirNoCanil }))}
+          temTelefone={!!canil.telefoneContato}
         />
       </div>
     </main>
