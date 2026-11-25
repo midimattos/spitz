@@ -37,7 +37,9 @@ export default async function SimuladorCruzamentoPage({
 }: {
   searchParams: Promise<{ a?: string; b?: string; n?: string }>;
 }) {
-  const { a, b, n } = await searchParams;
+  const params = await searchParams;
+  let { a, b } = params;
+  const { n } = params;
   const canil = await getCanilDoCriadorLogado();
 
   const nInformado = Number.parseInt(n ?? "", 10);
@@ -47,11 +49,16 @@ export default async function SimuladorCruzamentoPage({
 
   const caes = canil
     ? await prisma.cao.findMany({
-        where: { canilId: canil.id, externo: false, vendidoEm: null },
+        where: { canilId: canil.id, externo: false, vendidoEm: null, dataFalecimento: null },
         select: { id: true, nome: true, sexo: true },
         orderBy: { nome: "asc" },
       })
     : [];
+
+  // Aceita o link com macho/fêmea em qualquer ordem: o 1º campo é sempre o macho.
+  const sexoA = caes.find((c) => c.id === a)?.sexo;
+  const sexoB = caes.find((c) => c.id === b)?.sexo;
+  if (sexoA === "FEMEA" && sexoB === "MACHO") [a, b] = [b, a];
 
   let resultadoCor: ReturnType<typeof simularCruzamentoCor> | null = null;
   let resumoCor: ReturnType<typeof resumirNinhada> | null = null;
@@ -61,6 +68,7 @@ export default async function SimuladorCruzamentoPage({
   let valorMercado: ReturnType<typeof calcularValorNinhada> | null = null;
   let nomeA = "";
   let nomeB = "";
+  let erroSexo: string | null = null;
 
   function paraFenotipo(cao: {
     corBase: string | null;
@@ -109,7 +117,9 @@ export default async function SimuladorCruzamentoPage({
       prisma.cao.findFirst({ where: { id: b, canilId: canil?.id } }),
     ]);
 
-    if (caoA && caoB) {
+    if (caoA && caoB && caoA.sexo === caoB.sexo) {
+      erroSexo = `${caoA.nome} e ${caoB.nome} são ${caoA.sexo === "MACHO" ? "machos" : "fêmeas"}. Escolha um macho e uma fêmea.`;
+    } else if (caoA && caoB) {
       nomeA = caoA.nome;
       nomeB = caoB.nome;
 
@@ -132,7 +142,7 @@ export default async function SimuladorCruzamentoPage({
         Simulador de cruzamento
       </h1>
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-        Compare dois cães do seu plantel e veja a chance de cada cor, marcação
+        Escolha um macho e uma fêmea do seu plantel e veja a chance de cada cor, marcação
         e gene oculto na ninhada.
       </p>
 
@@ -144,11 +154,11 @@ export default async function SimuladorCruzamentoPage({
       <form method="GET" className="card mt-8 p-6 grid sm:grid-cols-2 gap-4">
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            Cão 1
+            Macho (pai)
           </label>
           <select
             name="a"
-            defaultValue={a ?? ""}
+            defaultValue={caes.find((c) => c.id === a)?.sexo === "MACHO" ? a : ""}
             required
             className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
             style={{ borderColor: "var(--border-hairline)" }}
@@ -156,7 +166,7 @@ export default async function SimuladorCruzamentoPage({
             <option value="" disabled>
               Selecione
             </option>
-            {caes.map((c) => (
+            {caes.filter((c) => c.sexo === "MACHO").map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
               </option>
@@ -165,11 +175,11 @@ export default async function SimuladorCruzamentoPage({
         </div>
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            Cão 2
+            Fêmea (mãe)
           </label>
           <select
             name="b"
-            defaultValue={b ?? ""}
+            defaultValue={caes.find((c) => c.id === b)?.sexo === "FEMEA" ? b : ""}
             required
             className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
             style={{ borderColor: "var(--border-hairline)" }}
@@ -177,13 +187,16 @@ export default async function SimuladorCruzamentoPage({
             <option value="" disabled>
               Selecione
             </option>
-            {caes.map((c) => (
+            {caes.filter((c) => c.sexo === "FEMEA").map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
               </option>
             ))}
           </select>
         </div>
+        {erroSexo && (
+          <p className="sm:col-span-2 text-sm" style={{ color: "#a32d2d" }}>{erroSexo}</p>
+        )}
         <div className="sm:col-span-2">
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
             Tamanho esperado da ninhada (filhotes)
