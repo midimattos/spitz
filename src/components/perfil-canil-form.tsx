@@ -158,7 +158,7 @@ export function PerfilCanilForm({
 
       <section className="card p-6">
         <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Ninhadas na página pública</h2>
-        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Escolha quais ninhadas aparecem na aba Ninhadas (atuais, próximas e passadas). Ninhada escondida também esconde os filhotes dela. Dentro de uma ninhada exibida, escolha os filhotes na lista abaixo.</p>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Escolha quais ninhadas aparecem na aba Ninhadas (atuais, próximas e passadas). Os filhotes à venda são escolhidos na lista abaixo.</p>
         {ninhadas.length === 0 ? (
           <p className="text-sm mt-3" style={{ color: "var(--ink-muted)" }}>Nenhuma ninhada cadastrada.</p>
         ) : (

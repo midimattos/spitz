@@ -164,7 +164,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
   const filhotes =
     aba === "home" || aba === "filhotes"
       ? await prisma.cao.findMany({
-          where: { canilId: canil.id, externo: false, exibirNoCanil: true, papel: "FILHOTE", dataFalecimento: null, vendidoEm: null, ninhadaId: { not: null }, ninhada: { exibirNoCanil: true } },
+          where: { canilId: canil.id, externo: false, exibirNoCanil: true, papel: "FILHOTE", dataFalecimento: null, vendidoEm: null, ninhadaId: { not: null } },
           orderBy: [{ dataNascimento: "desc" }, { criadoEm: "desc" }],
           select: {
             id: true, nome: true, sexo: true, fotoUrl: true, dataNascimento: true, corBase: true, marcacaoCor: true, merleCor: true,
