@@ -11,8 +11,6 @@ import { RastreadorEvento } from "@/components/rastreador-evento";
 import { Selos } from "@/components/selos";
 import { ListaEsperaForm } from "@/components/lista-espera-form";
 import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
-import { CopiarTextoButton } from "@/components/copiar-texto-button";
-import { ArvorePublica } from "@/components/arvore-publica";
 import { GaleriaFotos, FotosFilhote } from "@/components/galeria-publica";
 import { estadoDaNinhada } from "@/lib/ninhadas";
 
@@ -86,6 +84,73 @@ function FotoRedonda({ url, nome }: { url: string | null; nome: string }) {
   );
 }
 
+type FilhotePublico = {
+  id: string;
+  nome: string;
+  sexo: "MACHO" | "FEMEA";
+  fotoUrl: string | null;
+  dataNascimento: Date | null;
+  corBase: string | null;
+  marcacaoCor: string | null;
+  merleCor: string | null;
+  fotos: { url: string }[];
+  ninhada?: { caoMae: { nome: string } | null; caoPai: { nome: string } | null; padreadorExterno: string | null } | null;
+};
+
+function CardFilhote({ f, canilNome, telefone, hrefContato, mostrarPais = true }: { f: FilhotePublico; canilNome: string; telefone: string | null; hrefContato: string; mostrarPais?: boolean }) {
+  const fotos = [f.fotoUrl, ...f.fotos.map((x) => x.url)].filter((u, i, arr): u is string => !!u && arr.indexOf(u) === i);
+  const cor = descricaoCor(f);
+  const idade = idadeTexto(f.dataNascimento);
+  const pais = mostrarPais && f.ninhada ? [f.ninhada.caoPai?.nome ?? f.ninhada.padreadorExterno, f.ninhada.caoMae?.nome].filter(Boolean).join(" × ") : null;
+  const zap = linkWhatsapp(telefone, `Olá! Vi o filhote ${f.nome} (${f.sexo === "MACHO" ? "macho" : "fêmea"}) no site do ${canilNome} e gostaria de mais informações.`);
+  return (
+    <article className="card p-4 flex flex-col">
+      <FotosFilhote fotos={fotos} alt={`${f.nome} — filhote de Spitz Alemão`} />
+      <div className="pt-3 flex-1 flex flex-col">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-display text-lg" style={{ color: "var(--pine)" }}>{f.nome}</p>
+          <span className="text-[11px] px-2 py-0.5 rounded-full text-white" style={{ background: "var(--pine)" }}>Disponível</span>
+        </div>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>{[f.sexo === "MACHO" ? "Macho" : "Fêmea", cor, idade].filter(Boolean).join(" · ")}</p>
+        {pais && <p className="text-xs mt-0.5" style={{ color: "var(--ink-muted)" }}>Filho de {pais}</p>}
+        <div className="mt-auto pt-3">
+          {zap ? (
+            <a href={zap} target="_blank" rel="noreferrer" className="block text-center px-4 py-2 rounded text-sm text-white" style={{ background: "#1f9d55" }}>Tenho interesse</a>
+          ) : (
+            <Link href={hrefContato} className="block text-center px-4 py-2 rounded border text-sm" style={{ borderColor: "var(--border-hairline)" }}>Como falar com o canil</Link>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PedigreePublico({ pai, mae }: { pai: NoPed; mae: NoPed }) {
+  const caixa = (no: NoPed, rotulo: string, pequeno = false) => (
+    <div className="rounded border px-3 py-2" style={{ borderColor: "var(--border-hairline)", background: no ? "var(--parchment-card)" : "transparent", borderStyle: no ? "solid" : "dashed" }}>
+      <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--ink-muted)" }}>{rotulo}</p>
+      <p className={pequeno ? "text-sm" : "text-base"} style={{ color: no ? "var(--pine)" : "var(--ink-muted)" }}>{no ? no.nome : "Não informado"}</p>
+      {no?.corBase && <p className="text-xs" style={{ color: "var(--ink-muted)" }}>{no.corBase}</p>}
+    </div>
+  );
+  const lado = (no: NoPed, titulo: string, avo: string, ava: string) => (
+    <div className="space-y-2">
+      {caixa(no, titulo)}
+      <div className="grid grid-cols-2 gap-2">
+        {caixa(no?.pai, avo, true)}
+        {caixa(no?.mae, ava, true)}
+      </div>
+    </div>
+  );
+  return (
+    <div className="grid sm:grid-cols-2 gap-5 items-start">
+      {lado(pai, "Pai", "Avô paterno", "Avó paterna")}
+      {lado(mae, "Mãe", "Avô materno", "Avó materna")}
+    </div>
+  );
+}
+type NoPed = { nome: string; corBase: string | null; pai?: { nome: string; corBase: string | null } | null; mae?: { nome: string; corBase: string | null } | null } | null | undefined;
+
 export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?: string }) {
   const canil = await carregarCanilPublico(slug);
   if (!canil) notFound();
@@ -118,7 +183,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
             id: true, dataParto: true, dataPrevistaParto: true, padreadorExterno: true,
             caoMae: { select: { nome: true, fotoUrl: true, corBase: true, pai: { select: { nome: true, corBase: true } }, mae: { select: { nome: true, corBase: true } } } },
             caoPai: { select: { nome: true, fotoUrl: true, corBase: true, pai: { select: { nome: true, corBase: true } }, mae: { select: { nome: true, corBase: true } } } },
-            filhotes: { select: { sexo: true, vendidoEm: true, dataFalecimento: true, exibirNoCanil: true } },
+            filhotes: { select: { id: true, nome: true, sexo: true, papel: true, fotoUrl: true, dataNascimento: true, corBase: true, marcacaoCor: true, merleCor: true, vendidoEm: true, dataFalecimento: true, exibirNoCanil: true, fotos: { orderBy: { criadoEm: "asc" }, select: { url: true } } } },
           },
         })
       : [];
@@ -143,55 +208,21 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
   const local = canil.cidade ? `${canil.cidade}${canil.estado ? `/${canil.estado}` : ""}` : null;
   const hrefAba = (id: AbaId) => (id === "home" ? `/${canil.slug}` : `/${canil.slug}?aba=${id}`);
 
-  function CardFilhote({ f }: { f: (typeof filhotes)[number] }) {
-    const fotos = [f.fotoUrl, ...f.fotos.map((x) => x.url)].filter((u, i, arr): u is string => !!u && arr.indexOf(u) === i);
-    const cor = descricaoCor(f);
-    const idade = idadeTexto(f.dataNascimento);
-    const pais = f.ninhada ? [f.ninhada.caoPai?.nome ?? f.ninhada.padreadorExterno, f.ninhada.caoMae?.nome].filter(Boolean).join(" × ") : null;
-    const zap = linkWhatsapp(canil!.telefoneContato, `Olá! Vi o filhote ${f.nome} (${f.sexo === "MACHO" ? "macho" : "fêmea"}) no site do ${canil!.nome} e gostaria de mais informações.`);
-    return (
-      <article className="card p-3 flex flex-col">
-        <FotosFilhote fotos={fotos} alt={`${f.nome} — filhote de Spitz Alemão`} />
-        <div className="pt-3 flex-1 flex flex-col">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-display text-lg" style={{ color: "var(--pine)" }}>{f.nome}</p>
-            <span className="text-[11px] px-2 py-0.5 rounded-full text-white" style={{ background: "var(--pine)" }}>Disponível</span>
-          </div>
-          <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
-            {[f.sexo === "MACHO" ? "Macho" : "Fêmea", cor, idade].filter(Boolean).join(" · ")}
-          </p>
-          {pais && <p className="text-xs mt-0.5" style={{ color: "var(--ink-muted)" }}>Filho de {pais}</p>}
-          <div className="mt-auto pt-3">
-            {zap ? (
-              <a href={zap} target="_blank" rel="noreferrer" className="block text-center px-4 py-2 rounded text-sm text-white" style={{ background: "#1f9d55" }}>
-                Tenho interesse
-              </a>
-            ) : (
-              <Link href={hrefAba("contato")} className="block text-center px-4 py-2 rounded border text-sm" style={{ borderColor: "var(--border-hairline)" }}>
-                Como falar com o canil
-              </Link>
-            )}
-          </div>
-        </div>
-      </article>
-    );
-  }
-
   return (
     <main className="flex-1 w-full pb-16">
       <RastreadorEvento tipo="VISUALIZACAO_CANIL" canilSlug={canil.slug} />
 
       <header className="w-full border-b" style={{ borderColor: "var(--border-hairline)", background: "var(--parchment-card)" }}>
-        <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <Link href={hrefAba("home")} className="font-display text-xl pb-1" style={{ color: "var(--pine)" }}>{canil.nome}</Link>
-          <nav className="flex gap-5 overflow-x-auto text-sm" aria-label="Seções do canil">
+        <div className="max-w-5xl mx-auto px-6 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <Link href={hrefAba("home")} className="font-display text-2xl" style={{ color: "var(--pine)" }}>{canil.nome}</Link>
+          <nav className="flex flex-wrap gap-2" aria-label="Seções do canil">
             {ABAS.map((a) => (
               <Link
                 key={a.id}
                 href={hrefAba(a.id)}
                 scroll={false}
-                className="pb-3 pt-1 border-b-2 whitespace-nowrap"
-                style={{ borderColor: a.id === aba ? "var(--brass)" : "transparent", color: a.id === aba ? "var(--pine)" : "var(--ink-muted)", fontWeight: a.id === aba ? 600 : 400 }}
+                className="px-4 py-2 rounded-full text-base font-medium border"
+                style={a.id === aba ? { background: "var(--pine)", color: "#fff", borderColor: "var(--pine)" } : { color: "var(--pine)", borderColor: "var(--brass)", background: "transparent" }}
                 aria-current={a.id === aba ? "page" : undefined}
               >
                 {a.rotulo}
@@ -216,7 +247,6 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
               <Link href={hrefAba("filhotes")} className="px-5 py-2.5 rounded text-sm" style={{ background: "#e3c999", color: "#12241d" }}>Ver filhotes disponíveis</Link>
               {zapGeral && <a href={zapGeral} target="_blank" rel="noreferrer" className="px-5 py-2.5 rounded border border-white/60 text-sm">WhatsApp</a>}
               {instagram && <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noreferrer" className="px-5 py-2.5 rounded border border-white/60 text-sm">@{instagram}</a>}
-              <CopiarTextoButton texto={`/${canil.slug}`} rotulo="Copiar link do canil" className="px-5 py-2.5 rounded border border-white/60 text-sm" />
             </div>
           </div>
         </section>
@@ -260,7 +290,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
               <section className="mt-12">
                 <Titulo sub="Filhotes que estão procurando uma família.">Filhotes disponíveis</Titulo>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {filhotes.slice(0, 3).map((f) => <CardFilhote key={f.id} f={f} />)}
+                  {filhotes.slice(0, 3).map((f) => <CardFilhote key={f.id} f={f} canilNome={canil.nome} telefone={canil.telefoneContato} hrefContato={hrefAba("contato")} />)}
                 </div>
                 {filhotes.length > 3 && (
                   <p className="mt-4"><Link href={hrefAba("filhotes")} className="text-sm underline" style={{ color: "var(--brass)" }}>Ver todos os {filhotes.length} filhotes →</Link></p>
@@ -300,7 +330,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filhotes.map((f) => <CardFilhote key={f.id} f={f} />)}
+                {filhotes.map((f) => <CardFilhote key={f.id} f={f} canilNome={canil.nome} telefone={canil.telefoneContato} hrefContato={hrefAba("contato")} />)}
               </div>
             )}
 
@@ -333,7 +363,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
           </section>
         )}
 
-        {aba === "ninhadas" && <AbaNinhadas ninhadas={ninhadas} hrefContato={hrefAba("contato")} />}
+        {aba === "ninhadas" && <AbaNinhadas ninhadas={ninhadas} hrefContato={hrefAba("contato")} canilNome={canil.nome} telefone={canil.telefoneContato} />}
 
         {aba === "galeria" && (
           <section className="mt-10">
@@ -378,14 +408,15 @@ type NinhadaPublica = {
   padreadorExterno: string | null;
   caoMae: { nome: string; fotoUrl: string | null; corBase: string | null; pai: { nome: string; corBase: string | null } | null; mae: { nome: string; corBase: string | null } | null };
   caoPai: { nome: string; fotoUrl: string | null; corBase: string | null; pai: { nome: string; corBase: string | null } | null; mae: { nome: string; corBase: string | null } | null } | null;
-  filhotes: { sexo: "MACHO" | "FEMEA"; vendidoEm: Date | null; dataFalecimento: Date | null; exibirNoCanil: boolean }[];
+  filhotes: (FilhotePublico & { papel: string; vendidoEm: Date | null; dataFalecimento: Date | null; exibirNoCanil: boolean })[];
 };
 
-function CardNinhada({ n, compacto = false }: { n: NinhadaPublica; compacto?: boolean }) {
+function CardNinhada({ n, canilNome, telefone, hrefContato, compacto = false }: { n: NinhadaPublica; canilNome: string; telefone: string | null; hrefContato: string; compacto?: boolean }) {
   const vivos = n.filhotes.filter((f) => !f.dataFalecimento);
   const machos = vivos.filter((f) => f.sexo === "MACHO").length;
   const femeas = vivos.filter((f) => f.sexo === "FEMEA").length;
   const disponiveis = vivos.filter((f) => !f.vendidoEm && f.exibirNoCanil).length;
+  const aVenda = vivos.filter((f) => !f.vendidoEm && f.exibirNoCanil && f.papel === "FILHOTE");
   const nomePai = n.caoPai?.nome ?? n.padreadorExterno ?? "Padreador externo";
   return (
     <article className="card p-4 sm:p-5">
@@ -412,11 +443,19 @@ function CardNinhada({ n, compacto = false }: { n: NinhadaPublica; compacto?: bo
           )}
         </ul>
       </div>
+      {!compacto && aVenda.length > 0 && (
+        <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border-hairline)" }}>
+          <p className="font-display text-lg mb-3" style={{ color: "var(--pine)" }}>Filhotes disponíveis desta ninhada</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {aVenda.map((f) => <CardFilhote key={f.id} f={f} canilNome={canilNome} telefone={telefone} hrefContato={hrefContato} mostrarPais={false} />)}
+          </div>
+        </div>
+      )}
       {n.dataParto && (n.caoPai || n.caoMae) && (
         <details className="mt-4 border-t pt-3" style={{ borderColor: "var(--border-hairline)" }}>
           <summary className="text-sm cursor-pointer" style={{ color: "var(--brass)" }}>Conheça o pedigree</summary>
           <div className="mt-3">
-            <ArvorePublica pai={n.caoPai ?? (n.padreadorExterno ? { nome: n.padreadorExterno, corBase: null } : null)} mae={n.caoMae} />
+            <PedigreePublico pai={n.caoPai ?? (n.padreadorExterno ? { nome: n.padreadorExterno, corBase: null } : null)} mae={n.caoMae} />
           </div>
         </details>
       )}
@@ -424,7 +463,7 @@ function CardNinhada({ n, compacto = false }: { n: NinhadaPublica; compacto?: bo
   );
 }
 
-function AbaNinhadas({ ninhadas, hrefContato }: { ninhadas: NinhadaPublica[]; hrefContato: string }) {
+function AbaNinhadas({ ninhadas, hrefContato, canilNome, telefone }: { ninhadas: NinhadaPublica[]; hrefContato: string; canilNome: string; telefone: string | null }) {
   const classificadas = ninhadas.map((n) => {
     const vivos = n.filhotes.filter((f) => !f.dataFalecimento);
     const vendidos = vivos.filter((f) => f.vendidoEm).length;
@@ -441,7 +480,7 @@ function AbaNinhadas({ ninhadas, hrefContato }: { ninhadas: NinhadaPublica[]; hr
         {atuais.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--ink-muted)" }}>Nenhuma ninhada com filhotes no momento.</p>
         ) : (
-          <div className="space-y-5">{atuais.map((n) => <CardNinhada key={n.id} n={n} />)}</div>
+          <div className="space-y-5">{atuais.map((n) => <CardNinhada key={n.id} n={n} canilNome={canilNome} telefone={telefone} hrefContato={hrefContato} />)}</div>
         )}
       </section>
 
@@ -452,14 +491,14 @@ function AbaNinhadas({ ninhadas, hrefContato }: { ninhadas: NinhadaPublica[]; hr
             Nenhuma ninhada prevista agora. <Link href={hrefContato} className="underline" style={{ color: "var(--brass)" }}>Fale com o canil</Link> para entrar na fila.
           </p>
         ) : (
-          <div className="space-y-5">{proximas.map((n) => <CardNinhada key={n.id} n={n} />)}</div>
+          <div className="space-y-5">{proximas.map((n) => <CardNinhada key={n.id} n={n} canilNome={canilNome} telefone={telefone} hrefContato={hrefContato} />)}</div>
         )}
       </section>
 
       {passadas.length > 0 && (
         <section>
           <Titulo sub="Todos os filhotes já foram para suas famílias.">Ninhadas passadas</Titulo>
-          <div className="space-y-5">{passadas.map((n) => <CardNinhada key={n.id} n={n} compacto />)}</div>
+          <div className="space-y-5">{passadas.map((n) => <CardNinhada key={n.id} n={n} canilNome={canilNome} telefone={telefone} hrefContato={hrefContato} compacto />)}</div>
         </section>
       )}
     </div>
