@@ -191,7 +191,7 @@ export default async function DashboardCriadorPage() {
             <Numero valor={semResposta} rotulo="mensagens sem resposta" href="/dashboard/criador/mensagens" />
           </>
         ) : (
-          <Numero valor={ninhadasAtivas} rotulo="ninhadas em andamento" href="/dashboard/criador/ninhadas" />
+          <Numero valor={ninhadasAtivas} rotulo="ninhadas previstas" href="/dashboard/criador/ninhadas?aba=previstas" />
         )}
         <Numero valor={naoLidas} rotulo="avisos novos" href="/dashboard/criador/notificacoes" />
       </div>

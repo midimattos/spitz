@@ -64,6 +64,8 @@ export function CaoForm({
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
+  const [duplicado, setDuplicado] = useState<{ id: string; nome: string } | null>(null);
+  const [juntando, setJuntando] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const editando = !!valoresIniciais?.id;
   const [paiSel, setPaiSel] = useState<string>(valoresIniciais?.paiId ?? "");
@@ -150,12 +152,33 @@ export function CaoForm({
     if (!res.ok) {
       const data = await res.json();
       setErro(data.error ?? "Não foi possível salvar");
+      setDuplicado(data.duplicadoId ? { id: data.duplicadoId, nome: data.duplicadoNome ?? "o outro cadastro" } : null);
       setCarregando(false);
       return;
     }
 
     const cao = await res.json();
     router.push(`/dashboard/criador/plantel/${cao.id}`);
+    router.refresh();
+  }
+
+  // Edição de um cão que já tem "gêmeo" cadastrado (ex.: "Duo 2" e "DUO"): junta tudo no cadastro que já existia.
+  async function juntarComDuplicado() {
+    if (!duplicado || !valoresIniciais?.id) return;
+    if (!window.confirm(`Juntar tudo em "${duplicado.nome}"? Este cadastro será apagado e a ninhada, filhotes, fotos e documentos passam para "${duplicado.nome}".`)) return;
+    setJuntando(true);
+    const res = await fetch("/api/caes/mesclar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manterId: duplicado.id, removerId: valoresIniciais.id }),
+    }).catch(() => null);
+    setJuntando(false);
+    if (!res || !res.ok) {
+      const d = res ? ((await res.json().catch(() => null)) as { error?: string } | null) : null;
+      setErro(d?.error ?? "Não foi possível juntar os cadastros.");
+      return;
+    }
+    router.push(`/dashboard/criador/plantel/${duplicado.id}`);
     router.refresh();
   }
 
@@ -534,6 +557,21 @@ export function CaoForm({
         <p className="text-sm" style={{ color: "#a32d2d" }}>
           {erro}
         </p>
+      )}
+      {duplicado && editando && (
+        <div className="card p-4 text-sm">
+          <p>
+            Para ficar só com <strong>{duplicado.nome}</strong>, junte os dois cadastros. Tudo o que está neste cão (ninhada de origem, fotos, documentos, histórico) passa para <strong>{duplicado.nome}</strong>, e este cadastro repetido é apagado.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button type="button" disabled={juntando} onClick={juntarComDuplicado} className="px-4 py-2 rounded text-white text-sm disabled:opacity-60" style={{ background: "var(--pine)" }}>
+              {juntando ? "Juntando…" : `Juntar com ${duplicado.nome}`}
+            </button>
+            <a href={`/dashboard/criador/plantel/${duplicado.id}`} className="px-4 py-2 rounded border text-sm" style={{ borderColor: "var(--border-hairline)" }}>
+              Ver {duplicado.nome}
+            </a>
+          </div>
+        </div>
       )}
 
       <button

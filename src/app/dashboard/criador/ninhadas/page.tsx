@@ -25,7 +25,6 @@ function Kpi({ titulo, valor, nota }: { titulo: string; valor: string; nota?: st
 
 export default async function NinhadasPage({ searchParams }: { searchParams: Promise<{ aba?: string }> }) {
   const { aba } = await searchParams;
-  const verFinalizados = aba === "finalizados";
   const canil = await getCanilDoCriadorLogado();
   const agora = new Date();
 
@@ -90,11 +89,13 @@ export default async function NinhadasPage({ searchParams }: { searchParams: Pro
     return { n, cria, vendas, receita, nascidos, falecidos, estado, valorDe, marcos: montarMarcos(n, agora), margem: calcularMargemNinhada(n, lancamentos, receita, nascidos) };
   });
 
-  // Ciclo em andamento = gestação, parto recente, filhotes ainda sem destino. Finalizado = todos com destino.
-  const emAndamento = dadosNinhadas.filter((d) => d.estado !== "ENTREGUE");
-  const finalizadas = dadosNinhadas.filter((d) => d.estado === "ENTREGUE");
-  const listaAba = verFinalizados ? finalizadas : emAndamento;
+  // Previstas = ainda vão nascer. Em andamento = já nasceram e têm filhote sem destino. Finalizado = todos com destino.
   const emGestacao = dadosNinhadas.filter((d) => d.estado === "GESTACAO" || d.estado === "ATRASADA");
+  const emAndamento = dadosNinhadas.filter((d) => d.estado === "FILHOTES");
+  const finalizadas = dadosNinhadas.filter((d) => d.estado === "ENTREGUE");
+  const abaAtual: "previstas" | "andamento" | "finalizados" =
+    aba === "previstas" || aba === "andamento" || aba === "finalizados" ? aba : emGestacao.length > 0 ? "previstas" : "andamento";
+  const listaAba = abaAtual === "previstas" ? emGestacao : abaAtual === "finalizados" ? finalizadas : emAndamento;
   const proxima = emGestacao.map((d) => d.n).sort((a, b) => a.dataPrevistaParto.getTime() - b.dataPrevistaParto.getTime())[0];
   const comParto = dadosNinhadas.filter((d) => d.n.dataParto);
   const totalNascidos = comParto.reduce((t, d) => t + d.nascidos, 0);
@@ -167,15 +168,16 @@ export default async function NinhadasPage({ searchParams }: { searchParams: Pro
             </section>
           )}
 
-          <nav className="mt-8 flex gap-2 border-b" style={{ borderColor: "var(--border-hairline)" }} aria-label="Ciclos">
+          <nav className="mt-8 flex gap-2 border-b overflow-x-auto" style={{ borderColor: "var(--border-hairline)" }} aria-label="Ciclos">
             {[
-              { href: "/dashboard/criador/ninhadas", rotulo: "Ciclo em andamento", qtd: emAndamento.length, ativa: !verFinalizados },
-              { href: "/dashboard/criador/ninhadas?aba=finalizados", rotulo: "Ciclo finalizado", qtd: finalizadas.length, ativa: verFinalizados },
+              { href: "/dashboard/criador/ninhadas?aba=previstas", rotulo: "Previstas (vão nascer)", qtd: emGestacao.length, ativa: abaAtual === "previstas" },
+              { href: "/dashboard/criador/ninhadas?aba=andamento", rotulo: "Ciclo em andamento", qtd: emAndamento.length, ativa: abaAtual === "andamento" },
+              { href: "/dashboard/criador/ninhadas?aba=finalizados", rotulo: "Ciclo finalizado", qtd: finalizadas.length, ativa: abaAtual === "finalizados" },
             ].map((t) => (
               <Link
                 key={t.href}
                 href={t.href}
-                className="px-4 py-2 text-sm -mb-px border-b-2"
+                className="px-4 py-2 text-sm -mb-px border-b-2 whitespace-nowrap"
                 style={{ borderColor: t.ativa ? "var(--pine)" : "transparent", color: t.ativa ? "var(--pine)" : "var(--ink-muted)", fontWeight: t.ativa ? 600 : 400 }}
               >
                 {t.rotulo} ({t.qtd})
@@ -186,7 +188,11 @@ export default async function NinhadasPage({ searchParams }: { searchParams: Pro
           <div className="mt-5 space-y-5">
             {listaAba.length === 0 && (
               <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
-                {verFinalizados ? "Nenhum ciclo finalizado ainda. Ele fecha quando todos os filhotes têm destino (vendido, doado ou falecido)." : "Nenhum ciclo em andamento no momento."}
+                {abaAtual === "previstas"
+                  ? "Nenhuma ninhada prevista no momento. Registre uma cobertura acima."
+                  : abaAtual === "finalizados"
+                    ? "Nenhum ciclo finalizado ainda. Ele fecha quando todos os filhotes têm destino (vendido, doado ou falecido)."
+                    : "Nenhuma ninhada com filhotes sem destino no momento."}
               </p>
             )}
             {listaAba.map(({ n, cria, vendas, receita, nascidos, falecidos, estado, marcos, margem, valorDe }) => (
@@ -215,6 +221,22 @@ export default async function NinhadasPage({ searchParams }: { searchParams: Pro
                     <ApagarNinhada ninhadaId={n.id} rotulo={`a ninhada de ${n.caoMae.nome} (cobertura em ${formatarData(n.dataCobertura)})`} />
                   </div>
                 </div>
+
+                {!n.dataParto && (() => {
+                  const nascida = dadosNinhadas.find(
+                    (o) =>
+                      o.n.id !== n.id &&
+                      o.n.caoMaeId === n.caoMaeId &&
+                      o.n.dataParto &&
+                      o.n.dataParto.getTime() >= n.dataCobertura.getTime() &&
+                      o.n.dataParto.getTime() <= n.dataPrevistaParto.getTime() + 30 * 86_400_000
+                  );
+                  return nascida ? (
+                    <p className="mt-4 text-sm rounded border p-3" style={{ borderColor: "var(--brass)", background: "#f7ecd9" }}>
+                      Já existe uma ninhada de {n.caoMae.nome} registrada como nascida em {formatarData(nascida.n.dataParto!)}. Se for a mesma, apague esta previsão (lixeira ao lado do status) para não aparecer duas vezes.
+                    </p>
+                  ) : null;
+                })()}
 
                 <ol className="mt-5 grid sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {marcos.map((m) => (

@@ -1,4 +1,4 @@
-import { acharDuplicado, mensagemDuplicado } from "@/lib/duplicados";
+import { acharDuplicado } from "@/lib/duplicados";
 import { carregarChaves } from "@/lib/duplicados-db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -127,7 +127,16 @@ export async function PATCH(
       cand.nome !== existente.nome || cand.sexo !== existente.sexo || (cand.registro ?? null) !== (existente.registro ?? null) || (cand.microchip ?? null) !== (existente.microchip ?? null);
     // só confere quando a identidade mudou, para não travar a edição de cães que já eram duplicados
     const dup = mudouIdentidade ? acharDuplicado(await carregarChaves(canil.id), cand, id) : null;
-    if (dup) return NextResponse.json({ error: mensagemDuplicado(cand, dup) }, { status: 409 });
+    if (dup) {
+      return NextResponse.json(
+        {
+          error: `Já existe ${dup.cao.nome} no seu plantel com ${dup.motivo === "registro" ? "o mesmo registro" : dup.motivo === "microchip" ? "o mesmo microchip" : "o mesmo nome e sexo"}. Se é o mesmo cão, junte os dois cadastros.`,
+          duplicadoId: dup.cao.id,
+          duplicadoNome: dup.cao.nome,
+        },
+        { status: 409 }
+      );
+    }
   }
 
   const cao = await prisma.cao.update({

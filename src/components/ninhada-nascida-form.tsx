@@ -71,7 +71,7 @@ export function NinhadaNascidaForm({ femeas, machos }: { femeas: Opcao[]; machos
     const falhas = await enviarFotosDosFilhotes(env.linhasUsadas, dados?.filhoteIds);
     setSalvando(false);
     if (falhas > 0) window.alert(`A ninhada foi salva, mas ${falhas} foto(s) não subiram. Envie de novo pela página de cada cão.`);
-    router.push("/dashboard/criador/ninhadas");
+    router.push("/dashboard/criador/ninhadas?aba=andamento");
     router.refresh();
   }
 

@@ -69,6 +69,9 @@ export async function POST(request: Request) {
       await tx.registroCuidado.updateMany(w);
       await tx.criopreservacao.updateMany(w);
       await tx.certificado.updateMany(w);
+      await tx.fotoCao.updateMany(w);
+      await tx.medidaCao.updateMany(w);
+      await tx.descendente.updateMany(w);
       await tx.ninhada.updateMany({ where: { caoMaeId: removerId }, data: { caoMaeId: manterId } });
       await tx.ninhada.updateMany({ where: { caoPaiId: removerId }, data: { caoPaiId: manterId } });
       await tx.cao.updateMany({ where: { paiId: removerId }, data: { paiId: manterId } });
