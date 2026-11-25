@@ -164,7 +164,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
   const filhotes =
     aba === "home" || aba === "filhotes"
       ? await prisma.cao.findMany({
-          where: { canilId: canil.id, externo: false, exibirNoCanil: true, papel: "FILHOTE", dataFalecimento: null, vendidoEm: null, ninhadaId: { not: null } },
+          where: { canilId: canil.id, externo: false, exibirNoCanil: true, papel: "FILHOTE", dataFalecimento: null, vendidoEm: null, ninhadaId: { not: null }, ninhada: { exibirNoCanil: true } },
           orderBy: [{ dataNascimento: "desc" }, { criadoEm: "desc" }],
           select: {
             id: true, nome: true, sexo: true, fotoUrl: true, dataNascimento: true, corBase: true, marcacaoCor: true, merleCor: true,
@@ -177,7 +177,7 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
   const ninhadas =
     aba === "ninhadas"
       ? await prisma.ninhada.findMany({
-          where: { caoMae: { canilId: canil.id, externo: false } },
+          where: { exibirNoCanil: true, caoMae: { canilId: canil.id, externo: false } },
           orderBy: { dataCobertura: "desc" },
           select: {
             id: true, dataParto: true, dataPrevistaParto: true, padreadorExterno: true,

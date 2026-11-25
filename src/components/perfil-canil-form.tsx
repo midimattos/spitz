@@ -15,11 +15,13 @@ export function PerfilCanilForm({
   canil,
   plantel,
   filhotes,
+  ninhadas,
   temTelefone,
 }: {
   canil: { nome: string; slug: string; descricao: string | null; instagram: string | null; fotos: string[] };
   plantel: Cao[];
   filhotes: Cao[];
+  ninhadas: Cao[];
   temTelefone: boolean;
 }) {
   const router = useRouter();
@@ -78,6 +80,11 @@ export function PerfilCanilForm({
 
   async function alternar(caoId: string, exibir: boolean) {
     await fetch("/api/canil/plantel-publico", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caoId, exibir }) });
+    router.refresh();
+  }
+
+  async function alternarNinhada(ninhadaId: string, exibir: boolean) {
+    await fetch("/api/canil/ninhada-publica", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ninhadaId, exibir }) });
     router.refresh();
   }
 
@@ -142,6 +149,25 @@ export function PerfilCanilForm({
                 <span>{c.nome}</span>
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={c.exibir} onChange={(e) => alternar(c.id, e.target.checked)} /> Exibir
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card p-6">
+        <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Ninhadas na página pública</h2>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Escolha quais ninhadas aparecem na aba Ninhadas (atuais, próximas e passadas). Ninhada escondida também esconde os filhotes dela. Dentro de uma ninhada exibida, escolha os filhotes na lista abaixo.</p>
+        {ninhadas.length === 0 ? (
+          <p className="text-sm mt-3" style={{ color: "var(--ink-muted)" }}>Nenhuma ninhada cadastrada.</p>
+        ) : (
+          <ul className="mt-3 divide-y text-sm" style={{ borderColor: "var(--border-hairline)" }}>
+            {ninhadas.map((c) => (
+              <li key={c.id} className="py-2 flex items-center justify-between gap-3">
+                <span>{c.nome}</span>
+                <label className="flex items-center gap-2 text-xs shrink-0">
+                  <input type="checkbox" checked={c.exibir} onChange={(e) => alternarNinhada(c.id, e.target.checked)} /> Exibir
                 </label>
               </li>
             ))}
