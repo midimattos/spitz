@@ -125,6 +125,30 @@ function CardFilhote({ f, canilNome, telefone, hrefContato, mostrarPais = true }
   );
 }
 
+type FilhoteAnterior = FilhotePublico & { papel: string; vendidoEm: Date | null };
+
+function CardFilhoteAnterior({ f }: { f: FilhoteAnterior }) {
+  const fotos = [f.fotoUrl, ...f.fotos.map((x) => x.url)].filter((u, i, arr): u is string => !!u && arr.indexOf(u) === i);
+  const cor = descricaoCor(f);
+  const pais = f.ninhada ? [f.ninhada.caoPai?.nome ?? f.ninhada.padreadorExterno, f.ninhada.caoMae?.nome].filter(Boolean).join(" × ") : null;
+  const nasc = f.dataNascimento ? f.dataNascimento.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) : null;
+  return (
+    <article className="card p-4 flex flex-col">
+      <FotosFilhote fotos={fotos} alt={`${f.nome} — filhote de Spitz Alemão`} />
+      <div className="pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-display text-lg" style={{ color: "var(--pine)" }}>{f.nome}</p>
+          <span className="text-[11px] px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--brass)", color: "var(--brass)" }}>
+            {f.vendidoEm ? "Já tem família" : "Ficou no canil"}
+          </span>
+        </div>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>{[f.sexo === "MACHO" ? "Macho" : "Fêmea", cor, nasc && `Nasceu em ${nasc}`].filter(Boolean).join(" · ")}</p>
+        {pais && <p className="text-xs mt-0.5" style={{ color: "var(--ink-muted)" }}>Filho de {pais}</p>}
+      </div>
+    </article>
+  );
+}
+
 function PedigreePublico({ pai, mae }: { pai: NoPed; mae: NoPed }) {
   const caixa = (no: NoPed, rotulo: string, pequeno = false) => (
     <div className="rounded border px-3 py-2" style={{ borderColor: "var(--border-hairline)", background: no ? "var(--parchment-card)" : "transparent", borderStyle: no ? "solid" : "dashed" }}>
@@ -164,10 +188,32 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
   const filhotes =
     aba === "home" || aba === "filhotes"
       ? await prisma.cao.findMany({
-          where: { canilId: canil.id, externo: false, exibirNoCanil: true, papel: "FILHOTE", dataFalecimento: null, vendidoEm: null, ninhadaId: { not: null } },
+          where: { canilId: canil.id, externo: false, exibirNoCanil: true, papel: "FILHOTE", dataFalecimento: null, vendidoEm: null, ninhadaId: { not: null }, ninhada: { exibirNoCanil: true } },
           orderBy: [{ dataNascimento: "desc" }, { criadoEm: "desc" }],
           select: {
             id: true, nome: true, sexo: true, fotoUrl: true, dataNascimento: true, corBase: true, marcacaoCor: true, merleCor: true,
+            fotos: { orderBy: { criadoEm: "asc" }, select: { url: true } },
+            ninhada: { select: { caoMae: { select: { nome: true } }, caoPai: { select: { nome: true } }, padreadorExterno: true } },
+          },
+        })
+      : [];
+
+  const anteriores =
+    aba === "filhotes"
+      ? await prisma.cao.findMany({
+          where: {
+            canilId: canil.id,
+            externo: false,
+            exibirNoCanil: true,
+            dataFalecimento: null,
+            ninhadaId: { not: null },
+            ninhada: { exibirNoCanil: true },
+            OR: [{ vendidoEm: { not: null } }, { papel: { not: "FILHOTE" } }],
+          },
+          orderBy: [{ dataNascimento: "desc" }, { criadoEm: "desc" }],
+          take: 60,
+          select: {
+            id: true, nome: true, sexo: true, papel: true, vendidoEm: true, fotoUrl: true, dataNascimento: true, corBase: true, marcacaoCor: true, merleCor: true,
             fotos: { orderBy: { criadoEm: "asc" }, select: { url: true } },
             ninhada: { select: { caoMae: { select: { nome: true } }, caoPai: { select: { nome: true } }, padreadorExterno: true } },
           },
@@ -331,6 +377,15 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filhotes.map((f) => <CardFilhote key={f.id} f={f} canilNome={canil.nome} telefone={canil.telefoneContato} hrefContato={hrefAba("contato")} />)}
+              </div>
+            )}
+
+            {anteriores.length > 0 && (
+              <div className="mt-14">
+                <Titulo sub="Filhotes que nasceram aqui e já foram para suas famílias. É a nossa história em fotos.">Filhotes que já nasceram aqui</Titulo>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {anteriores.map((f) => <CardFilhoteAnterior key={f.id} f={f} />)}
+                </div>
               </div>
             )}
 

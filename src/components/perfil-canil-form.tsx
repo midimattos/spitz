@@ -158,7 +158,7 @@ export function PerfilCanilForm({
 
       <section className="card p-6">
         <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Ninhadas na página pública</h2>
-        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Escolha quais ninhadas aparecem na aba Ninhadas (atuais, próximas e passadas). Os filhotes à venda são escolhidos na lista abaixo.</p>
+        <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>Escolha quais ninhadas aparecem na aba Ninhadas (atuais, próximas e passadas). Ninhada escondida também esconde os filhotes dela. Dentro de uma ninhada exibida, escolha os filhotes na lista abaixo.</p>
         {ninhadas.length === 0 ? (
           <p className="text-sm mt-3" style={{ color: "var(--ink-muted)" }}>Nenhuma ninhada cadastrada.</p>
         ) : (
@@ -178,7 +178,7 @@ export function PerfilCanilForm({
       <section className="card p-6">
         <h2 className="font-display text-lg" style={{ color: "var(--pine)" }}>Filhotes na página pública</h2>
         <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
-          Filhotes de ninhadas (ainda não vendidos) aparecem na aba Filhotes. Desmarque para esconder algum. As fotos vêm da ficha de cada filhote.
+          Filhotes à venda aparecem em "Filhotes disponíveis"; os que já foram vendidos aparecem em "Filhotes que já nasceram aqui" (sem dados do comprador). Desmarque para esconder algum. As fotos vêm da ficha de cada filhote.
         </p>
         {filhotes.length === 0 ? (
           <p className="text-sm mt-3" style={{ color: "var(--ink-muted)" }}>Nenhum filhote disponível cadastrado.</p>

@@ -12,9 +12,9 @@ export default async function PerfilPublicoPage() {
     select: { id: true, nome: true, exibirNoCanil: true },
   });
   const filhotes = await prisma.cao.findMany({
-    where: { canilId: canil.id, externo: false, papel: "FILHOTE", ninhadaId: { not: null }, dataFalecimento: null, vendidoEm: null },
+    where: { canilId: canil.id, externo: false, ninhadaId: { not: null }, dataFalecimento: null },
     orderBy: [{ dataNascimento: "desc" }, { nome: "asc" }],
-    select: { id: true, nome: true, exibirNoCanil: true },
+    select: { id: true, nome: true, exibirNoCanil: true, vendidoEm: true, papel: true },
   });
   const ninhadasBrutas = await prisma.ninhada.findMany({
     where: { caoMae: { canilId: canil.id, externo: false } },
@@ -39,7 +39,7 @@ export default async function PerfilPublicoPage() {
         <PerfilCanilForm
           canil={{ nome: canil.nome, slug: canil.slug, descricao: canil.descricao, instagram: canil.instagram, fotos: canil.fotos }}
           plantel={caes.map((c) => ({ id: c.id, nome: c.nome, exibir: c.exibirNoCanil }))}
-          filhotes={filhotes.map((c) => ({ id: c.id, nome: c.nome, exibir: c.exibirNoCanil }))}
+          filhotes={filhotes.map((c) => ({ id: c.id, nome: c.vendidoEm ? `${c.nome} (já tem família)` : c.papel !== "FILHOTE" ? `${c.nome} (ficou no canil)` : c.nome, exibir: c.exibirNoCanil }))}
           ninhadas={ninhadas}
           temTelefone={!!canil.telefoneContato}
         />
