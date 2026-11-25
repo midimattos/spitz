@@ -9,6 +9,10 @@ import {
   resumirNinhada,
   contarLocusInformados,
   filhotesMaisProvaveis,
+  OPCOES_COR_BASE,
+  OPCOES_MARCACAO,
+  OPCOES_MERLE,
+  OPCOES_CORES_PRODUZIDAS,
   type FenotipoCao,
 } from "@/lib/genetica-cor";
 import { ResumoNinhadaView } from "@/components/resumo-ninhada";
@@ -35,7 +39,7 @@ const CORES_ALERTA: Record<string, string> = {
 export default async function SimuladorCruzamentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string; n?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
   let { a, b } = params;
@@ -69,6 +73,24 @@ export default async function SimuladorCruzamentoPage({
   let nomeA = "";
   let nomeB = "";
   let erroSexo: string | null = null;
+
+  // Cão que o criador NÃO tem (ex.: um que pensa em comprar): campos digitados no formulário.
+  // lado "m" = macho, "f" = fêmea. As cores do pai e da mãe dele revelam genes recessivos ocultos
+  // (ex.: cão laranja filho de pai chocolate carrega chocolate).
+  function fenotipoExterno(lado: "m" | "f"): FenotipoCao | null {
+    const cor = params[`${lado}cor`];
+    if (!cor || !OPCOES_COR_BASE.includes(cor)) return null;
+    const marc = params[`${lado}marc`];
+    const merle = params[`${lado}merle`];
+    // Merle é dominante: um cão sem merle não carrega merle só porque o pai tem. Por isso fica de fora.
+    const cores = [params[`${lado}pai`], params[`${lado}mae`]].filter((c): c is string => !!c && OPCOES_CORES_PRODUZIDAS.includes(c) && c !== "Merle");
+    return {
+      corBase: cor,
+      marcacaoCor: marc && OPCOES_MARCACAO.includes(marc) ? marc : null,
+      merleCor: merle && OPCOES_MERLE.includes(merle) ? merle : null,
+      coresJaProduzidas: cores,
+    };
+  }
 
   function paraFenotipo(cao: {
     corBase: string | null;
@@ -111,20 +133,28 @@ export default async function SimuladorCruzamentoPage({
     };
   }
 
-  if (a && b && a !== b) {
+  let erroExterno: string | null = null;
+
+  if (a && b && !(a === b && a !== "externo")) {
     const [caoA, caoB] = await Promise.all([
-      prisma.cao.findFirst({ where: { id: a, canilId: canil?.id } }),
-      prisma.cao.findFirst({ where: { id: b, canilId: canil?.id } }),
+      a === "externo" ? null : prisma.cao.findFirst({ where: { id: a, canilId: canil?.id } }),
+      b === "externo" ? null : prisma.cao.findFirst({ where: { id: b, canilId: canil?.id } }),
     ]);
+    const fenA = a === "externo" ? fenotipoExterno("m") : caoA ? paraFenotipo(caoA) : null;
+    const fenB = b === "externo" ? fenotipoExterno("f") : caoB ? paraFenotipo(caoB) : null;
 
-    if (caoA && caoB && caoA.sexo === caoB.sexo) {
+    if (a === "externo" && !fenA) {
+      erroExterno = "Informe pelo menos a cor do macho que você não tem.";
+    } else if (b === "externo" && !fenB) {
+      erroExterno = "Informe pelo menos a cor da fêmea que você não tem.";
+    } else if (caoA && caoB && caoA.sexo === caoB.sexo) {
       erroSexo = `${caoA.nome} e ${caoB.nome} são ${caoA.sexo === "MACHO" ? "machos" : "fêmeas"}. Escolha um macho e uma fêmea.`;
-    } else if (caoA && caoB) {
-      nomeA = caoA.nome;
-      nomeB = caoB.nome;
+    } else if (fenA && fenB) {
+      nomeA = caoA?.nome ?? "Macho (simulado)";
+      nomeB = caoB?.nome ?? "Fêmea (simulada)";
 
-      genotipoA = inferirGenotipo(paraFenotipo(caoA));
-      genotipoB = inferirGenotipo(paraFenotipo(caoB));
+      genotipoA = inferirGenotipo(fenA);
+      genotipoB = inferirGenotipo(fenB);
       alertasCor = avaliarAlertasGeneticos(genotipoA, genotipoB);
       resultadoCor = simularCruzamentoCor(genotipoA, genotipoB);
       resumoCor = resumirNinhada(genotipoA, genotipoB);
@@ -136,6 +166,54 @@ export default async function SimuladorCruzamentoPage({
     }
   }
 
+  const campoExt = "mt-1 w-full px-3 py-2 rounded border bg-transparent text-sm";
+  const estExt = { borderColor: "var(--border-hairline)" };
+  const painelExterno = (lado: "m" | "f", titulo: string) => (
+    <details className="mt-3 rounded border p-3" style={estExt} open={(lado === "m" ? a : b) === "externo"}>
+      <summary className="text-sm cursor-pointer" style={{ color: "var(--brass)" }}>{titulo}</summary>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="text-xs" style={{ color: "var(--ink-muted)" }}>Cor</label>
+          <select name={`${lado}cor`} defaultValue={params[`${lado}cor`] ?? ""} className={campoExt} style={estExt}>
+            <option value="">Selecione</option>
+            {OPCOES_COR_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "var(--ink-muted)" }}>Marcação</label>
+          <select name={`${lado}marc`} defaultValue={params[`${lado}marc`] ?? ""} className={campoExt} style={estExt}>
+            <option value="">Não sei / nenhuma</option>
+            {OPCOES_MARCACAO.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "var(--ink-muted)" }}>Merle</label>
+          <select name={`${lado}merle`} defaultValue={params[`${lado}merle`] ?? ""} className={campoExt} style={estExt}>
+            <option value="">Não sei / não tem</option>
+            {OPCOES_MERLE.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "var(--ink-muted)" }}>Cor do pai dele(a)</label>
+          <select name={`${lado}pai`} defaultValue={params[`${lado}pai`] ?? ""} className={campoExt} style={estExt}>
+            <option value="">Não sei</option>
+            {OPCOES_CORES_PRODUZIDAS.filter((c) => c !== "Merle").map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "var(--ink-muted)" }}>Cor da mãe dele(a)</label>
+          <select name={`${lado}mae`} defaultValue={params[`${lado}mae`] ?? ""} className={campoExt} style={estExt}>
+            <option value="">Não sei</option>
+            {OPCOES_CORES_PRODUZIDAS.filter((c) => c !== "Merle").map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <p className="col-span-2 text-xs" style={{ color: "var(--ink-muted)" }}>
+          As cores dos pais ajudam a descobrir genes escondidos. Ex.: um cão laranja filho de pai chocolate carrega o gene chocolate.
+        </p>
+      </div>
+    </details>
+  );
+
   return (
     <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-16">
       <h1 className="font-display text-3xl" style={{ color: "var(--pine)" }}>
@@ -143,7 +221,8 @@ export default async function SimuladorCruzamentoPage({
       </h1>
       <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
         Escolha um macho e uma fêmea do seu plantel e veja a chance de cada cor, marcação
-        e gene oculto na ninhada.
+        e gene oculto na ninhada. Está pensando em comprar ou usar um cão que não é seu? Escolha
+        &ldquo;Cão que não tenho&rdquo; e informe as cores dele para ver o que viria do cruzamento antes de decidir.
       </p>
 
       <Link href="/dashboard/criador/cruzamentos/sugestoes" className="card mt-6 p-4 block text-sm hover:opacity-90">
@@ -158,7 +237,7 @@ export default async function SimuladorCruzamentoPage({
           </label>
           <select
             name="a"
-            defaultValue={caes.find((c) => c.id === a)?.sexo === "MACHO" ? a : ""}
+            defaultValue={a === "externo" ? "externo" : caes.find((c) => c.id === a)?.sexo === "MACHO" ? a : ""}
             required
             className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
             style={{ borderColor: "var(--border-hairline)" }}
@@ -171,7 +250,9 @@ export default async function SimuladorCruzamentoPage({
                 {c.nome}
               </option>
             ))}
+            <option value="externo">➕ Macho que não tenho (simular)</option>
           </select>
+          {painelExterno("m", "Dados do macho que não tenho")}
         </div>
         <div>
           <label className="text-sm" style={{ color: "var(--ink-muted)" }}>
@@ -179,7 +260,7 @@ export default async function SimuladorCruzamentoPage({
           </label>
           <select
             name="b"
-            defaultValue={caes.find((c) => c.id === b)?.sexo === "FEMEA" ? b : ""}
+            defaultValue={b === "externo" ? "externo" : caes.find((c) => c.id === b)?.sexo === "FEMEA" ? b : ""}
             required
             className="mt-1 w-full px-3 py-2 rounded border bg-transparent"
             style={{ borderColor: "var(--border-hairline)" }}
@@ -192,8 +273,13 @@ export default async function SimuladorCruzamentoPage({
                 {c.nome}
               </option>
             ))}
+            <option value="externo">➕ Fêmea que não tenho (simular)</option>
           </select>
+          {painelExterno("f", "Dados da fêmea que não tenho")}
         </div>
+        {erroExterno && (
+          <p className="sm:col-span-2 text-sm" style={{ color: "#a32d2d" }}>{erroExterno}</p>
+        )}
         {erroSexo && (
           <p className="sm:col-span-2 text-sm" style={{ color: "#a32d2d" }}>{erroSexo}</p>
         )}
@@ -220,7 +306,7 @@ export default async function SimuladorCruzamentoPage({
         </button>
       </form>
 
-      {a && b && a === b && (
+      {a && b && a === b && a !== "externo" && (
         <p className="mt-6 text-sm" style={{ color: "#a32d2d" }}>
           Selecione dois cães diferentes.
         </p>
