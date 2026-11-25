@@ -19,6 +19,7 @@ import { ResumoNinhadaView } from "@/components/resumo-ninhada";
 import { carregarContextoMercado, montarRadarPorCor, type LinhaRadarCor } from "@/lib/mercado";
 import { calcularValorNinhada } from "@/lib/valor-ninhada";
 import { formatarMoeda } from "@/lib/financeiro";
+import { MARKETPLACE_ATIVO } from "@/lib/marketplace-config";
 
 const TAMANHO_NINHADA_PADRAO = 4;
 const TAMANHO_NINHADA_MAXIMO = 12;
@@ -160,9 +161,11 @@ export default async function SimuladorCruzamentoPage({
       resumoCor = resumirNinhada(genotipoA, genotipoB);
 
       // Quanto o mercado paga e procura por cada cor que essa ninhada pode ter
-      const ctx = await carregarContextoMercado();
-      const radar = new Map<string, LinhaRadarCor>(montarRadarPorCor(ctx).map((l) => [l.cor, l]));
-      valorMercado = calcularValorNinhada(resultadoCor, tamanhoNinhada, radar);
+      if (MARKETPLACE_ATIVO) {
+        const ctx = await carregarContextoMercado();
+        const radar = new Map<string, LinhaRadarCor>(montarRadarPorCor(ctx).map((l) => [l.cor, l]));
+        valorMercado = calcularValorNinhada(resultadoCor, tamanhoNinhada, radar);
+      }
     }
   }
 
@@ -225,10 +228,12 @@ export default async function SimuladorCruzamentoPage({
         &ldquo;Cão que não tenho&rdquo; e informe as cores dele para ver o que viria do cruzamento antes de decidir.
       </p>
 
-      <Link href="/dashboard/criador/cruzamentos/sugestoes" className="card mt-6 p-4 block text-sm hover:opacity-90">
+{MARKETPLACE_ATIVO && (
+              <Link href="/dashboard/criador/cruzamentos/sugestoes" className="card mt-6 p-4 block text-sm hover:opacity-90">
         <strong style={{ color: "var(--pine)" }}>Cruzamentos sugeridos pelo mercado</strong>
         <span style={{ color: "var(--ink-muted)" }}> — veja quais pares do seu plantel rendem mais e produzem as cores em falta.</span>
       </Link>
+      )}
 
       <form method="GET" className="card mt-8 p-6 grid sm:grid-cols-2 gap-4">
         <div>
