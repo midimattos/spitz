@@ -28,6 +28,9 @@ export async function carregarCanilPublico(slug: string) {
   });
 }
 
+const NO_BASE = { nome: true, corBase: true, fotoUrl: true } as const;
+const NO_AVO = { ...NO_BASE, pai: { select: NO_BASE }, mae: { select: NO_BASE } } as const;
+
 const ABAS = [
   { id: "home", rotulo: "Home" },
   { id: "filhotes", rotulo: "Filhotes" },
@@ -150,30 +153,46 @@ function CardFilhoteAnterior({ f }: { f: FilhoteAnterior }) {
 }
 
 function PedigreePublico({ pai, mae }: { pai: NoPed; mae: NoPed }) {
-  const caixa = (no: NoPed, rotulo: string, pequeno = false) => (
-    <div className="rounded border px-3 py-2" style={{ borderColor: "var(--border-hairline)", background: no ? "var(--parchment-card)" : "transparent", borderStyle: no ? "solid" : "dashed" }}>
-      <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--ink-muted)" }}>{rotulo}</p>
-      <p className={pequeno ? "text-sm" : "text-base"} style={{ color: no ? "var(--pine)" : "var(--ink-muted)" }}>{no ? no.nome : "Não informado"}</p>
-      {no?.corBase && <p className="text-xs" style={{ color: "var(--ink-muted)" }}>{no.corBase}</p>}
+  // Pais já aparecem no topo do card: aqui só avós e bisavós, com foto.
+  const celula = (no: NoPed, rotulo: string, grande: boolean) => (
+    <div className="min-w-0">
+      <div className="aspect-square w-full overflow-hidden rounded flex items-center justify-center border" style={{ borderColor: "var(--border-hairline)", background: "var(--parchment)", borderStyle: no ? "solid" : "dashed" }}>
+        {no?.fotoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={no.fotoUrl} alt={no.nome} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <span className="font-display" style={{ color: "var(--ink-muted)", fontSize: grande ? 28 : 18 }}>{no ? no.nome.slice(0, 1) : "?"}</span>
+        )}
+      </div>
+      <p className="mt-1 text-[10px] uppercase tracking-wider" style={{ color: "var(--ink-muted)" }}>{rotulo}</p>
+      <p className={`${grande ? "text-sm" : "text-[11px]"} leading-tight break-words`} style={{ color: no ? "var(--pine)" : "var(--ink-muted)" }}>{no ? no.nome : "Não informado"}</p>
+      {no?.corBase && <p className="text-[10px]" style={{ color: "var(--ink-muted)" }}>{no.corBase}</p>}
     </div>
   );
-  const lado = (no: NoPed, titulo: string, avo: string, ava: string) => (
-    <div className="space-y-2">
-      {caixa(no, titulo)}
-      <div className="grid grid-cols-2 gap-2">
-        {caixa(no?.pai, avo, true)}
-        {caixa(no?.mae, ava, true)}
+  const lado = (no: NoPed, titulo: string, avo: string, ava: string, bisavo: string, bisava: string) => (
+    <div className="rounded border p-3 sm:p-4" style={{ borderColor: "var(--border-hairline)" }}>
+      <p className="font-display text-base mb-3" style={{ color: "var(--pine)" }}>{titulo}{no ? ` · ${no.nome}` : ""}</p>
+      <div className="grid grid-cols-2 gap-3">
+        {celula(no?.pai, avo, true)}
+        {celula(no?.mae, ava, true)}
+      </div>
+      <div className="grid grid-cols-4 gap-2 mt-4">
+        {celula(no?.pai?.pai, bisavo, false)}
+        {celula(no?.pai?.mae, bisava, false)}
+        {celula(no?.mae?.pai, bisavo, false)}
+        {celula(no?.mae?.mae, bisava, false)}
       </div>
     </div>
   );
   return (
-    <div className="grid sm:grid-cols-2 gap-5 items-start">
-      {lado(pai, "Pai", "Avô paterno", "Avó paterna")}
-      {lado(mae, "Mãe", "Avô materno", "Avó materna")}
+    <div className="grid md:grid-cols-2 gap-5 items-start">
+      {lado(pai, "Lado do pai", "Avô paterno", "Avó paterna", "Bisavô", "Bisavó")}
+      {lado(mae, "Lado da mãe", "Avô materno", "Avó materna", "Bisavô", "Bisavó")}
     </div>
   );
 }
-type NoPed = { nome: string; corBase: string | null; pai?: { nome: string; corBase: string | null } | null; mae?: { nome: string; corBase: string | null } | null } | null | undefined;
+type NoBase = { nome: string; corBase: string | null; fotoUrl: string | null };
+type NoPed = (NoBase & { pai?: (NoBase & { pai?: NoBase | null; mae?: NoBase | null }) | null; mae?: (NoBase & { pai?: NoBase | null; mae?: NoBase | null }) | null }) | null | undefined;
 
 export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?: string }) {
   const canil = await carregarCanilPublico(slug);
@@ -227,8 +246,8 @@ export async function PaginaCanil({ slug, aba: abaBruta }: { slug: string; aba?:
           orderBy: { dataCobertura: "desc" },
           select: {
             id: true, dataParto: true, dataPrevistaParto: true, padreadorExterno: true,
-            caoMae: { select: { nome: true, fotoUrl: true, corBase: true, pai: { select: { nome: true, corBase: true } }, mae: { select: { nome: true, corBase: true } } } },
-            caoPai: { select: { nome: true, fotoUrl: true, corBase: true, pai: { select: { nome: true, corBase: true } }, mae: { select: { nome: true, corBase: true } } } },
+            caoMae: { select: { nome: true, fotoUrl: true, corBase: true, pai: { select: NO_AVO }, mae: { select: NO_AVO } } },
+            caoPai: { select: { nome: true, fotoUrl: true, corBase: true, pai: { select: NO_AVO }, mae: { select: NO_AVO } } },
             filhotes: { select: { id: true, nome: true, sexo: true, papel: true, fotoUrl: true, dataNascimento: true, corBase: true, marcacaoCor: true, merleCor: true, vendidoEm: true, dataFalecimento: true, exibirNoCanil: true, fotos: { orderBy: { criadoEm: "asc" }, select: { url: true } } } },
           },
         })
@@ -461,8 +480,8 @@ type NinhadaPublica = {
   dataParto: Date | null;
   dataPrevistaParto: Date;
   padreadorExterno: string | null;
-  caoMae: { nome: string; fotoUrl: string | null; corBase: string | null; pai: { nome: string; corBase: string | null } | null; mae: { nome: string; corBase: string | null } | null };
-  caoPai: { nome: string; fotoUrl: string | null; corBase: string | null; pai: { nome: string; corBase: string | null } | null; mae: { nome: string; corBase: string | null } | null } | null;
+  caoMae: NonNullable<NoPed>;
+  caoPai: NoPed;
   filhotes: (FilhotePublico & { papel: string; vendidoEm: Date | null; dataFalecimento: Date | null; exibirNoCanil: boolean })[];
 };
 
@@ -510,7 +529,7 @@ function CardNinhada({ n, canilNome, telefone, hrefContato, compacto = false }: 
         <details className="mt-4 border-t pt-3" style={{ borderColor: "var(--border-hairline)" }}>
           <summary className="text-sm cursor-pointer" style={{ color: "var(--brass)" }}>Conheça o pedigree</summary>
           <div className="mt-3">
-            <PedigreePublico pai={n.caoPai ?? (n.padreadorExterno ? { nome: n.padreadorExterno, corBase: null } : null)} mae={n.caoMae} />
+            <PedigreePublico pai={n.caoPai ?? (n.padreadorExterno ? { nome: n.padreadorExterno, corBase: null, fotoUrl: null } : null)} mae={n.caoMae} />
           </div>
         </details>
       )}
